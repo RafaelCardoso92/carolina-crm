@@ -142,6 +142,18 @@ model PremioTrimestral {
   @@unique([minimo])
 }
 
+model PremioAnual {
+  id              String   @id @default(cuid())
+  minimo          Decimal  @db.Decimal(10, 2)  // Minimum sales to get this prize
+  premio          Decimal  @db.Decimal(10, 2)  // Prize amount
+  ordem           Int      @default(0)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([minimo])
+}
+
 model Produto {
   id          String   @id @default(cuid())
   nome        String

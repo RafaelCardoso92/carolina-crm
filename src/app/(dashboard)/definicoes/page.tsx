@@ -44,6 +44,7 @@ type SettingsData = {
   configuracoes: Record<string, string>
   premiosMensais: Premio[]
   premiosTrimestrais: Premio[]
+  premiosAnuais: Premio[]
   objetivosAnuais: ObjetivoAnual[]
   objetivosTrimestrais: ObjetivoTrimestral[]
   objetivosMensais: ObjetivoMensal[]
@@ -158,7 +159,7 @@ export default function DefinicoesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">A carregar...</div>
+        <div className="text-muted-foreground">A carregar...</div>
       </div>
     )
   }
@@ -166,8 +167,8 @@ export default function DefinicoesPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Definicoes</h1>
-        <p className="text-gray-500">Configurar IVA, comissoes, objetivos e premios</p>
+        <h1 className="text-3xl font-bold text-foreground">Definicoes</h1>
+        <p className="text-muted-foreground">Configurar IVA, comissoes, objetivos e premios</p>
       </div>
 
       {/* Tabs */}
@@ -183,8 +184,8 @@ export default function DefinicoesPage() {
             onClick={() => setActiveTab(tab.id as typeof activeTab)}
             className={`flex items-center gap-2 px-5 py-3 rounded-xl font-semibold transition ${
               activeTab === tab.id
-                ? "bg-purple-600 text-white shadow-lg"
-                : "bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200"
+                ? "bg-primary text-primary-foreground shadow-lg"
+                : "bg-card text-foreground hover:bg-secondary border-2 border-border"
             }`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -199,9 +200,9 @@ export default function DefinicoesPage() {
       {activeTab === "config" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* IVA */}
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-card rounded-2xl shadow-sm p-6 border border-border">
+            <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
               Percentagem de IVA
@@ -213,25 +214,25 @@ export default function DefinicoesPage() {
                   step="0.1"
                   value={iva}
                   onChange={(e) => setIva(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 font-medium focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none pr-10"
+                  className="w-full px-4 py-3 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none pr-10"
                 />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">%</span>
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">%</span>
               </div>
               <button
                 onClick={() => saveConfig("IVA_PERCENTAGEM", iva)}
                 disabled={saving}
-                className="px-6 py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition disabled:opacity-50"
+                className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary-hover transition disabled:opacity-50"
               >
                 Guardar
               </button>
             </div>
-            <p className="text-sm text-gray-500 mt-2">Taxa de IVA aplicada nas vendas (padrao: 23%)</p>
+            <p className="text-sm text-muted-foreground mt-2">Taxa de IVA aplicada nas vendas (padrao: 23%)</p>
           </div>
 
           {/* Comissao */}
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-card rounded-2xl shadow-sm p-6 border border-border">
+            <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <svg className="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               Percentagem de Comissao
@@ -243,19 +244,19 @@ export default function DefinicoesPage() {
                   step="0.1"
                   value={comissao}
                   onChange={(e) => setComissao(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 font-medium focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none pr-10"
+                  className="w-full px-4 py-3 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none pr-10"
                 />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">%</span>
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">%</span>
               </div>
               <button
                 onClick={() => saveConfig("COMISSAO_PERCENTAGEM", comissao)}
                 disabled={saving}
-                className="px-6 py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition disabled:opacity-50"
+                className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary-hover transition disabled:opacity-50"
               >
                 Guardar
               </button>
             </div>
-            <p className="text-sm text-gray-500 mt-2">Comissao sobre vendas (padrao: 3.5%)</p>
+            <p className="text-sm text-muted-foreground mt-2">Comissao sobre vendas (padrao: 3.5%)</p>
           </div>
         </div>
       )}
@@ -264,13 +265,13 @@ export default function DefinicoesPage() {
       {activeTab === "objetivos" && (
         <div className="space-y-6">
           {/* Year Selector */}
-          <div className="bg-white rounded-2xl shadow-sm p-4">
+          <div className="bg-card rounded-2xl shadow-sm p-4 border border-border">
             <div className="flex items-center justify-center gap-3">
-              <label className="text-sm font-bold text-gray-700">Ano:</label>
+              <label className="text-sm font-bold text-foreground">Ano:</label>
               <select
                 value={selectedAno}
                 onChange={(e) => setSelectedAno(parseInt(e.target.value))}
-                className="px-4 py-2.5 border-2 border-gray-200 rounded-xl text-gray-900 font-semibold focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none bg-white"
+                className="px-4 py-2.5 border-2 border-border rounded-xl text-foreground font-semibold focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-background"
               >
                 {[2023, 2024, 2025, 2026].map((y) => (
                   <option key={y} value={y}>{y}</option>
@@ -280,9 +281,9 @@ export default function DefinicoesPage() {
           </div>
 
           {/* Annual Objective */}
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-card rounded-2xl shadow-sm p-6 border border-border">
+            <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
               Objetivo Anual {selectedAno}
@@ -297,9 +298,9 @@ export default function DefinicoesPage() {
           </div>
 
           {/* Quarterly Objectives */}
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-card rounded-2xl shadow-sm p-6 border border-border">
+            <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
               Objetivos Trimestrais {selectedAno}
@@ -325,9 +326,9 @@ export default function DefinicoesPage() {
           </div>
 
           {/* Monthly Objectives */}
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-card rounded-2xl shadow-sm p-6 border border-border">
+            <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <svg className="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
               Objetivos Mensais {selectedAno}
@@ -364,11 +365,11 @@ export default function DefinicoesPage() {
 
       {/* Premios Tab */}
       {activeTab === "premios" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Monthly Prizes */}
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-card rounded-2xl shadow-sm p-6 border border-border">
+            <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <svg className="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               Premios Mensais
@@ -382,9 +383,9 @@ export default function DefinicoesPage() {
           </div>
 
           {/* Quarterly Prizes */}
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-card rounded-2xl shadow-sm p-6 border border-border">
+            <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               Premios Trimestrais
@@ -396,19 +397,35 @@ export default function DefinicoesPage() {
               saving={saving}
             />
           </div>
+
+          {/* Annual Prizes */}
+          <div className="bg-card rounded-2xl shadow-sm p-6 border border-border">
+            <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Premios Anuais
+            </h3>
+            <PremioTable
+              premios={data?.premiosAnuais || []}
+              onSave={(dados) => savePremio("premio_anual", dados)}
+              onDelete={(id) => deletePremio("premio_anual", id)}
+              saving={saving}
+            />
+          </div>
         </div>
       )}
 
       {/* Produtos Tab */}
       {activeTab === "produtos" && (
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-card rounded-2xl shadow-sm p-6 border border-border">
+          <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+            <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
             </svg>
             Gerir Produtos
           </h3>
-          <p className="text-gray-500 text-sm mb-6">Adicione produtos para rastrear vendas e gerar recomendacoes de upsell.</p>
+          <p className="text-muted-foreground text-sm mb-6">Adicione produtos para rastrear vendas e gerar recomendacoes de upsell.</p>
           <ProdutosTable
             produtos={produtos}
             onRefresh={fetchData}
@@ -443,7 +460,7 @@ function ObjetivoForm({
 
   return (
     <div className={compact ? "" : ""}>
-      <label className="block text-sm font-bold text-gray-700 mb-2">{label}</label>
+      <label className="block text-sm font-bold text-foreground mb-2">{label}</label>
       <div className="flex gap-2">
         <div className="relative flex-1">
           <input
@@ -452,24 +469,24 @@ function ObjetivoForm({
             value={valor}
             onChange={(e) => setValor(e.target.value)}
             placeholder={displayFallback ? fallbackValue.toFixed(0) : "0.00"}
-            className={`w-full px-3 py-2 border-2 rounded-xl text-gray-900 font-medium focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none pr-8 ${
-              displayFallback ? "border-gray-200 bg-gray-50" : "border-gray-200"
+            className={`w-full px-3 py-2 border-2 rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none pr-8 ${
+              displayFallback ? "border-border bg-muted" : "border-border"
             }`}
           />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">€</span>
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">€</span>
         </div>
         <button
           onClick={() => valor && onSave(parseFloat(valor))}
           disabled={saving || !valor}
-          className="px-3 py-2 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition disabled:opacity-50 text-sm"
+          className="px-3 py-2 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary-hover transition disabled:opacity-50 text-sm"
         >
           OK
         </button>
       </div>
       {displayFallback && (
-        <p className="text-xs text-gray-400 mt-1">Calculado: {fallbackValue.toFixed(2)} €</p>
+        <p className="text-xs text-muted-foreground mt-1">Calculado: {fallbackValue.toFixed(2)} €</p>
       )}
-      {hint && <p className="text-sm text-gray-500 mt-2">{hint}</p>}
+      {hint && <p className="text-sm text-muted-foreground mt-2">{hint}</p>}
     </div>
   )
 }
@@ -499,25 +516,28 @@ function PremioTable({
     setNewPremio("")
   }
 
+  // Sort premios by minimo ascending
+  const sortedPremios = [...premios].sort((a, b) => Number(a.minimo) - Number(b.minimo))
+
   return (
     <div>
       <table className="w-full mb-4">
         <thead>
-          <tr className="text-left text-sm text-gray-500 border-b">
+          <tr className="text-left text-sm text-muted-foreground border-b border-border">
             <th className="pb-2">Vendas Minimas</th>
             <th className="pb-2">Premio</th>
             <th className="pb-2 w-20"></th>
           </tr>
         </thead>
-        <tbody className="divide-y">
-          {premios.map((p) => (
-            <tr key={p.id} className="text-gray-800">
+        <tbody className="divide-y divide-border">
+          {sortedPremios.map((p) => (
+            <tr key={p.id} className="text-foreground">
               <td className="py-3 font-medium">{Number(p.minimo).toFixed(0)} €</td>
-              <td className="py-3 font-bold text-green-600">{Number(p.premio).toFixed(0)} €</td>
+              <td className="py-3 font-bold text-success">{Number(p.premio).toFixed(0)} €</td>
               <td className="py-3">
                 <button
                   onClick={() => onDelete(p.id)}
-                  className="p-1 text-red-500 hover:bg-red-50 rounded transition"
+                  className="p-1 text-destructive hover:bg-destructive/10 rounded transition"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -530,16 +550,16 @@ function PremioTable({
       </table>
 
       {/* Add new */}
-      <div className="flex gap-2 pt-4 border-t">
+      <div className="flex gap-2 pt-4 border-t border-border">
         <div className="relative flex-1">
           <input
             type="number"
             value={newMinimo}
             onChange={(e) => setNewMinimo(e.target.value)}
             placeholder="Minimo"
-            className="w-full px-3 py-2 border-2 border-gray-200 rounded-xl text-gray-900 font-medium focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none pr-8"
+            className="w-full px-3 py-2 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none pr-8"
           />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">€</span>
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">€</span>
         </div>
         <div className="relative flex-1">
           <input
@@ -547,14 +567,14 @@ function PremioTable({
             value={newPremio}
             onChange={(e) => setNewPremio(e.target.value)}
             placeholder="Premio"
-            className="w-full px-3 py-2 border-2 border-gray-200 rounded-xl text-gray-900 font-medium focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none pr-8"
+            className="w-full px-3 py-2 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none pr-8"
           />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">€</span>
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">€</span>
         </div>
         <button
           onClick={handleAdd}
           disabled={saving || !newMinimo || !newPremio}
-          className="px-4 py-2 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition disabled:opacity-50"
+          className="px-4 py-2 bg-success text-success-foreground rounded-xl font-bold hover:opacity-90 transition disabled:opacity-50"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -667,47 +687,47 @@ function ProdutosTable({
     <div>
       {/* Add/Edit Form */}
       {showForm && (
-        <form onSubmit={handleSubmit} className="mb-6 p-4 bg-purple-50 rounded-xl border-2 border-purple-200">
-          <h4 className="font-bold text-gray-800 mb-4">{editingId ? "Editar Produto" : "Novo Produto"}</h4>
+        <form onSubmit={handleSubmit} className="mb-6 p-4 bg-primary/10 rounded-xl border-2 border-primary/20">
+          <h4 className="font-bold text-foreground mb-4">{editingId ? "Editar Produto" : "Novo Produto"}</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1">Nome *</label>
+              <label className="block text-sm font-bold text-foreground mb-1">Nome *</label>
               <input
                 type="text"
                 value={formData.nome}
                 onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                 required
-                className="w-full px-3 py-2 border-2 border-gray-200 rounded-xl text-gray-900 font-medium focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                className="w-full px-3 py-2 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none"
                 placeholder="Nome do produto"
               />
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1">Codigo</label>
+              <label className="block text-sm font-bold text-foreground mb-1">Codigo</label>
               <input
                 type="text"
                 value={formData.codigo}
                 onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
-                className="w-full px-3 py-2 border-2 border-gray-200 rounded-xl text-gray-900 font-medium focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                className="w-full px-3 py-2 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none"
                 placeholder="Codigo unico (opcional)"
               />
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1">Categoria</label>
+              <label className="block text-sm font-bold text-foreground mb-1">Categoria</label>
               <input
                 type="text"
                 value={formData.categoria}
                 onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
-                className="w-full px-3 py-2 border-2 border-gray-200 rounded-xl text-gray-900 font-medium focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                className="w-full px-3 py-2 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none"
                 placeholder="Ex: Laticinios, Ovos, etc."
               />
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1">Descricao</label>
+              <label className="block text-sm font-bold text-foreground mb-1">Descricao</label>
               <input
                 type="text"
                 value={formData.descricao}
                 onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                className="w-full px-3 py-2 border-2 border-gray-200 rounded-xl text-gray-900 font-medium focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                className="w-full px-3 py-2 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none"
                 placeholder="Descricao breve"
               />
             </div>
@@ -716,14 +736,14 @@ function ProdutosTable({
             <button
               type="submit"
               disabled={saving || !formData.nome}
-              className="px-4 py-2 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition disabled:opacity-50"
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary-hover transition disabled:opacity-50"
             >
               {saving ? "A guardar..." : "Guardar"}
             </button>
             <button
               type="button"
               onClick={resetForm}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 transition"
+              className="px-4 py-2 bg-secondary text-secondary-foreground rounded-xl font-bold hover:opacity-80 transition"
             >
               Cancelar
             </button>
@@ -735,7 +755,7 @@ function ProdutosTable({
       {!showForm && (
         <button
           onClick={() => setShowForm(true)}
-          className="mb-6 px-4 py-2 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition flex items-center gap-2"
+          className="mb-6 px-4 py-2 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary-hover transition flex items-center gap-2"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -746,8 +766,8 @@ function ProdutosTable({
 
       {/* Products Table */}
       {produtos.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="text-center py-8 text-muted-foreground">
+          <svg className="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
           </svg>
           <p>Nenhum produto registado</p>
@@ -757,7 +777,7 @@ function ProdutosTable({
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="text-left text-sm text-gray-500 border-b">
+              <tr className="text-left text-sm text-muted-foreground border-b border-border">
                 <th className="pb-3">Nome</th>
                 <th className="pb-3">Codigo</th>
                 <th className="pb-3">Categoria</th>
@@ -766,23 +786,23 @@ function ProdutosTable({
                 <th className="pb-3 w-24"></th>
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-border">
               {produtos.map((p) => (
                 <tr key={p.id} className={`${!p.ativo ? "opacity-50" : ""}`}>
                   <td className="py-3">
-                    <span className="font-medium text-gray-800">{p.nome}</span>
-                    {p.descricao && <p className="text-xs text-gray-500">{p.descricao}</p>}
+                    <span className="font-medium text-foreground">{p.nome}</span>
+                    {p.descricao && <p className="text-xs text-muted-foreground">{p.descricao}</p>}
                   </td>
-                  <td className="py-3 text-gray-600">{p.codigo || "-"}</td>
+                  <td className="py-3 text-muted-foreground">{p.codigo || "-"}</td>
                   <td className="py-3">
                     {p.categoria ? (
-                      <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium">
+                      <span className="px-2 py-1 bg-primary/10 text-primary rounded-lg text-sm font-medium">
                         {p.categoria}
                       </span>
                     ) : "-"}
                   </td>
                   <td className="py-3 text-center">
-                    <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium">
+                    <span className="px-2 py-1 bg-blue-500/10 text-blue-500 rounded-lg text-sm font-medium">
                       {p._count?.itensVenda || 0}
                     </span>
                   </td>
@@ -791,8 +811,8 @@ function ProdutosTable({
                       onClick={() => toggleAtivo(p)}
                       className={`px-2 py-1 rounded-lg text-sm font-medium transition ${
                         p.ativo
-                          ? "bg-green-100 text-green-700 hover:bg-green-200"
-                          : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                          ? "bg-success/10 text-success hover:bg-success/20"
+                          : "bg-secondary text-muted-foreground hover:bg-secondary/80"
                       }`}
                     >
                       {p.ativo ? "Ativo" : "Inativo"}
@@ -802,7 +822,7 @@ function ProdutosTable({
                     <div className="flex gap-1 justify-end">
                       <button
                         onClick={() => startEdit(p)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                        className="p-2 text-blue-500 hover:bg-blue-500/10 rounded-lg transition"
                         title="Editar"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -811,7 +831,7 @@ function ProdutosTable({
                       </button>
                       <button
                         onClick={() => handleDelete(p.id)}
-                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition"
+                        className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition"
                         title="Eliminar"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

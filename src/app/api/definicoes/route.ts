@@ -7,13 +7,15 @@ export async function GET() {
       configuracoes,
       premiosMensais,
       premiosTrimestrais,
+      premiosAnuais,
       objetivosAnuais,
       objetivosTrimestrais,
       objetivosMensais
     ] = await Promise.all([
       prisma.configuracao.findMany(),
-      prisma.premioMensal.findMany({ orderBy: { ordem: "asc" } }),
-      prisma.premioTrimestral.findMany({ orderBy: { ordem: "asc" } }),
+      prisma.premioMensal.findMany({ orderBy: { minimo: "asc" } }),
+      prisma.premioTrimestral.findMany({ orderBy: { minimo: "asc" } }),
+      prisma.premioAnual.findMany({ orderBy: { minimo: "asc" } }),
       prisma.objetivoAnual.findMany({ orderBy: { ano: "desc" } }),
       prisma.objetivoTrimestral.findMany({ orderBy: [{ ano: "desc" }, { trimestre: "asc" }] }),
       prisma.objetivoMensal.findMany({ orderBy: [{ ano: "desc" }, { mes: "asc" }] })
@@ -29,6 +31,7 @@ export async function GET() {
       configuracoes: config,
       premiosMensais,
       premiosTrimestrais,
+      premiosAnuais,
       objetivosAnuais,
       objetivosTrimestrais,
       objetivosMensais
@@ -74,6 +77,19 @@ export async function POST(request: Request) {
           })
         } else {
           await prisma.premioTrimestral.create({
+            data: { minimo: dados.minimo, premio: dados.premio, ordem: dados.ordem }
+          })
+        }
+        break
+
+      case "premio_anual":
+        if (dados.id) {
+          await prisma.premioAnual.update({
+            where: { id: dados.id },
+            data: { minimo: dados.minimo, premio: dados.premio, ordem: dados.ordem }
+          })
+        } else {
+          await prisma.premioAnual.create({
             data: { minimo: dados.minimo, premio: dados.premio, ordem: dados.ordem }
           })
         }
@@ -130,6 +146,9 @@ export async function DELETE(request: Request) {
         break
       case "premio_trimestral":
         await prisma.premioTrimestral.delete({ where: { id } })
+        break
+      case "premio_anual":
+        await prisma.premioAnual.delete({ where: { id } })
         break
       default:
         return NextResponse.json({ error: "Tipo invalido" }, { status: 400 })
