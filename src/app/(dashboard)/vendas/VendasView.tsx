@@ -248,15 +248,15 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
   return (
     <div>
       {/* Navigation and Summary */}
-      <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
+      <div className="bg-card rounded-2xl shadow-sm p-6 mb-6">
         {/* Year and Month Selectors */}
         <div className="flex flex-wrap items-center justify-center gap-3 mb-6">
           <div className="flex items-center gap-2">
-            <label className="text-sm font-semibold text-gray-700">Ano:</label>
+            <label className="text-sm font-semibold text-foreground">Ano:</label>
             <select
               value={ano}
               onChange={(e) => router.push(`/vendas?mes=${mes}&ano=${e.target.value}`)}
-              className="px-4 py-2.5 border-2 border-gray-200 rounded-xl text-gray-900 font-semibold focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none bg-white"
+              className="px-4 py-2.5 border-2 border-border rounded-xl text-foreground font-semibold focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none bg-card"
             >
               {[2023, 2024, 2025, 2026].map((y) => (
                 <option key={y} value={y}>{y}</option>
@@ -264,11 +264,11 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
             </select>
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-sm font-semibold text-gray-700">Mes:</label>
+            <label className="text-sm font-semibold text-foreground">Mes:</label>
             <select
               value={mes}
               onChange={(e) => router.push(`/vendas?mes=${e.target.value}&ano=${ano}`)}
-              className="px-4 py-2.5 border-2 border-gray-200 rounded-xl text-gray-900 font-semibold focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none bg-white"
+              className="px-4 py-2.5 border-2 border-border rounded-xl text-foreground font-semibold focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none bg-card"
             >
               {meses.slice(1).map((m, i) => (
                 <option key={i + 1} value={i + 1}>{m}</option>
@@ -281,7 +281,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={() => navigateMonth(-1)}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl transition text-gray-700 font-medium"
+            className="flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-muted rounded-xl transition text-foreground font-medium"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -289,11 +289,11 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
             <span className="hidden sm:inline">Anterior</span>
           </button>
           <div className="text-center">
-            <h2 className="text-xl font-bold text-gray-800">{meses[mes]} {ano}</h2>
+            <h2 className="text-xl font-bold text-foreground">{meses[mes]} {ano}</h2>
           </div>
           <button
             onClick={() => navigateMonth(1)}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl transition text-gray-700 font-medium"
+            className="flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-muted rounded-xl transition text-foreground font-medium"
           >
             <span className="hidden sm:inline">Seguinte</span>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -304,9 +304,9 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
 
         {/* VAT Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-gray-50 rounded-xl p-4 text-center">
-            <p className="text-sm font-medium text-gray-500 mb-1">Total sem IVA</p>
-            <p className="text-2xl font-bold text-gray-700">{totalSemIVA.toFixed(2)} €</p>
+          <div className="bg-secondary rounded-xl p-4 text-center">
+            <p className="text-sm font-medium text-muted-foreground mb-1">Total sem IVA</p>
+            <p className="text-2xl font-bold text-foreground">{totalSemIVA.toFixed(2)} €</p>
           </div>
           <div className="bg-blue-50 rounded-xl p-4 text-center">
             <p className="text-sm font-medium text-blue-600 mb-1">IVA (23%)</p>
@@ -320,20 +320,20 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
 
         {/* Progress Bar */}
         {objetivo && (
-          <div className="bg-gray-50 rounded-xl p-4">
+          <div className="bg-secondary rounded-xl p-4">
             <div className="flex justify-between text-sm mb-2">
-              <span className="font-medium text-gray-700">Objetivo: {objetivo.toFixed(2)} €</span>
+              <span className="font-medium text-foreground">Objetivo: {objetivo.toFixed(2)} €</span>
               <span className={`font-bold ${progresso >= 100 ? "text-green-600" : "text-orange-600"}`}>
                 {progresso >= 100 ? "Objetivo atingido!" : `Falta: ${falta.toFixed(2)} €`}
               </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-4">
+            <div className="w-full bg-muted rounded-full h-4">
               <div
                 className={`h-4 rounded-full transition-all ${progresso >= 100 ? "bg-green-500" : "bg-purple-500"}`}
                 style={{ width: `${Math.min(progresso, 100)}%` }}
               />
             </div>
-            <p className="text-center mt-2 text-sm font-medium text-gray-600">{progresso.toFixed(1)}% do objetivo</p>
+            <p className="text-center mt-2 text-sm font-medium text-muted-foreground">{progresso.toFixed(1)}% do objetivo</p>
           </div>
         )}
       </div>
@@ -353,8 +353,8 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
 
       {/* Add/Edit Form */}
       {showForm && (
-        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6 border-2 border-purple-100">
-          <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+        <div className="bg-card rounded-2xl shadow-sm p-6 mb-6 border-2 border-purple-100">
+          <h3 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
             <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
@@ -363,7 +363,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <label className="block text-sm font-bold text-gray-700 mb-2">
+                <label className="block text-sm font-bold text-foreground mb-2">
                   Cliente *
                 </label>
                 <select
@@ -371,7 +371,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                   required
                   value={selectedClienteId}
                   onChange={(e) => setSelectedClienteId(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-gray-900 font-medium bg-white"
+                  className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium bg-card"
                 >
                   <option value="">Escolher cliente...</option>
                   {clientes.map((c) => (
@@ -384,8 +384,8 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
 
               {/* Mode Toggle */}
               <div className="md:col-span-2">
-                <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-xl">
-                  <span className="text-sm font-semibold text-gray-700">Modo de entrada:</span>
+                <div className="flex items-center gap-4 p-3 bg-secondary rounded-xl">
+                  <span className="text-sm font-semibold text-foreground">Modo de entrada:</span>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="radio"
@@ -393,7 +393,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                       onChange={() => setUseItems(false)}
                       className="w-4 h-4 text-purple-600"
                     />
-                    <span className="text-sm text-gray-700">Valores manuais</span>
+                    <span className="text-sm text-foreground">Valores manuais</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -402,7 +402,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                       onChange={() => { setUseItems(true); if (formItems.length === 0) addItem(); }}
                       className="w-4 h-4 text-purple-600"
                     />
-                    <span className="text-sm text-gray-700">Por produtos</span>
+                    <span className="text-sm text-foreground">Por produtos</span>
                   </label>
                 </div>
               </div>
@@ -411,7 +411,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
               {!useItems && (
                 <>
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                    <label className="block text-sm font-bold text-foreground mb-2">
                       Valor 1 (com IVA)
                     </label>
                     <div className="relative">
@@ -420,14 +420,14 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                         type="number"
                         step="0.01"
                         defaultValue={editingVenda?.valor1 ? String(editingVenda.valor1) : ""}
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-gray-900 font-medium pr-10"
+                        className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium pr-10"
                         placeholder="0.00"
                       />
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">€</span>
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">€</span>
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                    <label className="block text-sm font-bold text-foreground mb-2">
                       Valor 2 (com IVA)
                     </label>
                     <div className="relative">
@@ -436,10 +436,10 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                         type="number"
                         step="0.01"
                         defaultValue={editingVenda?.valor2 ? String(editingVenda.valor2) : ""}
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-gray-900 font-medium pr-10"
+                        className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium pr-10"
                         placeholder="0.00"
                       />
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">€</span>
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">€</span>
                     </div>
                   </div>
                 </>
@@ -449,7 +449,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
               {useItems && (
                 <div className="md:col-span-2 space-y-4">
                   <div className="flex items-center justify-between">
-                    <label className="block text-sm font-bold text-gray-700">
+                    <label className="block text-sm font-bold text-foreground">
                       Itens da Venda
                     </label>
                     <button
@@ -465,11 +465,11 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                   </div>
 
                   {formItems.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-4">Clique em &quot;Adicionar&quot; para adicionar produtos</p>
+                    <p className="text-sm text-muted-foreground text-center py-4">Clique em &quot;Adicionar&quot; para adicionar produtos</p>
                   ) : (
                     <div className="space-y-3">
                       {/* Header */}
-                      <div className="grid grid-cols-12 gap-2 text-xs font-bold text-gray-500 px-1">
+                      <div className="grid grid-cols-12 gap-2 text-xs font-bold text-muted-foreground px-1">
                         <div className="col-span-5">Produto</div>
                         <div className="col-span-2 text-center">Qtd</div>
                         <div className="col-span-2 text-center">Preço €</div>
@@ -486,7 +486,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                               <select
                                 value={item.produtoId}
                                 onChange={(e) => updateItem(index, "produtoId", e.target.value)}
-                                className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none bg-white"
+                                className="w-full px-3 py-2 border-2 border-border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none bg-card"
                               >
                                 <option value="">Selecionar...</option>
                                 {produtos.map((p) => (
@@ -503,7 +503,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                                 min="0"
                                 value={item.quantidade}
                                 onChange={(e) => updateItem(index, "quantidade", e.target.value)}
-                                className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm text-center focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                                className="w-full px-3 py-2 border-2 border-border rounded-lg text-sm text-center focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
                                 placeholder="1"
                               />
                             </div>
@@ -514,11 +514,11 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                                 min="0"
                                 value={item.precoUnit}
                                 onChange={(e) => updateItem(index, "precoUnit", e.target.value)}
-                                className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm text-center focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                                className="w-full px-3 py-2 border-2 border-border rounded-lg text-sm text-center focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
                                 placeholder="0.00"
                               />
                             </div>
-                            <div className="col-span-2 text-right text-sm font-semibold text-gray-700">
+                            <div className="col-span-2 text-right text-sm font-semibold text-foreground">
                               {subtotal.toFixed(2)} €
                             </div>
                             <div className="col-span-1 flex justify-center">
@@ -537,9 +537,9 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                       })}
 
                       {/* Total */}
-                      <div className="flex justify-end pt-2 border-t border-gray-200">
+                      <div className="flex justify-end pt-2 border-t border-border">
                         <div className="text-right">
-                          <span className="text-sm text-gray-500">Total: </span>
+                          <span className="text-sm text-muted-foreground">Total: </span>
                           <span className="text-lg font-bold text-purple-700">{itemsTotal.toFixed(2)} €</span>
                         </div>
                       </div>
@@ -564,7 +564,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                             onClick={() => {
                               setFormItems([...formItems, { produtoId: p.id, quantidade: "1", precoUnit: "" }])
                             }}
-                            className="px-3 py-1 bg-white border border-amber-300 rounded-full text-xs font-medium text-amber-800 hover:bg-amber-100 transition"
+                            className="px-3 py-1 bg-card border border-amber-300 rounded-full text-xs font-medium text-amber-800 hover:bg-amber-100 transition"
                           >
                             + {p.nome}
                           </button>
@@ -576,14 +576,14 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
               )}
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-bold text-gray-700 mb-2">
+                <label className="block text-sm font-bold text-foreground mb-2">
                   Notas
                 </label>
                 <input
                   name="notas"
                   type="text"
                   defaultValue={editingVenda?.notas || ""}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-gray-900 font-medium"
+                  className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium"
                   placeholder="Notas adicionais"
                 />
               </div>
@@ -614,7 +614,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
               <button
                 type="button"
                 onClick={() => { setShowForm(false); setEditingId(null); }}
-                className="px-6 py-3 border-2 border-gray-300 rounded-xl font-bold text-gray-700 hover:bg-gray-50 transition flex items-center gap-2"
+                className="px-6 py-3 border-2 border-border rounded-xl font-bold text-foreground hover:bg-secondary transition flex items-center gap-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -627,18 +627,18 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
       )}
 
       {/* Sales Table */}
-      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b-2 border-gray-100">
+            <thead className="bg-secondary border-b-2 border-border">
               <tr>
-                <th className="px-6 py-4 text-left text-sm font-bold text-gray-700">Cliente</th>
-                <th className="px-4 py-4 text-left text-sm font-bold text-gray-700">Produtos</th>
-                <th className="px-4 py-4 text-right text-sm font-bold text-gray-700">Sem IVA</th>
+                <th className="px-6 py-4 text-left text-sm font-bold text-foreground">Cliente</th>
+                <th className="px-4 py-4 text-left text-sm font-bold text-foreground">Produtos</th>
+                <th className="px-4 py-4 text-right text-sm font-bold text-foreground">Sem IVA</th>
                 <th className="px-4 py-4 text-right text-sm font-bold text-blue-700">IVA (23%)</th>
                 <th className="px-4 py-4 text-right text-sm font-bold text-purple-700">Total c/IVA</th>
-                <th className="px-4 py-4 text-left text-sm font-bold text-gray-700">Notas</th>
-                <th className="px-4 py-4 text-center text-sm font-bold text-gray-700">Ações</th>
+                <th className="px-4 py-4 text-left text-sm font-bold text-foreground">Notas</th>
+                <th className="px-4 py-4 text-center text-sm font-bold text-foreground">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -649,11 +649,11 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                 return (
                   <tr key={venda.id} className="hover:bg-purple-50 transition">
                     <td className="px-6 py-4">
-                      <Link href={`/clientes/${venda.cliente.id}`} className="font-semibold text-gray-900 hover:text-purple-600 transition">
+                      <Link href={`/clientes/${venda.cliente.id}`} className="font-semibold text-foreground hover:text-purple-600 transition">
                         {venda.cliente.nome}
                       </Link>
                       {venda.cliente.codigo && (
-                        <span className="text-gray-500 text-sm ml-2">({venda.cliente.codigo})</span>
+                        <span className="text-muted-foreground text-sm ml-2">({venda.cliente.codigo})</span>
                       )}
                     </td>
                     <td className="px-4 py-4">
@@ -661,22 +661,22 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                         <div className="space-y-1">
                           {venda.itens!.map((item, idx) => (
                             <div key={idx} className="text-sm">
-                              <span className="font-medium text-gray-700">{item.produto.nome}</span>
-                              <span className="text-gray-500 ml-1">
+                              <span className="font-medium text-foreground">{item.produto.nome}</span>
+                              <span className="text-muted-foreground ml-1">
                                 ({Number(item.quantidade)} × {Number(item.precoUnit).toFixed(2)}€)
                               </span>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-muted-foreground">
                           {venda.valor1 ? <div>V1: {Number(venda.valor1).toFixed(2)}€</div> : null}
                           {venda.valor2 ? <div>V2: {Number(venda.valor2).toFixed(2)}€</div> : null}
                           {!venda.valor1 && !venda.valor2 ? <span>-</span> : null}
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-4 text-right text-gray-600 font-medium">
+                    <td className="px-4 py-4 text-right text-muted-foreground font-medium">
                       {semIVA.toFixed(2)} €
                     </td>
                     <td className="px-4 py-4 text-right text-blue-600 font-medium">
@@ -685,7 +685,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                     <td className="px-4 py-4 text-right font-bold text-purple-700">
                       {vendaTotal.toFixed(2)} €
                     </td>
-                    <td className="px-4 py-4 text-gray-600 text-sm">{venda.notas || "-"}</td>
+                    <td className="px-4 py-4 text-muted-foreground text-sm">{venda.notas || "-"}</td>
                     <td className="px-4 py-4">
                       <div className="flex justify-center gap-1">
                         <button
@@ -713,11 +713,11 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
               })}
             </tbody>
             {vendas.length > 0 && (
-              <tfoot className="bg-gray-50 border-t-2 border-gray-200">
+              <tfoot className="bg-secondary border-t-2 border-border">
                 <tr>
-                  <td className="px-6 py-4 font-bold text-gray-900">TOTAIS</td>
-                  <td className="px-4 py-4 text-gray-500 text-sm">{vendas.length} vendas</td>
-                  <td className="px-4 py-4 text-right text-gray-700 font-bold">
+                  <td className="px-6 py-4 font-bold text-foreground">TOTAIS</td>
+                  <td className="px-4 py-4 text-muted-foreground text-sm">{vendas.length} vendas</td>
+                  <td className="px-4 py-4 text-right text-foreground font-bold">
                     {totalSemIVA.toFixed(2)} €
                   </td>
                   <td className="px-4 py-4 text-right text-blue-700 font-bold">
@@ -738,7 +738,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
             <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <p className="text-gray-500 text-lg font-medium">Nenhuma venda em {meses[mes]} {ano}</p>
+            <p className="text-muted-foreground text-lg font-medium">Nenhuma venda em {meses[mes]} {ano}</p>
             <p className="text-gray-400 mt-1">Clique em &quot;Adicionar Venda&quot; para comecar</p>
           </div>
         )}

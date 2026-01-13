@@ -39,22 +39,27 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-100 to-purple-100">
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="bg-card p-8 rounded-2xl shadow-xl w-full max-w-md border border-border">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-purple-800">Carolina CRM</h1>
-          <p className="text-gray-500 mt-2">Gestao de Clientes e Vendas</p>
+          <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-bold text-foreground">Carolina CRM</h1>
+          <p className="text-muted-foreground mt-2">Gestão de Clientes e Vendas</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
-            <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">
+            <div className="bg-destructive/10 text-destructive p-3 rounded-lg text-sm border border-destructive/20">
               {error}
             </div>
           )}
 
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-800 mb-1">
+            <label htmlFor="username" className="block text-sm font-medium text-foreground mb-1">
               Username
             </label>
             <input
@@ -62,13 +67,13 @@ export default function LoginPage() {
               name="email"
               type="text"
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition text-gray-900 placeholder-gray-400"
+              className="w-full px-4 py-3 border border-input bg-background rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition text-foreground placeholder-muted-foreground"
               placeholder="carolina"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-800 mb-1">
+            <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1">
               Password
             </label>
             <input
@@ -76,7 +81,7 @@ export default function LoginPage() {
               name="password"
               type="password"
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition text-gray-900 placeholder-gray-400"
+              className="w-full px-4 py-3 border border-input bg-background rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition text-foreground placeholder-muted-foreground"
               placeholder="••••••••"
             />
           </div>
@@ -84,7 +89,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-purple-600 text-white py-3 rounded-lg font-medium hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-primary text-primary-foreground py-3 rounded-lg font-medium hover:bg-primary-hover transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "A entrar..." : "Entrar"}
           </button>
