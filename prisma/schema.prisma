@@ -1,0 +1,174 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  password      String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Cliente {
+  id        String    @id @default(cuid())
+  nome      String
+  codigo    String?   @unique
+  telefone  String?
+  email     String?
+  morada    String?
+  notas     String?
+  ativo     Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  vendas    Venda[]
+  cobrancas Cobranca[]
+}
+
+model Venda {
+  id          String   @id @default(cuid())
+  clienteId   String
+  cliente     Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  valor1      Decimal? @db.Decimal(10, 2)
+  valor2      Decimal? @db.Decimal(10, 2)
+  total       Decimal  @db.Decimal(10, 2)
+
+  mes         Int      // 1-12
+  ano         Int
+
+  notas       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  itens       ItemVenda[]
+
+  @@index([clienteId])
+  @@index([mes, ano])
+}
+
+model Cobranca {
+  id          String    @id @default(cuid())
+  clienteId   String
+  cliente     Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  fatura      String?   // FA number
+  valor       Decimal   @db.Decimal(10, 2)
+  valorSemIva Decimal?  @db.Decimal(10, 2)
+  comissao    Decimal?  @db.Decimal(10, 2)
+
+  dataEmissao DateTime?
+  dataPago    DateTime?
+  pago        Boolean   @default(false)
+
+  notas       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([clienteId])
+  @@index([pago])
+}
+
+model ObjetivoMensal {
+  id        String   @id @default(cuid())
+  mes       Int      // 1-12
+  ano       Int
+  objetivo  Decimal  @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([mes, ano])
+}
+
+model ObjetivoTrimestral {
+  id        String   @id @default(cuid())
+  trimestre Int      // 1-4
+  ano       Int
+  objetivo  Decimal  @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([trimestre, ano])
+}
+
+model ObjetivoAnual {
+  id        String   @id @default(cuid())
+  ano       Int      @unique
+  objetivo  Decimal  @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Configuracao {
+  id              String   @id @default(cuid())
+  chave           String   @unique
+  valor           String
+  descricao       String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model PremioMensal {
+  id              String   @id @default(cuid())
+  minimo          Decimal  @db.Decimal(10, 2)  // Minimum sales to get this prize
+  premio          Decimal  @db.Decimal(10, 2)  // Prize amount
+  ordem           Int      @default(0)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([minimo])
+}
+
+model PremioTrimestral {
+  id              String   @id @default(cuid())
+  minimo          Decimal  @db.Decimal(10, 2)  // Minimum sales to get this prize
+  premio          Decimal  @db.Decimal(10, 2)  // Prize amount
+  ordem           Int      @default(0)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([minimo])
+}
+
+model Produto {
+  id          String   @id @default(cuid())
+  nome        String
+  codigo      String?  @unique
+  categoria   String?
+  descricao   String?
+  ativo       Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  itensVenda  ItemVenda[]
+}
+
+model ItemVenda {
+  id          String   @id @default(cuid())
+  vendaId     String
+  venda       Venda    @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  produtoId   String
+  produto     Produto  @relation(fields: [produtoId], references: [id])
+
+  quantidade  Decimal  @db.Decimal(10, 2)  // Allow decimals (e.g., 1.5 kg)
+  precoUnit   Decimal  @db.Decimal(10, 2)  // Price per unit (with VAT)
+  subtotal    Decimal  @db.Decimal(10, 2)  // quantidade * precoUnit
+
+  createdAt   DateTime @default(now())
+
+  @@index([vendaId])
+  @@index([produtoId])
+}

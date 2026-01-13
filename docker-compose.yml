@@ -1,0 +1,45 @@
+services:
+  db:
+    image: postgres:14-alpine
+    container_name: carolina-crm-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: carolina
+      POSTGRES_PASSWORD: carolina123
+      POSTGRES_DB: carolina_crm
+    volumes:
+      - carolina_data:/var/lib/postgresql/data
+    ports:
+      - "5436:5432"
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U carolina -d carolina_crm"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: carolina-crm
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://carolina:carolina123@db:5432/carolina_crm?schema=public
+      AUTH_SECRET: ${AUTH_SECRET:-carolina-crm-secret-key-change-in-production-2024}
+      AUTH_TRUST_HOST: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - internal
+      - proxy
+    labels:
+      - "traefik.enable=false"
+
+networks:
+  internal:
+  proxy:
+    external: true
+
+volumes:
+  carolina_data:
