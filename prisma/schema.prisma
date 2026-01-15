@@ -30,6 +30,7 @@ model Cliente {
   vendas    Venda[]
   cobrancas Cobranca[]
   itensReconciliacao ItemReconciliacao[]
+  insights    ClienteInsight[]
 }
 
 model Venda {
@@ -264,6 +265,8 @@ model Prospecto {
   fonte           String?         // Lead source (referral, website, etc)
   ativo           Boolean         @default(true)
 
+  tactics         ProspectoTactic[]
+
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
@@ -443,4 +446,38 @@ model ItemReconciliacao {
   @@index([reconciliacaoId])
   @@index([clienteId])
   @@index([corresponde])
+}
+
+// ==========================================
+// AI INSIGHTS PERSISTENCE
+// ==========================================
+
+model ClienteInsight {
+  id              String    @id @default(cuid())
+  clienteId       String
+  cliente         Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  // AI response data (stored as JSON)
+  insights        Json      // The full ClienteInsights object
+  provider        String    // "gemini" or "openai"
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([clienteId])
+}
+
+model ProspectoTactic {
+  id              String    @id @default(cuid())
+  prospectoId     String
+  prospecto       Prospecto @relation(fields: [prospectoId], references: [id], onDelete: Cascade)
+
+  // AI response data (stored as JSON)
+  tactics         Json      // The full ProspectoTactics object
+  provider        String    // "gemini" or "openai"
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([prospectoId])
 }

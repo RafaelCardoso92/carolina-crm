@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { generateAIResponse, getAIProvider, setAIProvider } from "@/lib/ai"
+import { generateAIResponse, getAIProvider } from "@/lib/ai"
 import type { ProspectoTacticsResponse, ProspectoTactics } from "@/types/ai"
 
 const PROMPT_TEMPLATE = `Voce e um especialista em vendas B2B no sector de cosmeticos e beleza profissional em Portugal.
@@ -60,6 +60,102 @@ IMPORTANTE: Responda APENAS com JSON valido no seguinte formato, sem texto adici
   }
 }`
 
+// Helper to detect specific API errors
+function getAIErrorMessage(error: unknown): { message: string; status: number } {
+  const errorMessage = error instanceof Error ? error.message : String(error)
+  const errorLower = errorMessage.toLowerCase()
+
+  if (errorLower.includes("api_key_invalid") ||
+      errorLower.includes("api key not valid") ||
+      errorLower.includes("invalid api key") ||
+      errorLower.includes("unauthorized") ||
+      errorLower.includes("401")) {
+    return {
+      message: "Chave API inválida. Verifique a configuração nas definições.",
+      status: 401
+    }
+  }
+
+  if (errorLower.includes("429") ||
+      errorLower.includes("rate") ||
+      errorLower.includes("quota") ||
+      errorLower.includes("resource_exhausted") ||
+      errorLower.includes("too many requests")) {
+    return {
+      message: "Limite de pedidos excedido. Tente novamente em alguns minutos.",
+      status: 429
+    }
+  }
+
+  if (errorLower.includes("model") &&
+      (errorLower.includes("not found") || errorLower.includes("unavailable"))) {
+    return {
+      message: "Modelo de IA não disponível. Tente outro fornecedor.",
+      status: 503
+    }
+  }
+
+  if (errorLower.includes("network") ||
+      errorLower.includes("econnrefused") ||
+      errorLower.includes("timeout") ||
+      errorLower.includes("fetch")) {
+    return {
+      message: "Erro de ligação ao serviço de IA. Tente novamente.",
+      status: 503
+    }
+  }
+
+  return {
+    message: "Erro ao gerar tácticas de IA",
+    status: 500
+  }
+}
+
+// GET - Retrieve saved tactics for a prospecto
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const prospectoId = searchParams.get("prospectoId")
+
+    if (!prospectoId) {
+      return NextResponse.json<ProspectoTacticsResponse>(
+        { success: false, error: "ID do prospecto em falta" },
+        { status: 400 }
+      )
+    }
+
+    // Get the most recent saved tactic
+    const savedTactic = await prisma.prospectoTactic.findFirst({
+      where: { prospectoId },
+      orderBy: { createdAt: "desc" }
+    })
+
+    if (!savedTactic) {
+      return NextResponse.json<ProspectoTacticsResponse>({
+        success: true,
+        tactics: null,
+        provider: null,
+        generatedAt: null,
+      })
+    }
+
+    return NextResponse.json<ProspectoTacticsResponse>({
+      success: true,
+      tactics: savedTactic.tactics as unknown as ProspectoTactics,
+      provider: savedTactic.provider,
+      generatedAt: savedTactic.createdAt.toISOString(),
+      tacticId: savedTactic.id,
+    })
+  } catch (error) {
+    console.error("Error fetching saved tactics:", error)
+    return NextResponse.json<ProspectoTacticsResponse>(
+      { success: false, error: "Erro ao carregar tácticas guardadas" },
+      { status: 500 }
+    )
+  }
+}
+
+// POST - Generate new tactics and save them
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -84,7 +180,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // If a specific provider was requested, use it for this request
+    // Determine provider
     let provider = await getAIProvider()
     if (requestedProvider && (requestedProvider === "gemini" || requestedProvider === "openai")) {
       provider = requestedProvider
@@ -107,13 +203,12 @@ export async function POST(request: NextRequest) {
       .replace("{facebook}", prospecto.facebook || "Nao disponivel")
       .replace("{instagram}", prospecto.instagram || "Nao disponivel")
 
-    // Get AI response using the selected provider
+    // Get AI response
     const aiResponse = await generateAIResponse(prompt, provider)
 
     // Parse JSON response
     let tactics: ProspectoTactics
     try {
-      // Extract JSON from response (in case there's extra text)
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/)
       if (!jsonMatch) {
         throw new Error("No JSON found in response")
@@ -127,26 +222,68 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Delete any existing tactics for this prospecto (keep only latest)
+    await prisma.prospectoTactic.deleteMany({
+      where: { prospectoId }
+    })
+
+    // Save the new tactics
+    const savedTactic = await prisma.prospectoTactic.create({
+      data: {
+        prospectoId,
+        tactics: tactics as object,
+        provider,
+      }
+    })
+
     return NextResponse.json<ProspectoTacticsResponse>({
       success: true,
       tactics,
       provider,
-      generatedAt: new Date().toISOString(),
+      generatedAt: savedTactic.createdAt.toISOString(),
+      tacticId: savedTactic.id,
     })
   } catch (error) {
     console.error("AI API error:", error)
 
-    const errorMessage = error instanceof Error ? error.message : "Erro desconhecido"
+    const { message, status } = getAIErrorMessage(error)
 
-    if (errorMessage.includes("429") || errorMessage.includes("rate") || errorMessage.includes("quota")) {
-      return NextResponse.json<ProspectoTacticsResponse>(
-        { success: false, error: "Limite de pedidos excedido. Tente novamente em alguns minutos." },
-        { status: 429 }
+    return NextResponse.json<ProspectoTacticsResponse>(
+      { success: false, error: message },
+      { status }
+    )
+  }
+}
+
+// DELETE - Remove saved tactics
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const prospectoId = searchParams.get("prospectoId")
+    const tacticId = searchParams.get("tacticId")
+
+    if (!prospectoId && !tacticId) {
+      return NextResponse.json(
+        { success: false, error: "ID do prospecto ou tactic em falta" },
+        { status: 400 }
       )
     }
 
-    return NextResponse.json<ProspectoTacticsResponse>(
-      { success: false, error: "Erro ao gerar tacticas de IA" },
+    if (tacticId) {
+      await prisma.prospectoTactic.delete({
+        where: { id: tacticId }
+      })
+    } else if (prospectoId) {
+      await prisma.prospectoTactic.deleteMany({
+        where: { prospectoId }
+      })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("Error deleting tactics:", error)
+    return NextResponse.json(
+      { success: false, error: "Erro ao eliminar tácticas" },
       { status: 500 }
     )
   }

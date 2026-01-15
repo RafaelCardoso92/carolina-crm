@@ -24,9 +24,10 @@ export interface ProspectoTactics {
 
 export interface ProspectoTacticsResponse {
   success: boolean
-  tactics?: ProspectoTactics
-  provider?: "gemini" | "openai"
-  generatedAt?: string
+  tactics?: ProspectoTactics | null
+  provider?: string | null
+  generatedAt?: string | null
+  tacticId?: string  // ID of saved tactic for deletion
   error?: string
 }
 
@@ -60,9 +61,10 @@ export interface ClienteInsights {
 
 export interface ClienteInsightsResponse {
   success: boolean
-  insights?: ClienteInsights
-  provider?: "gemini" | "openai"
-  generatedAt?: string
+  insights?: ClienteInsights | null
+  provider?: string | null
+  generatedAt?: string | null
+  insightId?: string  // ID of saved insight for deletion
   error?: string
 }
 

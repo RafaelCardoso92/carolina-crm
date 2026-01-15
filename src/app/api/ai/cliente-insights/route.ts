@@ -67,7 +67,6 @@ function getAIErrorMessage(error: unknown): { message: string; status: number } 
   const errorMessage = error instanceof Error ? error.message : String(error)
   const errorLower = errorMessage.toLowerCase()
 
-  // Invalid API key
   if (errorLower.includes("api_key_invalid") ||
       errorLower.includes("api key not valid") ||
       errorLower.includes("invalid api key") ||
@@ -79,7 +78,6 @@ function getAIErrorMessage(error: unknown): { message: string; status: number } 
     }
   }
 
-  // Rate limit exceeded
   if (errorLower.includes("429") ||
       errorLower.includes("rate") ||
       errorLower.includes("quota") ||
@@ -91,7 +89,6 @@ function getAIErrorMessage(error: unknown): { message: string; status: number } 
     }
   }
 
-  // Model not found or unavailable
   if (errorLower.includes("model") &&
       (errorLower.includes("not found") || errorLower.includes("unavailable"))) {
     return {
@@ -100,7 +97,6 @@ function getAIErrorMessage(error: unknown): { message: string; status: number } 
     }
   }
 
-  // Network/connection errors
   if (errorLower.includes("network") ||
       errorLower.includes("econnrefused") ||
       errorLower.includes("timeout") ||
@@ -111,13 +107,57 @@ function getAIErrorMessage(error: unknown): { message: string; status: number } 
     }
   }
 
-  // Default error
   return {
     message: "Erro ao gerar insights de IA",
     status: 500
   }
 }
 
+// GET - Retrieve saved insights for a client
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const clienteId = searchParams.get("clienteId")
+
+    if (!clienteId) {
+      return NextResponse.json<ClienteInsightsResponse>(
+        { success: false, error: "ID do cliente em falta" },
+        { status: 400 }
+      )
+    }
+
+    // Get the most recent saved insight
+    const savedInsight = await prisma.clienteInsight.findFirst({
+      where: { clienteId },
+      orderBy: { createdAt: "desc" }
+    })
+
+    if (!savedInsight) {
+      return NextResponse.json<ClienteInsightsResponse>({
+        success: true,
+        insights: null,
+        provider: null,
+        generatedAt: null,
+      })
+    }
+
+    return NextResponse.json<ClienteInsightsResponse>({
+      success: true,
+      insights: savedInsight.insights as unknown as ClienteInsights,
+      provider: savedInsight.provider,
+      generatedAt: savedInsight.createdAt.toISOString(),
+      insightId: savedInsight.id,
+    })
+  } catch (error) {
+    console.error("Error fetching saved insights:", error)
+    return NextResponse.json<ClienteInsightsResponse>(
+      { success: false, error: "Erro ao carregar insights guardados" },
+      { status: 500 }
+    )
+  }
+}
+
+// POST - Generate new insights and save them
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -231,11 +271,26 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Delete any existing insights for this client (keep only latest)
+    await prisma.clienteInsight.deleteMany({
+      where: { clienteId }
+    })
+
+    // Save the new insights
+    const savedInsight = await prisma.clienteInsight.create({
+      data: {
+        clienteId,
+        insights: insights as object,
+        provider,
+      }
+    })
+
     return NextResponse.json<ClienteInsightsResponse>({
       success: true,
       insights,
       provider,
-      generatedAt: new Date().toISOString(),
+      generatedAt: savedInsight.createdAt.toISOString(),
+      insightId: savedInsight.id,
     })
   } catch (error) {
     console.error("AI API error:", error)
@@ -245,6 +300,40 @@ export async function POST(request: NextRequest) {
     return NextResponse.json<ClienteInsightsResponse>(
       { success: false, error: message },
       { status }
+    )
+  }
+}
+
+// DELETE - Remove saved insights
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const clienteId = searchParams.get("clienteId")
+    const insightId = searchParams.get("insightId")
+
+    if (!clienteId && !insightId) {
+      return NextResponse.json(
+        { success: false, error: "ID do cliente ou insight em falta" },
+        { status: 400 }
+      )
+    }
+
+    if (insightId) {
+      await prisma.clienteInsight.delete({
+        where: { id: insightId }
+      })
+    } else if (clienteId) {
+      await prisma.clienteInsight.deleteMany({
+        where: { clienteId }
+      })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("Error deleting insights:", error)
+    return NextResponse.json(
+      { success: false, error: "Erro ao eliminar insights" },
+      { status: 500 }
     )
   }
 }

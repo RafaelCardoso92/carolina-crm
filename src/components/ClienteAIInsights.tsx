@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import type { ClienteInsights, AISettingsResponse } from "@/types/ai"
+import type { ClienteInsights, AISettingsResponse, ClienteInsightsResponse } from "@/types/ai"
 
 interface Props {
   clienteId: string
@@ -9,10 +9,13 @@ interface Props {
 
 export default function ClienteAIInsights({ clienteId }: Props) {
   const [loading, setLoading] = useState(false)
+  const [loadingSaved, setLoadingSaved] = useState(true)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [insights, setInsights] = useState<ClienteInsights | null>(null)
   const [usedProvider, setUsedProvider] = useState<string | null>(null)
   const [generatedAt, setGeneratedAt] = useState<string | null>(null)
+  const [insightId, setInsightId] = useState<string | null>(null)
   const [isExpanded, setIsExpanded] = useState(true)
 
   // AI Settings state
@@ -20,22 +23,37 @@ export default function ClienteAIInsights({ clienteId }: Props) {
   const [availableProviders, setAvailableProviders] = useState({ gemini: false, openai: false })
   const [switchingProvider, setSwitchingProvider] = useState(false)
 
-  // Fetch AI settings on mount
+  // Fetch AI settings and saved insights on mount
   useEffect(() => {
-    async function fetchSettings() {
+    async function fetchInitialData() {
       try {
-        const res = await fetch("/api/ai/settings")
-        if (res.ok) {
-          const data: AISettingsResponse = await res.json()
+        // Fetch settings
+        const settingsRes = await fetch("/api/ai/settings")
+        if (settingsRes.ok) {
+          const data: AISettingsResponse = await settingsRes.json()
           setCurrentProvider(data.currentProvider)
           setAvailableProviders(data.availableProviders)
         }
+
+        // Fetch saved insights
+        const insightsRes = await fetch(`/api/ai/cliente-insights?clienteId=${clienteId}`)
+        if (insightsRes.ok) {
+          const data: ClienteInsightsResponse = await insightsRes.json()
+          if (data.success && data.insights) {
+            setInsights(data.insights)
+            setUsedProvider(data.provider || null)
+            setGeneratedAt(data.generatedAt || null)
+            setInsightId(data.insightId || null)
+          }
+        }
       } catch {
         // Silently fail
+      } finally {
+        setLoadingSaved(false)
       }
     }
-    fetchSettings()
-  }, [])
+    fetchInitialData()
+  }, [clienteId])
 
   async function switchProvider(provider: "gemini" | "openai") {
     setSwitchingProvider(true)
@@ -66,15 +84,16 @@ export default function ClienteAIInsights({ clienteId }: Props) {
         body: JSON.stringify({ clienteId, provider: currentProvider }),
       })
 
-      const data = await res.json()
+      const data: ClienteInsightsResponse = await res.json()
 
       if (!data.success) {
         throw new Error(data.error || "Erro desconhecido")
       }
 
-      setInsights(data.insights)
-      setUsedProvider(data.provider)
-      setGeneratedAt(data.generatedAt)
+      setInsights(data.insights || null)
+      setUsedProvider(data.provider || null)
+      setGeneratedAt(data.generatedAt || null)
+      setInsightId(data.insightId || null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao gerar insights")
     } finally {
@@ -82,16 +101,54 @@ export default function ClienteAIInsights({ clienteId }: Props) {
     }
   }
 
-  function clearInsights() {
-    setInsights(null)
-    setUsedProvider(null)
-    setGeneratedAt(null)
-    setError(null)
+  async function deleteInsights() {
+    if (!insightId) {
+      // Just clear local state if no saved insight
+      setInsights(null)
+      setUsedProvider(null)
+      setGeneratedAt(null)
+      setInsightId(null)
+      setError(null)
+      return
+    }
+
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/ai/cliente-insights?insightId=${insightId}`, {
+        method: "DELETE",
+      })
+
+      if (res.ok) {
+        setInsights(null)
+        setUsedProvider(null)
+        setGeneratedAt(null)
+        setInsightId(null)
+        setError(null)
+      }
+    } catch {
+      // Silently fail
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const providerLabel = (p: string) => p === "openai" ? "GPT-5.1" : "Gemini"
   const providerColor = (p: string) => p === "openai" ? "text-green-600" : "text-blue-600"
   const providerBg = (p: string) => p === "openai" ? "bg-green-100 dark:bg-green-900/30" : "bg-blue-100 dark:bg-blue-900/30"
+
+  if (loadingSaved) {
+    return (
+      <div className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 rounded-xl p-4 mt-4 border border-purple-200 dark:border-purple-800">
+        <div className="flex items-center gap-3 py-4 justify-center">
+          <svg className="w-5 h-5 animate-spin text-purple-600" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <span className="text-muted-foreground text-sm">A carregar...</span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 rounded-xl p-4 mt-4 border border-purple-200 dark:border-purple-800">
@@ -312,12 +369,20 @@ export default function ClienteAIInsights({ clienteId }: Props) {
               Gerar nova analise
             </button>
             <button
-              onClick={clearInsights}
+              onClick={deleteInsights}
+              disabled={deleting}
               className="text-sm text-red-600 hover:text-red-700 font-medium flex items-center gap-1"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
+              {deleting ? (
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              )}
               Apagar analise
             </button>
           </div>
