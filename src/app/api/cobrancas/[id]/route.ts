@@ -9,17 +9,22 @@ export async function GET(
     const { id } = await params
     const cobranca = await prisma.cobranca.findUnique({
       where: { id },
-      include: { cliente: true }
+      include: {
+        cliente: true,
+        parcelas: {
+          orderBy: { numero: "asc" }
+        }
+      }
     })
 
     if (!cobranca) {
-      return NextResponse.json({ error: "Cobranca nao encontrada" }, { status: 404 })
+      return NextResponse.json({ error: "Cobrança não encontrada" }, { status: 404 })
     }
 
     return NextResponse.json(cobranca)
   } catch (error) {
     console.error("Error fetching cobranca:", error)
-    return NextResponse.json({ error: "Erro ao buscar cobranca" }, { status: 500 })
+    return NextResponse.json({ error: "Erro ao buscar cobrança" }, { status: 500 })
   }
 }
 
@@ -32,7 +37,7 @@ export async function PUT(
     const data = await request.json()
 
     if (!data.clienteId || !data.valor) {
-      return NextResponse.json({ error: "Cliente e valor sao obrigatorios" }, { status: 400 })
+      return NextResponse.json({ error: "Cliente e valor são obrigatórios" }, { status: 400 })
     }
 
     const cobranca = await prisma.cobranca.update({
@@ -46,13 +51,18 @@ export async function PUT(
         dataEmissao: data.dataEmissao ? new Date(data.dataEmissao) : null,
         notas: data.notas || null
       },
-      include: { cliente: true }
+      include: {
+        cliente: true,
+        parcelas: {
+          orderBy: { numero: "asc" }
+        }
+      }
     })
 
     return NextResponse.json(cobranca)
   } catch (error) {
     console.error("Error updating cobranca:", error)
-    return NextResponse.json({ error: "Erro ao atualizar cobranca" }, { status: 500 })
+    return NextResponse.json({ error: "Erro ao atualizar cobrança" }, { status: 500 })
   }
 }
 
@@ -70,13 +80,18 @@ export async function PATCH(
         pago: data.pago,
         dataPago: data.dataPago ? new Date(data.dataPago) : null
       },
-      include: { cliente: true }
+      include: {
+        cliente: true,
+        parcelas: {
+          orderBy: { numero: "asc" }
+        }
+      }
     })
 
     return NextResponse.json(cobranca)
   } catch (error) {
     console.error("Error patching cobranca:", error)
-    return NextResponse.json({ error: "Erro ao atualizar cobranca" }, { status: 500 })
+    return NextResponse.json({ error: "Erro ao atualizar cobrança" }, { status: 500 })
   }
 }
 
@@ -93,6 +108,6 @@ export async function DELETE(
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("Error deleting cobranca:", error)
-    return NextResponse.json({ error: "Erro ao eliminar cobranca" }, { status: 500 })
+    return NextResponse.json({ error: "Erro ao eliminar cobrança" }, { status: 500 })
   }
 }

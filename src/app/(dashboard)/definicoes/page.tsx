@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Swal from "sweetalert2"
+import { formatCurrency } from "@/lib/utils"
 
 type Premio = {
   id: string
@@ -51,7 +53,7 @@ type SettingsData = {
 }
 
 const meses = [
-  "", "Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho",
+  "", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
 ]
 
@@ -102,7 +104,12 @@ export default function DefinicoesPage() {
       await fetchData()
     } catch (error) {
       console.error("Error saving config:", error)
-      alert("Erro ao guardar configuracao")
+      Swal.fire({
+        icon: "error",
+        title: "Erro",
+        text: "Erro ao guardar configuração",
+        confirmButtonColor: "#b8860b"
+      })
     } finally {
       setSaving(false)
     }
@@ -119,7 +126,12 @@ export default function DefinicoesPage() {
       await fetchData()
     } catch (error) {
       console.error("Error saving objetivo:", error)
-      alert("Erro ao guardar objetivo")
+      Swal.fire({
+        icon: "error",
+        title: "Erro",
+        text: "Erro ao guardar objetivo",
+        confirmButtonColor: "#b8860b"
+      })
     } finally {
       setSaving(false)
     }
@@ -136,21 +148,42 @@ export default function DefinicoesPage() {
       await fetchData()
     } catch (error) {
       console.error("Error saving premio:", error)
-      alert("Erro ao guardar premio")
+      Swal.fire({
+        icon: "error",
+        title: "Erro",
+        text: "Erro ao guardar prémio",
+        confirmButtonColor: "#b8860b"
+      })
     } finally {
       setSaving(false)
     }
   }
 
   async function deletePremio(tipo: string, id: string) {
-    if (!confirm("Tem a certeza que quer eliminar este premio?")) return
+    const result = await Swal.fire({
+      title: "Eliminar prémio?",
+      text: "Tem a certeza que quer eliminar este prémio?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#c41e3a",
+      cancelButtonColor: "#666666",
+      confirmButtonText: "Sim, eliminar",
+      cancelButtonText: "Cancelar"
+    })
+
+    if (!result.isConfirmed) return
     setSaving(true)
     try {
       await fetch(`/api/definicoes?tipo=${tipo}&id=${id}`, { method: "DELETE" })
       await fetchData()
     } catch (error) {
       console.error("Error deleting premio:", error)
-      alert("Erro ao eliminar premio")
+      Swal.fire({
+        icon: "error",
+        title: "Erro",
+        text: "Erro ao eliminar prémio",
+        confirmButtonColor: "#b8860b"
+      })
     } finally {
       setSaving(false)
     }
@@ -166,97 +199,98 @@ export default function DefinicoesPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground">Definicoes</h1>
-        <p className="text-muted-foreground">Configurar IVA, comissoes, objetivos e premios</p>
+      <div className="mb-4 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-foreground">Definições</h1>
+        <p className="text-sm md:text-base text-muted-foreground">Configurar IVA, comissões, objetivos e prémios</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="flex flex-wrap gap-1.5 md:gap-2 mb-4 md:mb-6">
         {[
-          { id: "config", label: "Configuracoes", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" },
-          { id: "objetivos", label: "Objetivos", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
-          { id: "premios", label: "Tabela Premios", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
-          { id: "produtos", label: "Produtos", icon: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" }
+          { id: "config", label: "Configurações", shortLabel: "Config", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" },
+          { id: "objetivos", label: "Objetivos", shortLabel: "Obj.", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
+          { id: "premios", label: "Tabela Prémios", shortLabel: "Prémios", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
+          { id: "produtos", label: "Produtos", shortLabel: "Prod.", icon: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" }
         ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as typeof activeTab)}
-            className={`flex items-center gap-2 px-5 py-3 rounded-xl font-semibold transition ${
+            className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-5 py-2 md:py-3 rounded-xl font-semibold transition text-xs md:text-base ${
               activeTab === tab.id
                 ? "bg-primary text-primary-foreground shadow-lg"
                 : "bg-card text-foreground hover:bg-secondary border-2 border-border"
             }`}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
             </svg>
-            {tab.label}
+            <span className="hidden sm:inline">{tab.label}</span>
+            <span className="sm:hidden">{tab.shortLabel}</span>
           </button>
         ))}
       </div>
 
       {/* Config Tab */}
       {activeTab === "config" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           {/* IVA */}
-          <div className="bg-card rounded-2xl shadow-sm p-6 border border-border">
-            <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-card rounded-xl shadow-sm p-4 md:p-6 border border-border">
+            <h3 className="text-base md:text-lg font-bold text-foreground mb-3 md:mb-4 flex items-center gap-2">
+              <svg className="w-4 h-4 md:w-5 md:h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
               Percentagem de IVA
             </h3>
-            <div className="flex gap-3">
+            <div className="flex gap-2 md:gap-3">
               <div className="relative flex-1">
                 <input
                   type="number"
                   step="0.1"
                   value={iva}
                   onChange={(e) => setIva(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none pr-10"
+                  className="w-full px-3 md:px-4 py-2.5 md:py-3 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none pr-10 text-sm md:text-base"
                 />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">%</span>
+                <span className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm">%</span>
               </div>
               <button
                 onClick={() => saveConfig("IVA_PERCENTAGEM", iva)}
                 disabled={saving}
-                className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary-hover transition disabled:opacity-50"
+                className="px-4 md:px-6 py-2.5 md:py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary-hover transition disabled:opacity-50 text-sm md:text-base"
               >
-                Guardar
+                OK
               </button>
             </div>
-            <p className="text-sm text-muted-foreground mt-2">Taxa de IVA aplicada nas vendas (padrao: 23%)</p>
+            <p className="text-xs md:text-sm text-muted-foreground mt-2">Taxa de IVA (padrão: 23%)</p>
           </div>
 
           {/* Comissao */}
-          <div className="bg-card rounded-2xl shadow-sm p-6 border border-border">
-            <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-card rounded-xl shadow-sm p-4 md:p-6 border border-border">
+            <h3 className="text-base md:text-lg font-bold text-foreground mb-3 md:mb-4 flex items-center gap-2">
+              <svg className="w-4 h-4 md:w-5 md:h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Percentagem de Comissao
+              Comissão
             </h3>
-            <div className="flex gap-3">
+            <div className="flex gap-2 md:gap-3">
               <div className="relative flex-1">
                 <input
                   type="number"
                   step="0.1"
                   value={comissao}
                   onChange={(e) => setComissao(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none pr-10"
+                  className="w-full px-3 md:px-4 py-2.5 md:py-3 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none pr-10 text-sm md:text-base"
                 />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">%</span>
+                <span className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm">%</span>
               </div>
               <button
                 onClick={() => saveConfig("COMISSAO_PERCENTAGEM", comissao)}
                 disabled={saving}
-                className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary-hover transition disabled:opacity-50"
+                className="px-4 md:px-6 py-2.5 md:py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary-hover transition disabled:opacity-50 text-sm md:text-base"
               >
-                Guardar
+                OK
               </button>
             </div>
-            <p className="text-sm text-muted-foreground mt-2">Comissao sobre vendas (padrao: 3.5%)</p>
+            <p className="text-xs md:text-sm text-muted-foreground mt-2">Comissão sobre vendas (padrão: 3.5%)</p>
           </div>
         </div>
       )}
@@ -265,7 +299,7 @@ export default function DefinicoesPage() {
       {activeTab === "objetivos" && (
         <div className="space-y-6">
           {/* Year Selector */}
-          <div className="bg-card rounded-2xl shadow-sm p-4 border border-border">
+          <div className="bg-card rounded-xl shadow-sm p-4 border border-border">
             <div className="flex items-center justify-center gap-3">
               <label className="text-sm font-bold text-foreground">Ano:</label>
               <select
@@ -281,7 +315,7 @@ export default function DefinicoesPage() {
           </div>
 
           {/* Annual Objective */}
-          <div className="bg-card rounded-2xl shadow-sm p-6 border border-border">
+          <div className="bg-card rounded-xl shadow-sm p-6 border border-border">
             <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
               <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -293,12 +327,12 @@ export default function DefinicoesPage() {
               currentValue={data?.objetivosAnuais.find(o => o.ano === selectedAno)?.objetivo}
               onSave={(valor) => saveObjetivo("objetivo_anual", { ano: selectedAno, objetivo: valor })}
               saving={saving}
-              hint="Define o objetivo anual. Sera dividido por 4 trimestres e 12 meses se nao houver objetivos especificos."
+              hint="Define o objetivo anual. Será dividido por 4 trimestres e 12 meses se não houver objetivos específicos."
             />
           </div>
 
           {/* Quarterly Objectives */}
-          <div className="bg-card rounded-2xl shadow-sm p-6 border border-border">
+          <div className="bg-card rounded-xl shadow-sm p-6 border border-border">
             <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
               <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -326,7 +360,7 @@ export default function DefinicoesPage() {
           </div>
 
           {/* Monthly Objectives */}
-          <div className="bg-card rounded-2xl shadow-sm p-6 border border-border">
+          <div className="bg-card rounded-xl shadow-sm p-6 border border-border">
             <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
               <svg className="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -367,12 +401,12 @@ export default function DefinicoesPage() {
       {activeTab === "premios" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Monthly Prizes */}
-          <div className="bg-card rounded-2xl shadow-sm p-6 border border-border">
+          <div className="bg-card rounded-xl shadow-sm p-6 border border-border">
             <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
               <svg className="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Premios Mensais
+              Prémios Mensais
             </h3>
             <PremioTable
               premios={data?.premiosMensais || []}
@@ -383,12 +417,12 @@ export default function DefinicoesPage() {
           </div>
 
           {/* Quarterly Prizes */}
-          <div className="bg-card rounded-2xl shadow-sm p-6 border border-border">
+          <div className="bg-card rounded-xl shadow-sm p-6 border border-border">
             <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
               <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Premios Trimestrais
+              Prémios Trimestrais
             </h3>
             <PremioTable
               premios={data?.premiosTrimestrais || []}
@@ -399,12 +433,12 @@ export default function DefinicoesPage() {
           </div>
 
           {/* Annual Prizes */}
-          <div className="bg-card rounded-2xl shadow-sm p-6 border border-border">
+          <div className="bg-card rounded-xl shadow-sm p-6 border border-border">
             <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
               <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Premios Anuais
+              Prémios Anuais
             </h3>
             <PremioTable
               premios={data?.premiosAnuais || []}
@@ -418,14 +452,14 @@ export default function DefinicoesPage() {
 
       {/* Produtos Tab */}
       {activeTab === "produtos" && (
-        <div className="bg-card rounded-2xl shadow-sm p-6 border border-border">
+        <div className="bg-card rounded-xl shadow-sm p-6 border border-border">
           <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
             <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
             </svg>
             Gerir Produtos
           </h3>
-          <p className="text-muted-foreground text-sm mb-6">Adicione produtos para rastrear vendas e gerar recomendacoes de upsell.</p>
+          <p className="text-muted-foreground text-sm mb-6">Adicione produtos para rastrear vendas e gerar recomendações de upsell.</p>
           <ProdutosTable
             produtos={produtos}
             onRefresh={fetchData}
@@ -484,7 +518,7 @@ function ObjetivoForm({
         </button>
       </div>
       {displayFallback && (
-        <p className="text-xs text-muted-foreground mt-1">Calculado: {fallbackValue.toFixed(2)} €</p>
+        <p className="text-xs text-muted-foreground mt-1">Calculado: {formatCurrency(fallbackValue)} €</p>
       )}
       {hint && <p className="text-sm text-muted-foreground mt-2">{hint}</p>}
     </div>
@@ -524,8 +558,8 @@ function PremioTable({
       <table className="w-full mb-4">
         <thead>
           <tr className="text-left text-sm text-muted-foreground border-b border-border">
-            <th className="pb-2">Vendas Minimas</th>
-            <th className="pb-2">Premio</th>
+            <th className="pb-2">Vendas Mínimas</th>
+            <th className="pb-2">Prémio</th>
             <th className="pb-2 w-20"></th>
           </tr>
         </thead>
@@ -556,7 +590,7 @@ function PremioTable({
             type="number"
             value={newMinimo}
             onChange={(e) => setNewMinimo(e.target.value)}
-            placeholder="Minimo"
+            placeholder="Mínimo"
             className="w-full px-3 py-2 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none pr-8"
           />
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">€</span>
@@ -566,7 +600,7 @@ function PremioTable({
             type="number"
             value={newPremio}
             onChange={(e) => setNewPremio(e.target.value)}
-            placeholder="Premio"
+            placeholder="Prémio"
             className="w-full px-3 py-2 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none pr-8"
           />
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">€</span>
@@ -637,18 +671,39 @@ function ProdutosTable({
         onRefresh()
       } else {
         const error = await res.json()
-        alert(error.error || "Erro ao guardar produto")
+        Swal.fire({
+          icon: "error",
+          title: "Erro",
+          text: error.error || "Erro ao guardar produto",
+          confirmButtonColor: "#b8860b"
+        })
       }
     } catch (error) {
       console.error("Error saving produto:", error)
-      alert("Erro ao guardar produto")
+      Swal.fire({
+        icon: "error",
+        title: "Erro",
+        text: "Erro ao guardar produto",
+        confirmButtonColor: "#b8860b"
+      })
     } finally {
       setSaving(false)
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Tem a certeza que quer eliminar este produto?")) return
+    const result = await Swal.fire({
+      title: "Eliminar produto?",
+      text: "Tem a certeza que quer eliminar este produto?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#c41e3a",
+      cancelButtonColor: "#666666",
+      confirmButtonText: "Sim, eliminar",
+      cancelButtonText: "Cancelar"
+    })
+
+    if (!result.isConfirmed) return
 
     setSaving(true)
     try {
@@ -657,11 +712,21 @@ function ProdutosTable({
         onRefresh()
       } else {
         const error = await res.json()
-        alert(error.error || "Erro ao eliminar produto")
+        Swal.fire({
+          icon: "error",
+          title: "Erro",
+          text: error.error || "Erro ao eliminar produto",
+          confirmButtonColor: "#b8860b"
+        })
       }
     } catch (error) {
       console.error("Error deleting produto:", error)
-      alert("Erro ao eliminar produto")
+      Swal.fire({
+        icon: "error",
+        title: "Erro",
+        text: "Erro ao eliminar produto",
+        confirmButtonColor: "#b8860b"
+      })
     } finally {
       setSaving(false)
     }
@@ -702,13 +767,13 @@ function ProdutosTable({
               />
             </div>
             <div>
-              <label className="block text-sm font-bold text-foreground mb-1">Codigo</label>
+              <label className="block text-sm font-bold text-foreground mb-1">Código</label>
               <input
                 type="text"
                 value={formData.codigo}
                 onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
                 className="w-full px-3 py-2 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none"
-                placeholder="Codigo unico (opcional)"
+                placeholder="Código único (opcional)"
               />
             </div>
             <div>
@@ -722,13 +787,13 @@ function ProdutosTable({
               />
             </div>
             <div>
-              <label className="block text-sm font-bold text-foreground mb-1">Descricao</label>
+              <label className="block text-sm font-bold text-foreground mb-1">Descrição</label>
               <input
                 type="text"
                 value={formData.descricao}
                 onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
                 className="w-full px-3 py-2 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none"
-                placeholder="Descricao breve"
+                placeholder="Descrição breve"
               />
             </div>
           </div>
@@ -771,7 +836,7 @@ function ProdutosTable({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
           </svg>
           <p>Nenhum produto registado</p>
-          <p className="text-sm">Adicione produtos para comecar a rastrear vendas</p>
+          <p className="text-sm">Adicione produtos para começar a rastrear vendas</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -779,7 +844,7 @@ function ProdutosTable({
             <thead>
               <tr className="text-left text-sm text-muted-foreground border-b border-border">
                 <th className="pb-3">Nome</th>
-                <th className="pb-3">Codigo</th>
+                <th className="pb-3">Código</th>
                 <th className="pb-3">Categoria</th>
                 <th className="pb-3 text-center">Vendas</th>
                 <th className="pb-3 text-center">Estado</th>

@@ -14,7 +14,12 @@ async function getCobrancasData(ano: number | null) {
   const [cobrancas, clientes] = await Promise.all([
     prisma.cobranca.findMany({
       where: whereClause,
-      include: { cliente: true },
+      include: {
+        cliente: true,
+        parcelas: {
+          orderBy: { numero: "asc" }
+        }
+      },
       orderBy: [{ pago: "asc" }, { dataEmissao: "desc" }]
     }),
     prisma.cliente.findMany({

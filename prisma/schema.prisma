@@ -67,11 +67,38 @@ model Cobranca {
   dataPago    DateTime?
   pago        Boolean   @default(false)
 
+  // Installment fields
+  numeroParcelas       Int       @default(1)  // Total installments (1 = single payment)
+  dataInicioVencimento DateTime? // First installment due date
+
   notas       String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  parcelas    Parcela[]
+
   @@index([clienteId])
+  @@index([pago])
+}
+
+model Parcela {
+  id             String    @id @default(cuid())
+  cobrancaId     String
+  cobranca       Cobranca  @relation(fields: [cobrancaId], references: [id], onDelete: Cascade)
+
+  numero         Int       // Installment number (1, 2, 3, ...)
+  valor          Decimal   @db.Decimal(10, 2)
+  dataVencimento DateTime  // Due date
+  dataPago       DateTime? // Payment date (null if unpaid)
+  pago           Boolean   @default(false)
+  notas          String?
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([cobrancaId, numero])
+  @@index([cobrancaId])
+  @@index([dataVencimento])
   @@index([pago])
 }
 
@@ -183,4 +210,57 @@ model ItemVenda {
 
   @@index([vendaId])
   @@index([produtoId])
+}
+
+// Pipeline states for prospects
+enum EstadoPipeline {
+  NOVO           // New lead
+  CONTACTADO     // Contacted
+  REUNIAO        // Meeting scheduled/done
+  PROPOSTA       // Proposal sent
+  NEGOCIACAO     // In negotiation
+  GANHO          // Won - convert to Cliente
+  PERDIDO        // Lost
+}
+
+// Prospects/Leads model
+model Prospecto {
+  id              String          @id @default(cuid())
+
+  // Business Info
+  nomeEmpresa     String          // Business name
+  tipoNegocio     String?         // Type of business
+  website         String?
+  facebook        String?
+  instagram       String?
+
+  // Contact Person
+  nomeContacto    String?         // Contact person name
+  cargoContacto   String?         // Contact person role/title
+  telefone        String?
+  email           String?
+
+  // Location (for map)
+  morada          String?         // Full address
+  cidade          String?
+  codigoPostal    String?
+  latitude        Float?
+  longitude       Float?
+
+  // Pipeline
+  estado          EstadoPipeline  @default(NOVO)
+  dataUltimoContacto DateTime?
+  proximaAccao    String?         // Next action to take
+  dataProximaAccao DateTime?
+
+  // Notes & metadata
+  notas           String?         @db.Text
+  fonte           String?         // Lead source (referral, website, etc)
+  ativo           Boolean         @default(true)
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([estado])
+  @@index([cidade])
 }

@@ -22,12 +22,12 @@ export default async function ClientesPage() {
     <div>
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Clientes</h1>
-          <p className="text-gray-500">{clientes.length} clientes registados</p>
+          <h1 className="text-3xl font-medium tracking-wide text-foreground">Clientes</h1>
+          <p className="text-muted-foreground">{clientes.length} clientes registados</p>
         </div>
         <Link
           href="/clientes/novo"
-          className="bg-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-purple-700 transition flex items-center gap-2"
+          className="bg-primary text-primary-foreground px-6 py-3 rounded-xl font-medium hover:bg-primary-hover transition flex items-center gap-2"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

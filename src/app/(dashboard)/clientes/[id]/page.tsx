@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { formatCurrency } from "@/lib/utils"
 
 export const dynamic = 'force-dynamic'
 import Link from "next/link"
@@ -46,7 +47,7 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
   return (
     <div>
       <div className="mb-8">
-        <Link href="/clientes" className="text-purple-600 hover:text-purple-700 flex items-center gap-1 mb-2">
+        <Link href="/clientes" className="text-primary hover:text-primary-hover flex items-center gap-1 mb-2">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
@@ -54,12 +55,12 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
         </Link>
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">{cliente.nome}</h1>
-            {cliente.codigo && <p className="text-gray-500">Código: {cliente.codigo}</p>}
+            <h1 className="text-3xl font-bold text-foreground">{cliente.nome}</h1>
+            {cliente.codigo && <p className="text-muted-foreground">Código: {cliente.codigo}</p>}
           </div>
           <Link
             href={`/clientes/${id}/editar`}
-            className="bg-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-700 transition"
+            className="bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-hover transition"
           >
             Editar
           </Link>
@@ -67,65 +68,65 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-sm font-medium text-gray-500">Total Vendas</h3>
-          <p className="text-2xl font-bold text-gray-800 mt-2">{totalVendas.toFixed(2)} EUR</p>
+        <div className="bg-card rounded-xl shadow-sm p-6">
+          <h3 className="text-sm font-medium text-muted-foreground">Total Vendas</h3>
+          <p className="text-2xl font-bold text-foreground mt-2">{formatCurrency(totalVendas)} EUR</p>
         </div>
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-sm font-medium text-gray-500">Total Faturado</h3>
-          <p className="text-2xl font-bold text-gray-800 mt-2">{totalCobrancas.toFixed(2)} EUR</p>
+        <div className="bg-card rounded-xl shadow-sm p-6">
+          <h3 className="text-sm font-medium text-muted-foreground">Total Faturado</h3>
+          <p className="text-2xl font-bold text-foreground mt-2">{formatCurrency(totalCobrancas)} EUR</p>
         </div>
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-sm font-medium text-gray-500">Por Receber</h3>
-          <p className="text-2xl font-bold text-orange-600 mt-2">{pendentes.toFixed(2)} EUR</p>
+        <div className="bg-card rounded-xl shadow-sm p-6">
+          <h3 className="text-sm font-medium text-muted-foreground">Por Receber</h3>
+          <p className="text-2xl font-bold text-orange-600 mt-2">{formatCurrency(pendentes)} EUR</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Informações</h3>
+        <div className="bg-card rounded-xl shadow-sm p-6">
+          <h3 className="text-lg font-semibold text-foreground mb-4">Informações</h3>
           <dl className="space-y-3">
             {cliente.telefone && (
               <div>
-                <dt className="text-sm text-gray-500">Telefone</dt>
-                <dd className="text-gray-800">{cliente.telefone}</dd>
+                <dt className="text-sm text-muted-foreground">Telefone</dt>
+                <dd className="text-foreground">{cliente.telefone}</dd>
               </div>
             )}
             {cliente.email && (
               <div>
-                <dt className="text-sm text-gray-500">Email</dt>
-                <dd className="text-gray-800">{cliente.email}</dd>
+                <dt className="text-sm text-muted-foreground">Email</dt>
+                <dd className="text-foreground">{cliente.email}</dd>
               </div>
             )}
             {cliente.morada && (
               <div>
-                <dt className="text-sm text-gray-500">Morada</dt>
-                <dd className="text-gray-800">{cliente.morada}</dd>
+                <dt className="text-sm text-muted-foreground">Morada</dt>
+                <dd className="text-foreground">{cliente.morada}</dd>
               </div>
             )}
             {cliente.notas && (
               <div>
-                <dt className="text-sm text-gray-500">Notas</dt>
-                <dd className="text-gray-800">{cliente.notas}</dd>
+                <dt className="text-sm text-muted-foreground">Notas</dt>
+                <dd className="text-foreground">{cliente.notas}</dd>
               </div>
             )}
           </dl>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Últimas Vendas</h3>
+        <div className="bg-card rounded-xl shadow-sm p-6">
+          <h3 className="text-lg font-semibold text-foreground mb-4">Últimas Vendas</h3>
           {cliente.vendas.length > 0 ? (
             <ul className="space-y-2">
               {cliente.vendas.map((venda) => (
-                <li key={venda.id} className="py-2 border-b border-gray-100 last:border-0">
+                <li key={venda.id} className="py-2 border-b border-border last:border-0">
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-600">{meses[venda.mes]} {venda.ano}</span>
-                    <span className="font-medium text-gray-800">{Number(venda.total).toFixed(2)} €</span>
+                    <span className="text-muted-foreground">{meses[venda.mes]} {venda.ano}</span>
+                    <span className="font-medium text-foreground">{formatCurrency(Number(venda.total))} €</span>
                   </div>
                   {venda.itens && venda.itens.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {venda.itens.map((item, idx) => (
-                        <span key={idx} className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                        <span key={idx} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
                           {item.produto.nome} ({Number(item.quantidade)})
                         </span>
                       ))}
@@ -135,38 +136,38 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
               ))}
             </ul>
           ) : (
-            <p className="text-gray-500 text-sm">Sem vendas registadas</p>
+            <p className="text-muted-foreground text-sm">Sem vendas registadas</p>
           )}
         </div>
       </div>
 
       {/* Product Analytics Section */}
       <div className="mb-8">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Análise de Produtos</h2>
+        <h2 className="text-xl font-bold text-foreground mb-4">Análise de Produtos</h2>
         <ClientAnalytics clienteId={id} />
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Cobranças</h3>
+      <div className="bg-card rounded-xl shadow-sm p-6">
+        <h3 className="text-lg font-semibold text-foreground mb-4">Cobranças</h3>
         {cliente.cobrancas.length > 0 ? (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-200">
-                <th className="py-2 text-left text-sm font-medium text-gray-500">Fatura</th>
-                <th className="py-2 text-left text-sm font-medium text-gray-500">Valor</th>
-                <th className="py-2 text-left text-sm font-medium text-gray-500">Comissão</th>
-                <th className="py-2 text-center text-sm font-medium text-gray-500">Estado</th>
+              <tr className="border-b border-border">
+                <th className="py-2 text-left text-sm font-medium text-muted-foreground">Fatura</th>
+                <th className="py-2 text-left text-sm font-medium text-muted-foreground">Valor</th>
+                <th className="py-2 text-left text-sm font-medium text-muted-foreground">Comissão</th>
+                <th className="py-2 text-center text-sm font-medium text-muted-foreground">Estado</th>
               </tr>
             </thead>
             <tbody>
               {cliente.cobrancas.map((cobranca) => (
-                <tr key={cobranca.id} className="border-b border-gray-100 last:border-0">
-                  <td className="py-3 text-gray-800">{cobranca.fatura || "-"}</td>
-                  <td className="py-3 text-gray-800">{Number(cobranca.valor).toFixed(2)} EUR</td>
-                  <td className="py-3 text-gray-600">{cobranca.comissao ? `${Number(cobranca.comissao).toFixed(2)} EUR` : "-"}</td>
+                <tr key={cobranca.id} className="border-b border-border last:border-0">
+                  <td className="py-3 text-foreground">{cobranca.fatura || "-"}</td>
+                  <td className="py-3 text-foreground">{formatCurrency(Number(cobranca.valor))} EUR</td>
+                  <td className="py-3 text-muted-foreground">{cobranca.comissao ? `${formatCurrency(Number(cobranca.comissao))} EUR` : "-"}</td>
                   <td className="py-3 text-center">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      cobranca.pago ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
+                      cobranca.pago ? "bg-green-500/20 text-green-600 dark:text-green-400" : "bg-orange-500/20 text-orange-600 dark:text-orange-400"
                     }`}>
                       {cobranca.pago ? "Pago" : "Pendente"}
                     </span>
@@ -176,7 +177,7 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
             </tbody>
           </table>
         ) : (
-          <p className="text-gray-500 text-sm">Sem cobranças registadas</p>
+          <p className="text-muted-foreground text-sm">Sem cobranças registadas</p>
         )}
       </div>
     </div>

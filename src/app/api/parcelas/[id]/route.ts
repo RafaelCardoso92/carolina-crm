@@ -1,0 +1,101 @@
+import { prisma } from "@/lib/prisma"
+import { NextResponse } from "next/server"
+
+// GET single parcela
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    const parcela = await prisma.parcela.findUnique({
+      where: { id },
+      include: {
+        cobranca: {
+          include: { cliente: true }
+        }
+      }
+    })
+
+    if (!parcela) {
+      return NextResponse.json({ error: "Parcela não encontrada" }, { status: 404 })
+    }
+
+    return NextResponse.json(parcela)
+  } catch (error) {
+    console.error("Error fetching parcela:", error)
+    return NextResponse.json({ error: "Erro ao buscar parcela" }, { status: 500 })
+  }
+}
+
+// PATCH to mark parcela as paid/unpaid
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    const data = await request.json()
+
+    // Update the parcela
+    const parcela = await prisma.parcela.update({
+      where: { id },
+      data: {
+        pago: data.pago,
+        dataPago: data.pago ? new Date() : null,
+        notas: data.notas !== undefined ? data.notas : undefined
+      },
+      include: {
+        cobranca: true
+      }
+    })
+
+    // Check if all parcelas are paid for the parent cobranca
+    const unpaidCount = await prisma.parcela.count({
+      where: {
+        cobrancaId: parcela.cobrancaId,
+        pago: false
+      }
+    })
+
+    // If all parcelas are paid, mark the cobranca as paid
+    if (unpaidCount === 0) {
+      await prisma.cobranca.update({
+        where: { id: parcela.cobrancaId },
+        data: {
+          pago: true,
+          dataPago: new Date()
+        }
+      })
+    } else {
+      // If any parcela is unpaid, ensure cobranca is marked as unpaid
+      await prisma.cobranca.update({
+        where: { id: parcela.cobrancaId },
+        data: {
+          pago: false,
+          dataPago: null
+        }
+      })
+    }
+
+    // Return updated parcela with cobranca
+    const updatedParcela = await prisma.parcela.findUnique({
+      where: { id },
+      include: {
+        cobranca: {
+          include: {
+            cliente: true,
+            parcelas: {
+              orderBy: { numero: "asc" }
+            }
+          }
+        }
+      }
+    })
+
+    return NextResponse.json(updatedParcela)
+  } catch (error) {
+    console.error("Error updating parcela:", error)
+    return NextResponse.json({ error: "Erro ao atualizar parcela" }, { status: 500 })
+  }
+}

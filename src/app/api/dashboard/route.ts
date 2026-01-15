@@ -8,6 +8,8 @@ export async function GET(request: Request) {
     const mes = parseInt(searchParams.get("mes") || (new Date().getMonth() + 1).toString())
     const trimestre = Math.ceil(mes / 3)
 
+    const now = new Date()
+
     const [
       totalClientes,
       clientesAtivos,
@@ -19,7 +21,10 @@ export async function GET(request: Request) {
       objetivoTrimestral,
       objetivoAnual,
       premiosMensais,
-      premiosTrimestrais
+      premiosTrimestrais,
+      parcelasAtrasadas,
+      parcelasAtrasadasValor,
+      proximasParcelas
     ] = await Promise.all([
       prisma.cliente.count(),
       prisma.cliente.count({ where: { ativo: true } }),
@@ -55,7 +60,39 @@ export async function GET(request: Request) {
         where: { ano }
       }),
       prisma.premioMensal.findMany({ orderBy: { minimo: "asc" } }),
-      prisma.premioTrimestral.findMany({ orderBy: { minimo: "asc" } })
+      prisma.premioTrimestral.findMany({ orderBy: { minimo: "asc" } }),
+      // Count overdue parcelas
+      prisma.parcela.count({
+        where: {
+          pago: false,
+          dataVencimento: { lt: now }
+        }
+      }),
+      // Sum of overdue parcelas values
+      prisma.parcela.aggregate({
+        where: {
+          pago: false,
+          dataVencimento: { lt: now }
+        },
+        _sum: { valor: true }
+      }),
+      // Upcoming parcelas (next 7 days)
+      prisma.parcela.findMany({
+        where: {
+          pago: false,
+          dataVencimento: {
+            gte: now,
+            lte: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+          }
+        },
+        include: {
+          cobranca: {
+            include: { cliente: true }
+          }
+        },
+        orderBy: { dataVencimento: "asc" },
+        take: 5
+      })
     ])
 
     const vendasMesTotal = Number(vendasMes._sum.total) || 0
@@ -133,7 +170,19 @@ export async function GET(request: Request) {
       proximoPremioMensal,
       premioTrimestralAtual,
       proximoPremioTrimestral,
-      anosDisponiveis: anosDisponiveis.map(a => a.ano)
+      anosDisponiveis: anosDisponiveis.map(a => a.ano),
+      // Overdue parcelas data
+      parcelasAtrasadas,
+      valorAtrasado: Number(parcelasAtrasadasValor._sum.valor) || 0,
+      proximasParcelas: proximasParcelas.map(p => ({
+        id: p.id,
+        numero: p.numero,
+        valor: Number(p.valor),
+        dataVencimento: p.dataVencimento,
+        clienteNome: p.cobranca.cliente.nome,
+        cobrancaId: p.cobrancaId,
+        fatura: p.cobranca.fatura
+      }))
     })
   } catch (error) {
     console.error("Error fetching dashboard data:", error)

@@ -60,8 +60,8 @@ export default function ClienteForm({ cliente }: { cliente?: ClienteData }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm p-8 max-w-2xl">
-      <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+    <form onSubmit={handleSubmit} className="bg-card rounded-2xl shadow-sm p-8 max-w-2xl">
+      <h2 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
         <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
@@ -79,7 +79,7 @@ export default function ClienteForm({ cliente }: { cliente?: ClienteData }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="md:col-span-2">
-          <label className="block text-sm font-bold text-gray-700 mb-2">
+          <label className="block text-sm font-bold text-foreground mb-2">
             Nome do Cliente *
           </label>
           <input
@@ -87,72 +87,72 @@ export default function ClienteForm({ cliente }: { cliente?: ClienteData }) {
             type="text"
             required
             defaultValue={cliente?.nome || ""}
-            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-gray-900 font-medium"
+            className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium bg-card"
             placeholder="Nome completo do cliente"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">
-            Codigo
+          <label className="block text-sm font-bold text-foreground mb-2">
+            Código
           </label>
           <input
             name="codigo"
             type="text"
             defaultValue={cliente?.codigo || ""}
-            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-gray-900 font-medium"
-            placeholder="Codigo de referencia"
+            className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium bg-card"
+            placeholder="Código de referência"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">
+          <label className="block text-sm font-bold text-foreground mb-2">
             Telefone
           </label>
           <input
             name="telefone"
             type="tel"
             defaultValue={cliente?.telefone || ""}
-            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-gray-900 font-medium"
+            className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium bg-card"
             placeholder="912 345 678"
           />
         </div>
 
         <div className="md:col-span-2">
-          <label className="block text-sm font-bold text-gray-700 mb-2">
+          <label className="block text-sm font-bold text-foreground mb-2">
             Email
           </label>
           <input
             name="email"
             type="email"
             defaultValue={cliente?.email || ""}
-            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-gray-900 font-medium"
+            className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium bg-card"
             placeholder="cliente@email.com"
           />
         </div>
 
         <div className="md:col-span-2">
-          <label className="block text-sm font-bold text-gray-700 mb-2">
+          <label className="block text-sm font-bold text-foreground mb-2">
             Morada
           </label>
           <input
             name="morada"
             type="text"
             defaultValue={cliente?.morada || ""}
-            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-gray-900 font-medium"
+            className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium bg-card"
             placeholder="Morada completa do cliente"
           />
         </div>
 
         <div className="md:col-span-2">
-          <label className="block text-sm font-bold text-gray-700 mb-2">
+          <label className="block text-sm font-bold text-foreground mb-2">
             Notas
           </label>
           <textarea
             name="notas"
             rows={3}
             defaultValue={cliente?.notas || ""}
-            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-gray-900 font-medium resize-none"
+            className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium resize-none bg-card"
             placeholder="Notas sobre o cliente..."
           />
         </div>
@@ -177,14 +177,14 @@ export default function ClienteForm({ cliente }: { cliente?: ClienteData }) {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              {isEditing ? "Guardar Alteracoes" : "Criar Cliente"}
+              {isEditing ? "Guardar Alterações" : "Criar Cliente"}
             </>
           )}
         </button>
         <button
           type="button"
           onClick={() => router.back()}
-          className="px-6 py-3 border-2 border-gray-300 rounded-xl font-bold text-gray-700 hover:bg-gray-50 transition flex items-center gap-2"
+          className="px-6 py-3 border-2 border-border rounded-xl font-bold text-foreground hover:bg-secondary transition flex items-center gap-2"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

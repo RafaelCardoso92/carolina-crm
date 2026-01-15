@@ -3,6 +3,18 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import Swal from "sweetalert2"
+import { formatCurrency } from "@/lib/utils"
+
+type Parcela = {
+  id: string
+  numero: number
+  valor: unknown
+  dataVencimento: Date | string
+  dataPago: Date | string | null
+  pago: boolean
+  notas: string | null
+}
 
 type Cobranca = {
   id: string
@@ -15,11 +27,14 @@ type Cobranca = {
   dataPago: Date | null
   pago: boolean
   notas: string | null
+  numeroParcelas: number
+  dataInicioVencimento: Date | null
   cliente: {
     id: string
     nome: string
     codigo: string | null
   }
+  parcelas: Parcela[]
 }
 
 type Cliente = {
@@ -36,18 +51,66 @@ type Props = {
   ano: number | null
 }
 
+function isParcelaAtrasada(parcela: Parcela): boolean {
+  if (parcela.pago) return false
+  const vencimento = parcela.dataVencimento instanceof Date
+    ? parcela.dataVencimento
+    : new Date(parcela.dataVencimento)
+  return new Date() > vencimento
+}
+
+function formatDate(dateVal: Date | string): string {
+  const date = dateVal instanceof Date ? dateVal : new Date(dateVal)
+  return date.toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric" })
+}
+
 export default function CobrancasView({ cobrancas, clientes, totalPendente, totalComissao, ano }: Props) {
   const router = useRouter()
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [filter, setFilter] = useState<"all" | "pending" | "paid">("pending")
+  const [filter, setFilter] = useState<"all" | "pending" | "paid" | "overdue">("pending")
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+
+  // Form state for installments
+  const [tipoParcelado, setTipoParcelado] = useState(false)
+  const [numeroParcelas, setNumeroParcelas] = useState(2)
+  const [dataInicioVencimento, setDataInicioVencimento] = useState("")
+  const [valorTotal, setValorTotal] = useState("")
 
   const filtered = cobrancas.filter(c => {
     if (filter === "pending") return !c.pago
     if (filter === "paid") return c.pago
+    if (filter === "overdue") {
+      // Has at least one overdue parcela
+      return c.parcelas.some(p => isParcelaAtrasada(p))
+    }
     return true
   })
+
+  // Count overdue parcelas
+  const totalAtrasadas = cobrancas.reduce((acc, c) => {
+    return acc + c.parcelas.filter(p => isParcelaAtrasada(p)).length
+  }, 0)
+
+  function toggleRowExpanded(id: string) {
+    setExpandedRows(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  function resetForm() {
+    setTipoParcelado(false)
+    setNumeroParcelas(2)
+    setDataInicioVencimento("")
+    setValorTotal("")
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -57,7 +120,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
     const valor = parseFloat(formData.get("valor") as string)
     const comissaoPercent = 3.5 // Default commission percentage
 
-    const data = {
+    const data: Record<string, unknown> = {
       clienteId: formData.get("clienteId") as string,
       fatura: formData.get("fatura") as string || null,
       valor,
@@ -65,6 +128,12 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       comissao: (valor / 1.23) * (comissaoPercent / 100),
       dataEmissao: formData.get("dataEmissao") as string || null,
       notas: formData.get("notas") as string || null
+    }
+
+    // Add installment data if parcelado mode
+    if (tipoParcelado && !editingId) {
+      data.numeroParcelas = numeroParcelas
+      data.dataInicioVencimento = dataInicioVencimento
     }
 
     try {
@@ -80,19 +149,44 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       if (res.ok) {
         setShowForm(false)
         setEditingId(null)
+        resetForm()
         router.refresh()
       } else {
         const error = await res.json()
-        alert(error.error || "Erro ao guardar cobranca")
+        Swal.fire({
+          icon: "error",
+          title: "Erro",
+          text: error.error || "Erro ao guardar cobranca",
+          confirmButtonColor: "#b8860b"
+        })
       }
     } catch {
-      alert("Erro ao guardar cobranca")
+      Swal.fire({
+        icon: "error",
+        title: "Erro",
+        text: "Erro ao guardar cobranca",
+        confirmButtonColor: "#b8860b"
+      })
     } finally {
       setLoading(false)
     }
   }
 
   async function handleTogglePaid(id: string, pago: boolean) {
+    const action = pago ? "marcar como pendente" : "marcar como pago"
+    const result = await Swal.fire({
+      title: pago ? "Marcar como pendente?" : "Marcar como pago?",
+      text: `Tem a certeza que quer ${action} esta cobranca?`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#b8860b",
+      cancelButtonColor: "#666666",
+      confirmButtonText: "Sim, confirmar",
+      cancelButtonText: "Cancelar"
+    })
+
+    if (!result.isConfirmed) return
+
     try {
       const res = await fetch(`/api/cobrancas/${id}`, {
         method: "PATCH",
@@ -106,39 +200,120 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
         router.refresh()
       }
     } catch {
-      alert("Erro ao atualizar cobranca")
+      Swal.fire({
+        icon: "error",
+        title: "Erro",
+        text: "Erro ao atualizar cobranca",
+        confirmButtonColor: "#b8860b"
+      })
+    }
+  }
+
+  async function handleToggleParcelaPaid(parcelaId: string, pago: boolean) {
+    const action = pago ? "marcar como pendente" : "marcar como pago"
+    const result = await Swal.fire({
+      title: pago ? "Marcar como pendente?" : "Marcar como pago?",
+      text: `Tem a certeza que quer ${action} esta parcela?`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#b8860b",
+      cancelButtonColor: "#666666",
+      confirmButtonText: "Sim, confirmar",
+      cancelButtonText: "Cancelar"
+    })
+
+    if (!result.isConfirmed) return
+
+    try {
+      const res = await fetch(`/api/parcelas/${parcelaId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pago: !pago })
+      })
+      if (res.ok) {
+        router.refresh()
+      }
+    } catch {
+      Swal.fire({
+        icon: "error",
+        title: "Erro",
+        text: "Erro ao atualizar parcela",
+        confirmButtonColor: "#b8860b"
+      })
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Tem a certeza que quer eliminar esta cobranca?")) return
+    const result = await Swal.fire({
+      title: "Eliminar cobranca?",
+      text: "Tem a certeza que quer eliminar esta cobranca?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#c41e3a",
+      cancelButtonColor: "#666666",
+      confirmButtonText: "Sim, eliminar",
+      cancelButtonText: "Cancelar"
+    })
+
+    if (!result.isConfirmed) return
 
     try {
       const res = await fetch(`/api/cobrancas/${id}`, { method: "DELETE" })
       if (res.ok) {
         router.refresh()
       } else {
-        alert("Erro ao eliminar cobranca")
+        Swal.fire({
+          icon: "error",
+          title: "Erro",
+          text: "Erro ao eliminar cobranca",
+          confirmButtonColor: "#b8860b"
+        })
       }
     } catch {
-      alert("Erro ao eliminar cobranca")
+      Swal.fire({
+        icon: "error",
+        title: "Erro",
+        text: "Erro ao eliminar cobranca",
+        confirmButtonColor: "#b8860b"
+      })
     }
   }
 
   function startEdit(cobranca: Cobranca) {
     setEditingId(cobranca.id)
     setShowForm(true)
+    // Reset installment fields for edit mode (not editable for existing)
+    setTipoParcelado(false)
   }
 
   const editingCobranca = editingId ? cobrancas.find(c => c.id === editingId) : null
 
+  // Generate preview of installments
+  const installmentPreview = tipoParcelado && valorTotal && dataInicioVencimento ?
+    Array.from({ length: numeroParcelas }, (_, i) => {
+      const date = new Date(dataInicioVencimento)
+      date.setMonth(date.getMonth() + i)
+      return {
+        numero: i + 1,
+        valor: parseFloat(valorTotal) / numeroParcelas,
+        dataVencimento: date
+      }
+    }) : []
+
+  // Get parcelas status string
+  function getParcelasStatus(cobranca: Cobranca): string {
+    if (cobranca.parcelas.length === 0) return "-"
+    const pagas = cobranca.parcelas.filter(p => p.pago).length
+    return `${pagas}/${cobranca.parcelas.length}`
+  }
+
   return (
     <div>
       {/* Year Selector */}
-      <div className="bg-white rounded-2xl shadow-sm p-4 mb-6">
-        <div className="flex flex-wrap items-center justify-center gap-4">
+      <div className="bg-card rounded-xl shadow-sm p-3 md:p-4 mb-4 md:mb-6">
+        <div className="flex flex-wrap items-center justify-center gap-2 md:gap-4">
           <div className="flex items-center gap-2">
-            <label className="text-sm font-semibold text-gray-700">Filtrar por ano:</label>
+            <label className="text-xs md:text-sm font-semibold text-foreground">Ano:</label>
             <select
               value={ano || ""}
               onChange={(e) => {
@@ -149,9 +324,9 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                   router.push(`/cobrancas`)
                 }
               }}
-              className="px-4 py-2.5 border-2 border-gray-200 rounded-xl text-gray-900 font-semibold focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none bg-white"
+              className="px-3 md:px-4 py-2 md:py-2.5 border-2 border-border rounded-xl text-foreground font-semibold focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-card text-sm md:text-base"
             >
-              <option value="">Todos os anos</option>
+              <option value="">Todos</option>
               {[2023, 2024, 2025, 2026].map((y) => (
                 <option key={y} value={y}>{y}</option>
               ))}
@@ -161,86 +336,112 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <div className="bg-white rounded-2xl shadow-sm p-6 border-l-4 border-orange-500">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 mb-4 md:mb-6">
+        <div className="bg-card rounded-xl shadow-sm p-4 md:p-6 border-l-4 border-orange-500">
+          <div className="flex items-center gap-2 md:gap-3 mb-2">
+            <div className="p-1.5 md:p-2 bg-orange-500/10 rounded-lg">
+              <svg className="w-5 h-5 md:w-6 md:h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h3 className="text-sm font-bold text-gray-700">Total Pendente {ano ? `(${ano})` : ""}</h3>
+            <h3 className="text-xs md:text-sm font-bold text-foreground">Pendente</h3>
           </div>
-          <p className="text-3xl font-bold text-orange-600">{totalPendente.toFixed(2)} €</p>
-          <p className="text-sm text-gray-500 mt-1">Por receber</p>
+          <p className="text-xl md:text-3xl font-bold text-orange-600">{formatCurrency(totalPendente)} €</p>
+          <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden md:block">Por receber {ano ? `(${ano})` : ""}</p>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm p-6 border-l-4 border-purple-500">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-card rounded-xl shadow-sm p-4 md:p-6 border-l-4 border-primary">
+          <div className="flex items-center gap-2 md:gap-3 mb-2">
+            <div className="p-1.5 md:p-2 bg-primary/10 rounded-lg">
+              <svg className="w-5 h-5 md:w-6 md:h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
             </div>
-            <h3 className="text-sm font-bold text-gray-700">Comissao a Receber {ano ? `(${ano})` : ""}</h3>
+            <h3 className="text-xs md:text-sm font-bold text-foreground">Comissao</h3>
           </div>
-          <p className="text-3xl font-bold text-purple-600">{totalComissao.toFixed(2)} €</p>
-          <p className="text-sm text-gray-500 mt-1">3.5% das vendas pendentes</p>
+          <p className="text-xl md:text-3xl font-bold text-primary">{formatCurrency(totalComissao)} €</p>
+          <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden md:block">3.5% pendentes</p>
         </div>
+        {totalAtrasadas > 0 && (
+          <div className="bg-card rounded-xl shadow-sm p-4 md:p-6 border-l-4 border-red-500 col-span-2 md:col-span-1">
+            <div className="flex items-center gap-2 md:gap-3 mb-2">
+              <div className="p-1.5 md:p-2 bg-red-500/10 rounded-lg">
+                <svg className="w-5 h-5 md:w-6 md:h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-xs md:text-sm font-bold text-foreground">Em Atraso</h3>
+            </div>
+            <p className="text-xl md:text-3xl font-bold text-red-600">{totalAtrasadas}</p>
+            <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden md:block">Parcelas atrasadas</p>
+          </div>
+        )}
       </div>
 
       {/* Filter and Add Button */}
-      <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
-        <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 md:gap-4 mb-4 md:mb-6">
+        <div className="flex gap-1.5 md:gap-2 flex-wrap">
           {[
-            { value: "pending", label: "Pendentes", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
-            { value: "paid", label: "Pagas", icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" },
-            { value: "all", label: "Todas", icon: "M4 6h16M4 10h16M4 14h16M4 18h16" }
+            { value: "pending", label: "Pendentes", shortLabel: "Pend.", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
+            { value: "paid", label: "Pagas", shortLabel: "Pagas", icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" },
+            { value: "overdue", label: "Atrasadas", shortLabel: "Atras.", icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" },
+            { value: "all", label: "Todas", shortLabel: "Todas", icon: "M4 6h16M4 10h16M4 14h16M4 18h16" }
           ].map((f) => (
             <button
               key={f.value}
               onClick={() => setFilter(f.value as typeof filter)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold transition ${
+              className={`flex items-center gap-1.5 md:gap-2 px-2.5 md:px-4 py-2 md:py-2.5 rounded-xl font-semibold transition text-xs md:text-base ${
                 filter === f.value
-                  ? "bg-purple-600 text-white shadow-lg shadow-purple-200"
-                  : "bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200"
+                  ? f.value === "overdue"
+                    ? "bg-red-600 text-white shadow-lg"
+                    : "bg-primary text-primary-foreground shadow-lg"
+                  : "bg-card text-foreground hover:bg-secondary border-2 border-border"
               }`}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={f.icon} />
               </svg>
-              {f.label}
+              <span className="hidden sm:inline">{f.label}</span>
+              <span className="sm:hidden">{f.shortLabel}</span>
+              {f.value === "overdue" && totalAtrasadas > 0 && (
+                <span className={`text-xs px-1.5 md:px-2 py-0.5 rounded-full ${
+                  filter === "overdue" ? "bg-white/20" : "bg-red-100 text-red-700"
+                }`}>
+                  {totalAtrasadas}
+                </span>
+              )}
             </button>
           ))}
         </div>
         <button
-          onClick={() => { setShowForm(true); setEditingId(null); }}
-          className="bg-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-purple-700 transition flex items-center gap-2 shadow-lg shadow-purple-200"
+          onClick={() => { setShowForm(true); setEditingId(null); resetForm(); }}
+          className="bg-primary text-white px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold hover:bg-primary-hover transition flex items-center justify-center gap-2 shadow-lg shadow-primary/20 text-sm md:text-base"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          Adicionar Cobranca
+          <span className="hidden sm:inline">Adicionar Cobranca</span>
+          <span className="sm:hidden">Nova</span>
         </button>
       </div>
 
       {/* Add/Edit Form */}
       {showForm && (
-        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6 border-2 border-purple-100">
-          <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-            <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-card rounded-xl shadow-sm p-4 md:p-6 mb-4 md:mb-6 border-2 border-primary/20">
+          <h3 className="text-lg md:text-xl font-bold text-foreground mb-4 md:mb-6 flex items-center gap-2">
+            <svg className="w-5 h-5 md:w-6 md:h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             {editingId ? "Editar Cobranca" : "Nova Cobranca"}
           </h3>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <label className="block text-sm font-bold text-gray-700 mb-2">Cliente *</label>
+                <label className="block text-sm font-bold text-foreground mb-2">Cliente *</label>
                 <select
                   name="clienteId"
                   required
                   defaultValue={editingCobranca?.clienteId || ""}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-gray-900 font-medium bg-white"
+                  className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
                 >
                   <option value="">Escolher cliente...</option>
                   {clientes.map((c) => (
@@ -251,55 +452,144 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Numero da Fatura</label>
+                <label className="block text-sm font-bold text-foreground mb-2">Numero da Fatura</label>
                 <input
                   name="fatura"
                   type="text"
                   defaultValue={editingCobranca?.fatura || ""}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-gray-900 font-medium"
+                  className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
                   placeholder="Ex: FA2025/001"
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Valor Total (com IVA) *</label>
+                <label className="block text-sm font-bold text-foreground mb-2">Valor Total (com IVA) *</label>
                 <div className="relative">
                   <input
                     name="valor"
                     type="number"
                     step="0.01"
                     required
-                    defaultValue={editingCobranca?.valor ? String(editingCobranca.valor) : ""}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-gray-900 font-medium pr-10"
+                    value={editingCobranca?.valor ? String(editingCobranca.valor) : valorTotal}
+                    onChange={(e) => setValorTotal(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium pr-10 bg-card"
                     placeholder="0.00"
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">€</span>
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">€</span>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Data de Emissao</label>
+                <label className="block text-sm font-bold text-foreground mb-2">Data de Emissao</label>
                 <input
                   name="dataEmissao"
                   type="date"
                   defaultValue={editingCobranca?.dataEmissao ? new Date(editingCobranca.dataEmissao).toISOString().split("T")[0] : ""}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-gray-900 font-medium"
+                  className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Notas</label>
+                <label className="block text-sm font-bold text-foreground mb-2">Notas</label>
                 <input
                   name="notas"
                   type="text"
                   defaultValue={editingCobranca?.notas || ""}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-gray-900 font-medium"
+                  className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
                   placeholder="Notas adicionais..."
                 />
               </div>
             </div>
+
+            {/* Installment Options - Only for new cobrancas */}
+            {!editingId && (
+              <div className="border-t-2 border-border pt-4 mt-4">
+                <label className="block text-sm font-bold text-foreground mb-3">Tipo de Pagamento</label>
+                <div className="flex gap-4 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setTipoParcelado(false)}
+                    className={`flex-1 py-3 px-4 rounded-xl font-semibold transition border-2 ${
+                      !tipoParcelado
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-card text-foreground border-border hover:bg-secondary"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                      </svg>
+                      Pagamento Unico
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTipoParcelado(true)}
+                    className={`flex-1 py-3 px-4 rounded-xl font-semibold transition border-2 ${
+                      tipoParcelado
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-card text-foreground border-border hover:bg-secondary"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                      </svg>
+                      Parcelado
+                    </div>
+                  </button>
+                </div>
+
+                {tipoParcelado && (
+                  <div className="bg-secondary/50 rounded-xl p-4 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-bold text-foreground mb-2">Numero de Parcelas *</label>
+                        <select
+                          value={numeroParcelas}
+                          onChange={(e) => setNumeroParcelas(parseInt(e.target.value))}
+                          className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
+                        >
+                          {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
+                            <option key={n} value={n}>{n} parcelas</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-foreground mb-2">Data da 1ª Parcela *</label>
+                        <input
+                          type="date"
+                          value={dataInicioVencimento}
+                          onChange={(e) => setDataInicioVencimento(e.target.value)}
+                          required={tipoParcelado}
+                          className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Installment Preview */}
+                    {installmentPreview.length > 0 && (
+                      <div className="mt-4">
+                        <h4 className="text-sm font-bold text-foreground mb-2">Resumo das Parcelas:</h4>
+                        <div className="bg-card rounded-lg p-3 space-y-2 max-h-48 overflow-y-auto">
+                          {installmentPreview.map((p) => (
+                            <div key={p.numero} className="flex justify-between items-center text-sm py-1 border-b border-border last:border-0">
+                              <span className="font-medium text-foreground">Parcela {p.numero}</span>
+                              <span className="text-muted-foreground">
+                                {formatCurrency(p.valor)} € - {p.dataVencimento.toLocaleDateString("pt-PT")}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex gap-3 pt-4">
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 bg-purple-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-purple-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 bg-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-primary-hover transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
@@ -320,8 +610,8 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
               </button>
               <button
                 type="button"
-                onClick={() => { setShowForm(false); setEditingId(null); }}
-                className="px-6 py-3 border-2 border-gray-300 rounded-xl font-bold text-gray-700 hover:bg-gray-50 transition flex items-center gap-2"
+                onClick={() => { setShowForm(false); setEditingId(null); resetForm(); }}
+                className="px-6 py-3 border-2 border-border rounded-xl font-bold text-foreground hover:bg-secondary transition flex items-center gap-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -334,91 +624,226 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       )}
 
       {/* Cobrancas Table */}
-      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-card rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b-2 border-gray-100">
+            <thead className="bg-secondary border-b-2 border-border">
               <tr>
-                <th className="px-6 py-4 text-left text-sm font-bold text-gray-700">Cliente</th>
-                <th className="px-4 py-4 text-left text-sm font-bold text-gray-700">Fatura</th>
-                <th className="px-4 py-4 text-right text-sm font-bold text-gray-700">Valor c/IVA</th>
-                <th className="px-4 py-4 text-right text-sm font-bold text-gray-700">Sem IVA</th>
-                <th className="px-4 py-4 text-right text-sm font-bold text-purple-700">Comissao</th>
-                <th className="px-4 py-4 text-center text-sm font-bold text-gray-700">Estado</th>
-                <th className="px-4 py-4 text-center text-sm font-bold text-gray-700">Acoes</th>
+                <th className="px-2 py-4 text-left text-sm font-bold text-foreground w-8"></th>
+                <th className="px-4 py-4 text-left text-sm font-bold text-foreground">Cliente</th>
+                <th className="px-4 py-4 text-left text-sm font-bold text-foreground">Fatura</th>
+                <th className="px-4 py-4 text-right text-sm font-bold text-foreground">Valor c/IVA</th>
+                <th className="px-4 py-4 text-right text-sm font-bold text-foreground">Sem IVA</th>
+                <th className="px-4 py-4 text-right text-sm font-bold text-primary">Comissao</th>
+                <th className="px-4 py-4 text-center text-sm font-bold text-foreground">Parcelas</th>
+                <th className="px-4 py-4 text-center text-sm font-bold text-foreground">Estado</th>
+                <th className="px-4 py-4 text-center text-sm font-bold text-foreground">Acoes</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.map((cobranca) => (
-                <tr key={cobranca.id} className={`hover:bg-purple-50 transition ${cobranca.pago ? "bg-green-50/50" : ""}`}>
-                  <td className="px-6 py-4">
-                    <Link href={`/clientes/${cobranca.cliente.id}`} className="font-semibold text-gray-900 hover:text-purple-600 transition">
-                      {cobranca.cliente.nome}
-                    </Link>
-                    {cobranca.cliente.codigo && (
-                      <span className="text-gray-500 text-sm ml-2">({cobranca.cliente.codigo})</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-4 text-gray-700 font-medium">{cobranca.fatura || "-"}</td>
-                  <td className="px-4 py-4 text-right font-bold text-gray-900">
-                    {Number(cobranca.valor).toFixed(2)} €
-                  </td>
-                  <td className="px-4 py-4 text-right text-gray-600 font-medium">
-                    {cobranca.valorSemIva ? Number(cobranca.valorSemIva).toFixed(2) : "-"} €
-                  </td>
-                  <td className="px-4 py-4 text-right text-purple-600 font-semibold">
-                    {cobranca.comissao ? Number(cobranca.comissao).toFixed(2) : "-"} €
-                  </td>
-                  <td className="px-4 py-4 text-center">
-                    <button
-                      onClick={() => handleTogglePaid(cobranca.id, cobranca.pago)}
-                      className={`px-4 py-2 rounded-xl text-sm font-bold transition flex items-center gap-2 mx-auto ${
+            <tbody className="divide-y divide-border">
+              {filtered.map((cobranca) => {
+                const hasOverdue = cobranca.parcelas.some(p => isParcelaAtrasada(p))
+                const isExpanded = expandedRows.has(cobranca.id)
+
+                return (
+                  <>
+                    <tr
+                      key={cobranca.id}
+                      className={`hover:bg-table-row-hover transition ${
                         cobranca.pago
-                          ? "bg-green-100 text-green-700 hover:bg-green-200"
-                          : "bg-orange-100 text-orange-700 hover:bg-orange-200"
+                          ? "bg-green-500/10"
+                          : hasOverdue
+                            ? "bg-red-500/5"
+                            : ""
                       }`}
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={cobranca.pago ? "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" : "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"} />
-                      </svg>
-                      {cobranca.pago ? "Pago" : "Pendente"}
-                    </button>
-                  </td>
-                  <td className="px-4 py-4">
-                    <div className="flex justify-center gap-1">
-                      <button
-                        onClick={() => startEdit(cobranca)}
-                        className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition"
-                        title="Editar"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => handleDelete(cobranca.id)}
-                        className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition"
-                        title="Eliminar"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                      <td className="px-2 py-4">
+                        {cobranca.parcelas.length > 0 && (
+                          <button
+                            onClick={() => toggleRowExpanded(cobranca.id)}
+                            className="p-1 hover:bg-secondary rounded transition"
+                          >
+                            <svg
+                              className={`w-5 h-5 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </button>
+                        )}
+                      </td>
+                      <td className="px-4 py-4">
+                        <Link href={`/clientes/${cobranca.cliente.id}`} className="font-semibold text-foreground hover:text-primary transition">
+                          {cobranca.cliente.nome}
+                        </Link>
+                        {cobranca.cliente.codigo && (
+                          <span className="text-muted-foreground text-sm ml-2">({cobranca.cliente.codigo})</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-foreground font-medium">{cobranca.fatura || "-"}</td>
+                      <td className="px-4 py-4 text-right font-bold text-foreground">
+                        {formatCurrency(Number(cobranca.valor))} €
+                      </td>
+                      <td className="px-4 py-4 text-right text-muted-foreground font-medium">
+                        {cobranca.valorSemIva ? formatCurrency(Number(cobranca.valorSemIva)) : "-"} €
+                      </td>
+                      <td className="px-4 py-4 text-right text-primary font-semibold">
+                        {cobranca.comissao ? formatCurrency(Number(cobranca.comissao)) : "-"} €
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        {cobranca.parcelas.length > 0 ? (
+                          <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                            hasOverdue
+                              ? "bg-red-100 text-red-700"
+                              : cobranca.pago
+                                ? "bg-green-100 text-green-700"
+                                : "bg-blue-100 text-blue-700"
+                          }`}>
+                            {getParcelasStatus(cobranca)}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        {cobranca.parcelas.length === 0 ? (
+                          <button
+                            onClick={() => handleTogglePaid(cobranca.id, cobranca.pago)}
+                            className={`px-4 py-2 rounded-xl text-sm font-bold transition flex items-center gap-2 mx-auto ${
+                              cobranca.pago
+                                ? "bg-green-100 text-green-700 hover:bg-green-200"
+                                : "bg-orange-100 text-orange-700 hover:bg-orange-200"
+                            }`}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={cobranca.pago ? "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" : "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"} />
+                            </svg>
+                            {cobranca.pago ? "Pago" : "Pendente"}
+                          </button>
+                        ) : (
+                          <span className={`px-4 py-2 rounded-xl text-sm font-bold inline-flex items-center gap-2 ${
+                            cobranca.pago
+                              ? "bg-green-100 text-green-700"
+                              : hasOverdue
+                                ? "bg-red-100 text-red-700"
+                                : "bg-orange-100 text-orange-700"
+                          }`}>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={
+                                cobranca.pago
+                                  ? "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                  : hasOverdue
+                                    ? "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                                    : "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                              } />
+                            </svg>
+                            {cobranca.pago ? "Pago" : hasOverdue ? "Atrasado" : "Pendente"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex justify-center gap-1">
+                          <button
+                            onClick={() => startEdit(cobranca)}
+                            className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition"
+                            title="Editar"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleDelete(cobranca.id)}
+                            className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition"
+                            title="Eliminar"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+
+                    {/* Expanded Parcelas Rows */}
+                    {isExpanded && cobranca.parcelas.map((parcela) => {
+                      const isAtrasada = isParcelaAtrasada(parcela)
+                      return (
+                        <tr
+                          key={parcela.id}
+                          className={`${
+                            isAtrasada
+                              ? "bg-red-50 dark:bg-red-900/10"
+                              : parcela.pago
+                                ? "bg-green-50 dark:bg-green-900/10"
+                                : "bg-secondary/30"
+                          }`}
+                        >
+                          <td className="px-2 py-3"></td>
+                          <td className="px-4 py-3" colSpan={2}>
+                            <div className="flex items-center gap-3 pl-4">
+                              <div className={`w-2 h-2 rounded-full ${
+                                parcela.pago
+                                  ? "bg-green-500"
+                                  : isAtrasada
+                                    ? "bg-red-500"
+                                    : "bg-orange-500"
+                              }`}></div>
+                              <span className="font-medium text-foreground">Parcela {parcela.numero}</span>
+                              {isAtrasada && (
+                                <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold">
+                                  ATRASADA
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold text-foreground">
+                            {formatCurrency(Number(parcela.valor))} €
+                          </td>
+                          <td className="px-4 py-3 text-right text-muted-foreground" colSpan={2}>
+                            Vencimento: {formatDate(parcela.dataVencimento)}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {parcela.pago && parcela.dataPago && (
+                              <span className="text-sm text-muted-foreground">
+                                Pago em {formatDate(parcela.dataPago)}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <button
+                              onClick={() => handleToggleParcelaPaid(parcela.id, parcela.pago)}
+                              className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
+                                parcela.pago
+                                  ? "bg-green-100 text-green-700 hover:bg-green-200"
+                                  : isAtrasada
+                                    ? "bg-red-100 text-red-700 hover:bg-red-200"
+                                    : "bg-orange-100 text-orange-700 hover:bg-orange-200"
+                              }`}
+                            >
+                              {parcela.pago ? "Pago" : "Marcar Pago"}
+                            </button>
+                          </td>
+                          <td className="px-4 py-3"></td>
+                        </tr>
+                      )
+                    })}
+                  </>
+                )
+              })}
             </tbody>
           </table>
         </div>
 
         {filtered.length === 0 && (
           <div className="text-center py-16">
-            <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <p className="text-gray-500 text-lg font-medium">Nenhuma cobranca encontrada</p>
-            <p className="text-gray-400 mt-1">Clique em &quot;Adicionar Cobranca&quot; para comecar</p>
+            <p className="text-muted-foreground text-lg font-medium">Nenhuma cobranca encontrada</p>
+            <p className="text-muted-foreground/70 mt-1">Clique em &quot;Adicionar Cobranca&quot; para comecar</p>
           </div>
         )}
       </div>

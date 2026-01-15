@@ -8,9 +8,25 @@ export default function DashboardLayout({
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar />
-      <main className="flex-1 p-8">
-        {children}
-      </main>
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Add padding-top for mobile header */}
+        <main className="flex-1 p-4 md:p-6 lg:p-8 pt-20 lg:pt-8">
+          {children}
+        </main>
+        <footer className="py-4 px-4 md:px-8 border-t border-border text-center">
+          <p className="text-sm text-muted-foreground">
+            Criado por{" "}
+            <a
+              href="https://rafaelcardoso.co.uk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:text-primary-hover transition font-medium"
+            >
+              Rafael Cardoso
+            </a>
+          </p>
+        </footer>
+      </div>
     </div>
   )
 }

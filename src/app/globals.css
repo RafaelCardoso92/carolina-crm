@@ -1,65 +1,100 @@
 @import "tailwindcss";
 
-/* Light theme (default) */
+/* BABOR-inspired luxury theme */
+/* Color palette: Black, White, Gold/Champagne */
+
+/* Light theme (default) - Clean, luxurious */
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #fafafa;
+  --foreground: #1a1a1a;
   --card: #ffffff;
-  --card-foreground: #0f172a;
-  --primary: #7c3aed;
+  --card-foreground: #1a1a1a;
+
+  /* Gold/Champagne as primary - luxury accent */
+  --primary: #b8860b;
   --primary-foreground: #ffffff;
-  --primary-hover: #6d28d9;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #334155;
-  --muted: #f1f5f9;
-  --muted-foreground: #475569;
-  --accent: #f1f5f9;
-  --accent-foreground: #7c3aed;
-  --destructive: #dc2626;
+  --primary-hover: #9a7209;
+
+  /* Soft neutrals */
+  --secondary: #f5f5f5;
+  --secondary-foreground: #404040;
+  --muted: #e8e8e8;
+  --muted-foreground: #666666;
+
+  /* Gold accent */
+  --accent: #d4af37;
+  --accent-foreground: #1a1a1a;
+
+  /* Status colors - refined */
+  --destructive: #c41e3a;
   --destructive-foreground: #ffffff;
-  --success: #16a34a;
+  --success: #2e7d32;
   --success-foreground: #ffffff;
-  --warning: #d97706;
+  --warning: #ed6c02;
   --warning-foreground: #ffffff;
-  --border: #cbd5e1;
-  --input: #cbd5e1;
-  --ring: #7c3aed;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #0f172a;
-  --sidebar-border: #e2e8f0;
-  --table-header: #f8fafc;
-  --table-row-hover: #f1f5f9;
+
+  /* Borders - subtle elegance */
+  --border: #e0e0e0;
+  --input: #e0e0e0;
+  --ring: #b8860b;
+
+  /* Sidebar - sleek black */
+  --sidebar: #1a1a1a;
+  --sidebar-foreground: #ffffff;
+  --sidebar-border: #333333;
+  --sidebar-hover: #2d2d2d;
+  --sidebar-active: #b8860b;
+
+  /* Table */
+  --table-header: #fafafa;
+  --table-row-hover: #f5f5f5;
 }
 
-/* Dark theme */
+/* Dark theme - Sophisticated dark mode */
 .dark {
-  --background: #0f172a;
-  --foreground: #f8fafc;
-  --card: #1e293b;
-  --card-foreground: #f8fafc;
-  --primary: #a78bfa;
-  --primary-foreground: #0f172a;
-  --primary-hover: #c4b5fd;
-  --secondary: #334155;
-  --secondary-foreground: #e2e8f0;
-  --muted: #334155;
-  --muted-foreground: #94a3b8;
-  --accent: #334155;
-  --accent-foreground: #a78bfa;
-  --destructive: #f87171;
-  --destructive-foreground: #0f172a;
-  --success: #4ade80;
-  --success-foreground: #0f172a;
-  --warning: #fbbf24;
-  --warning-foreground: #0f172a;
-  --border: #475569;
-  --input: #475569;
-  --ring: #a78bfa;
-  --sidebar: #1e293b;
-  --sidebar-foreground: #f8fafc;
-  --sidebar-border: #475569;
-  --table-header: #1e293b;
-  --table-row-hover: #334155;
+  --background: #121212;
+  --foreground: #f5f5f5;
+  --card: #1e1e1e;
+  --card-foreground: #f5f5f5;
+
+  /* Gold remains primary */
+  --primary: #d4af37;
+  --primary-foreground: #1a1a1a;
+  --primary-hover: #e6c349;
+
+  /* Dark neutrals */
+  --secondary: #2d2d2d;
+  --secondary-foreground: #e0e0e0;
+  --muted: #333333;
+  --muted-foreground: #a0a0a0;
+
+  /* Gold accent */
+  --accent: #b8860b;
+  --accent-foreground: #ffffff;
+
+  /* Status colors - dark mode */
+  --destructive: #ef5350;
+  --destructive-foreground: #1a1a1a;
+  --success: #66bb6a;
+  --success-foreground: #1a1a1a;
+  --warning: #ffa726;
+  --warning-foreground: #1a1a1a;
+
+  /* Borders */
+  --border: #404040;
+  --input: #404040;
+  --ring: #d4af37;
+
+  /* Sidebar */
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #f5f5f5;
+  --sidebar-border: #2d2d2d;
+  --sidebar-hover: #1e1e1e;
+  --sidebar-active: #d4af37;
+
+  /* Table */
+  --table-header: #1e1e1e;
+  --table-row-hover: #2d2d2d;
 }
 
 @theme inline {
@@ -88,17 +123,32 @@
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-active: var(--sidebar-active);
   --color-table-header: var(--table-header);
   --color-table-row-hover: var(--table-row-hover);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
+/* Base body styles - BABOR aesthetic */
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  font-family: "Helvetica Neue", Arial, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 1.6;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Headings - elegant and refined */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
 }
 
 /* Smooth transitions for theme changes */
@@ -106,10 +156,10 @@ body {
   transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Better scrollbar styling */
+/* Refined scrollbar styling */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -118,9 +168,64 @@ body {
 
 ::-webkit-scrollbar-thumb {
   background: var(--muted-foreground);
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--foreground);
+  background: var(--primary);
+}
+
+/* Focus styles - gold ring */
+*:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Selection styling */
+::selection {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* Input placeholder styling */
+::placeholder {
+  color: var(--muted-foreground);
+  opacity: 0.7;
+}
+
+/* Custom utility classes for BABOR styling */
+.babor-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.babor-button {
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.babor-gold {
+  color: var(--primary);
+}
+
+.babor-gold-bg {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* Table improvements */
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* Form input refinements */
+input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
 }
