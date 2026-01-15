@@ -263,7 +263,7 @@ export default function ProspectoAITactics({ prospectoId }: Props) {
       )}
 
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 p-3 rounded-lg text-sm flex items-center gap-2">
+        <div className="bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 p-3 rounded-lg text-sm flex items-center gap-2">
           <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
@@ -302,7 +302,7 @@ export default function ProspectoAITactics({ prospectoId }: Props) {
               Estrategia de Abordagem
             </h3>
             <p className="text-sm text-foreground leading-relaxed">{tactics.abordagem.texto}</p>
-            <p className="text-xs text-indigo-700 dark:text-indigo-400 mt-2 italic">
+            <p className="text-xs text-indigo-800 dark:text-indigo-200 mt-2 italic">
               <strong>Porque funciona:</strong> {tactics.abordagem.explicacao}
             </p>
           </div>
@@ -319,7 +319,7 @@ export default function ProspectoAITactics({ prospectoId }: Props) {
               {tactics.iniciadoresConversa.map((item, i) => (
                 <div key={i} className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
                   <p className="text-sm text-foreground font-medium">"{item.texto}"</p>
-                  <p className="text-xs text-blue-700 dark:text-blue-400 mt-1 italic">
+                  <p className="text-xs text-blue-800 dark:text-blue-200 mt-1 italic">
                     {item.explicacao}
                   </p>
                 </div>
@@ -339,7 +339,7 @@ export default function ProspectoAITactics({ prospectoId }: Props) {
               {tactics.pontosDor.map((item, i) => (
                 <div key={i} className="bg-red-50 dark:bg-red-950/30 rounded-lg p-3 border border-red-200 dark:border-red-800">
                   <p className="text-sm text-foreground">{item.texto}</p>
-                  <p className="text-xs text-red-700 dark:text-red-400 mt-1 italic">
+                  <p className="text-xs text-red-800 dark:text-red-200 mt-1 italic">
                     {item.explicacao}
                   </p>
                 </div>
@@ -359,7 +359,7 @@ export default function ProspectoAITactics({ prospectoId }: Props) {
               {tactics.dicasSucesso.map((item, i) => (
                 <div key={i} className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3 border border-green-200 dark:border-green-800">
                   <p className="text-sm text-foreground">{item.texto}</p>
-                  <p className="text-xs text-green-700 dark:text-green-400 mt-1 italic">
+                  <p className="text-xs text-green-800 dark:text-green-200 mt-1 italic">
                     {item.explicacao}
                   </p>
                 </div>

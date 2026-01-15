@@ -282,7 +282,7 @@ export default function ClienteAIInsights({ clienteId }: Props) {
               Perfil do Cliente
             </h3>
             <p className="text-sm text-foreground leading-relaxed">{insights.resumoComportamento.texto}</p>
-            <p className="text-xs text-purple-700 dark:text-purple-400 mt-2 italic">
+            <p className="text-xs text-purple-800 dark:text-purple-200 mt-2 italic">
               <strong>Porque e importante:</strong> {insights.resumoComportamento.explicacao}
             </p>
           </div>
@@ -296,7 +296,7 @@ export default function ClienteAIInsights({ clienteId }: Props) {
               Padrao de Compras
             </h3>
             <p className="text-sm text-foreground leading-relaxed">{insights.padraoCompras.texto}</p>
-            <p className="text-xs text-blue-700 dark:text-blue-400 mt-2 italic">
+            <p className="text-xs text-blue-800 dark:text-blue-200 mt-2 italic">
               <strong>Porque e importante:</strong> {insights.padraoCompras.explicacao}
             </p>
           </div>
@@ -313,8 +313,8 @@ export default function ClienteAIInsights({ clienteId }: Props) {
               {insights.recomendacoesUpsell.map((rec, i) => (
                 <div key={i} className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3 border border-green-200 dark:border-green-800">
                   <p className="text-sm font-medium text-green-800 dark:text-green-200">{rec.produto}</p>
-                  <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">{rec.razao}</p>
-                  <p className="text-xs text-green-700 dark:text-green-300 mt-1 italic border-t border-green-200 dark:border-green-700 pt-1">
+                  <p className="text-xs text-green-700 dark:text-green-200 mt-0.5">{rec.razao}</p>
+                  <p className="text-xs text-green-800 dark:text-green-100 mt-1 italic border-t border-green-200 dark:border-green-700 pt-1">
                     <strong>Porque faz sentido:</strong> {rec.explicacao}
                   </p>
                 </div>
@@ -334,7 +334,7 @@ export default function ClienteAIInsights({ clienteId }: Props) {
               {insights.sugestoesEngagement.map((item, i) => (
                 <div key={i} className="bg-orange-50 dark:bg-orange-950/30 rounded-lg p-3 border border-orange-200 dark:border-orange-800">
                   <p className="text-sm text-foreground">{item.texto}</p>
-                  <p className="text-xs text-orange-700 dark:text-orange-400 mt-1 italic">
+                  <p className="text-xs text-orange-800 dark:text-orange-200 mt-1 italic">
                     {item.explicacao}
                   </p>
                 </div>
@@ -351,7 +351,7 @@ export default function ClienteAIInsights({ clienteId }: Props) {
               Tendencia Sazonal
             </h3>
             <p className="text-sm text-foreground leading-relaxed">{insights.tendenciaSazonal.texto}</p>
-            <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-2 italic">
+            <p className="text-xs text-yellow-800 dark:text-yellow-200 mt-2 italic">
               <strong>Porque e importante:</strong> {insights.tendenciaSazonal.explicacao}
             </p>
           </div>

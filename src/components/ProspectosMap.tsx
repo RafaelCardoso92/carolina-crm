@@ -57,6 +57,8 @@ export default function ProspectosMap() {
   const [showLegend, setShowLegend] = useState(false)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [locationError, setLocationError] = useState<string | null>(null)
+  const [geocodingId, setGeocodingId] = useState<string | null>(null)
+  const [showWithoutCoords, setShowWithoutCoords] = useState(true)
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
@@ -104,6 +106,52 @@ export default function ProspectosMap() {
     }
   }
 
+  async function geocodeProspecto(prospecto: Prospecto) {
+    if (!prospecto.morada && !prospecto.cidade) {
+      alert("Este prospecto não tem morada nem cidade definida")
+      return
+    }
+
+    setGeocodingId(prospecto.id)
+
+    try {
+      const address = [prospecto.morada, prospecto.cidade, "Portugal"]
+        .filter(Boolean)
+        .join(", ")
+
+      const geocodeRes = await fetch("/api/prospectos/geocode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address }),
+      })
+
+      if (!geocodeRes.ok) {
+        const error = await geocodeRes.json()
+        alert(error.error || "Erro ao geocodificar")
+        return
+      }
+
+      const { latitude, longitude } = await geocodeRes.json()
+
+      // Update the prospecto with coordinates
+      const updateRes = await fetch(`/api/prospectos/${prospecto.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ latitude, longitude }),
+      })
+
+      if (updateRes.ok) {
+        // Refresh the list
+        fetchProspectos()
+      }
+    } catch (error) {
+      console.error("Error geocoding:", error)
+      alert("Erro ao geocodificar morada")
+    } finally {
+      setGeocodingId(null)
+    }
+  }
+
   const onLoad = useCallback((map: google.maps.Map) => {
     setMap(map)
   }, [])
@@ -114,6 +162,10 @@ export default function ProspectosMap() {
 
   const prospectosWithCoords = prospectos.filter(
     (p) => p.latitude !== null && p.longitude !== null
+  )
+
+  const prospectosWithoutCoords = prospectos.filter(
+    (p) => p.latitude === null || p.longitude === null
   )
 
   // Fit bounds to show all markers including user location
@@ -357,13 +409,88 @@ export default function ProspectosMap() {
         </GoogleMap>
       </div>
 
-      {/* No coordinates warning */}
-      {prospectos.length > 0 && prospectosWithCoords.length === 0 && (
-        <div className="mt-3 bg-yellow-50 text-yellow-800 p-3 rounded-lg text-xs">
-          <p className="font-medium">Nenhum prospecto com localização</p>
-          <p className="mt-0.5">
-            Use o botão &quot;Obter Coordenadas&quot; ao editar um prospecto.
-          </p>
+      {/* Prospects without coordinates */}
+      {prospectosWithoutCoords.length > 0 && (
+        <div className="mt-4">
+          <button
+            onClick={() => setShowWithoutCoords(!showWithoutCoords)}
+            className="flex items-center gap-2 text-sm font-medium text-foreground mb-2"
+          >
+            <svg
+              className={`w-4 h-4 transition-transform ${showWithoutCoords ? "rotate-180" : ""}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+            <span className="text-orange-600">{prospectosWithoutCoords.length} prospectos sem localização</span>
+          </button>
+
+          {showWithoutCoords && (
+            <div className="bg-orange-50 dark:bg-orange-950/20 rounded-xl border border-orange-200 dark:border-orange-800 overflow-hidden">
+              <div className="p-3 bg-orange-100 dark:bg-orange-900/30 border-b border-orange-200 dark:border-orange-800">
+                <p className="text-xs text-orange-800 dark:text-orange-200">
+                  Estes prospectos não aparecem no mapa porque não têm coordenadas. Clique em &quot;Localizar&quot; para obter automaticamente.
+                </p>
+              </div>
+              <div className="divide-y divide-orange-200 dark:divide-orange-800 max-h-64 overflow-y-auto">
+                {prospectosWithoutCoords.map((prospecto) => (
+                  <div
+                    key={prospecto.id}
+                    className="p-3 flex items-center justify-between gap-3 hover:bg-orange-100/50 dark:hover:bg-orange-900/20"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="w-2 h-2 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: getEstadoInfo(prospecto.estado).color }}
+                        />
+                        <Link
+                          href={`/prospectos/${prospecto.id}`}
+                          className="text-sm font-medium text-foreground hover:text-purple-600 truncate"
+                        >
+                          {prospecto.nomeEmpresa}
+                        </Link>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                        {prospecto.morada || prospecto.cidade || "Sem morada definida"}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => geocodeProspecto(prospecto)}
+                      disabled={geocodingId === prospecto.id || (!prospecto.morada && !prospecto.cidade)}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition flex-shrink-0 ${
+                        !prospecto.morada && !prospecto.cidade
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-600"
+                          : geocodingId === prospecto.id
+                          ? "bg-orange-200 text-orange-700 dark:bg-orange-800 dark:text-orange-200"
+                          : "bg-orange-500 text-white hover:bg-orange-600"
+                      }`}
+                    >
+                      {geocodingId === prospecto.id ? (
+                        <>
+                          <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          A localizar...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          Localizar
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
