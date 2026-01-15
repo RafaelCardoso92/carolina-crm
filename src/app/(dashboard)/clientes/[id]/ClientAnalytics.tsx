@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { formatCurrency } from "@/lib/utils"
+import ClienteAIInsights from "@/components/ClienteAIInsights"
 
 type ProductHistory = {
   produtoId: string
@@ -85,6 +86,9 @@ export default function ClientAnalytics({ clienteId }: { clienteId: string }) {
 
   return (
     <div className="space-y-6">
+      {/* AI Insights Section */}
+      <ClienteAIInsights clienteId={clienteId} />
+
       {/* Purchase History by Product */}
       <div className="bg-card rounded-xl shadow-sm p-6">
         <div className="flex items-center gap-2 mb-4">

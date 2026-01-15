@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { notFound } from "next/navigation"
 import Link from "next/link"
+import ProspectoAITactics from "@/components/ProspectoAITactics"
 
 const ESTADOS_PIPELINE = [
   { value: "NOVO", label: "Novo", color: "bg-gray-500", textColor: "text-gray-700", bgLight: "bg-gray-100" },
@@ -234,6 +235,9 @@ export default async function ProspectoDetailPage({
           </div>
         )}
       </div>
+
+      {/* AI Tactics Section */}
+      <ProspectoAITactics prospectoId={id} />
 
       {/* Metadata */}
       <div className="mt-4 text-xs text-muted-foreground">

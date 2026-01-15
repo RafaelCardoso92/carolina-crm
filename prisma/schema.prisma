@@ -29,6 +29,7 @@ model Cliente {
 
   vendas    Venda[]
   cobrancas Cobranca[]
+  itensReconciliacao ItemReconciliacao[]
 }
 
 model Venda {
@@ -48,6 +49,8 @@ model Venda {
   updatedAt   DateTime @updatedAt
 
   itens       ItemVenda[]
+  devolucoes  Devolucao[]
+  itensReconciliacao ItemReconciliacao[]
 
   @@index([clienteId])
   @@index([mes, ano])
@@ -192,7 +195,8 @@ model Produto {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  itensVenda  ItemVenda[]
+  itensVenda      ItemVenda[]
+  substituicoes   ItemDevolucao[] @relation("Substituicao")
 }
 
 model ItemVenda {
@@ -207,6 +211,8 @@ model ItemVenda {
   subtotal    Decimal  @db.Decimal(10, 2)  // quantidade * precoUnit
 
   createdAt   DateTime @default(now())
+
+  devolucoes  ItemDevolucao[]
 
   @@index([vendaId])
   @@index([produtoId])
@@ -263,4 +269,178 @@ model Prospecto {
 
   @@index([estado])
   @@index([cidade])
+}
+
+// ==========================================
+// RETURNS (DEVOLUCOES) MODELS
+// ==========================================
+
+enum EstadoDevolucao {
+  PENDENTE
+  PROCESSADA
+  CANCELADA
+}
+
+model Devolucao {
+  id              String            @id @default(cuid())
+  vendaId         String
+  venda           Venda             @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+
+  dataRegisto     DateTime          @default(now())
+  motivo          String?           @db.Text  // General reason/notes
+
+  // Calculated totals (with VAT)
+  totalDevolvido    Decimal         @db.Decimal(10, 2)  // Sum of returned items value
+  totalSubstituido  Decimal         @db.Decimal(10, 2) @default(0)  // Value of replacements
+
+  // Status
+  estado          EstadoDevolucao   @default(PENDENTE)
+
+  itens           ItemDevolucao[]
+  imagens         ImagemDevolucao[]
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([vendaId])
+  @@index([estado])
+}
+
+model ItemDevolucao {
+  id              String      @id @default(cuid())
+  devolucaoId     String
+  devolucao       Devolucao   @relation(fields: [devolucaoId], references: [id], onDelete: Cascade)
+
+  // Original item reference
+  itemVendaId     String
+  itemVenda       ItemVenda   @relation(fields: [itemVendaId], references: [id])
+
+  quantidade      Decimal     @db.Decimal(10, 2)  // Quantity returned
+  valorUnitario   Decimal     @db.Decimal(10, 2)  // Unit price at time of return
+  subtotal        Decimal     @db.Decimal(10, 2)  // quantidade * valorUnitario
+  motivo          String                          // Reason for this item return
+
+  // Optional replacement product
+  substituicaoId      String?
+  substituicao        Produto?  @relation("Substituicao", fields: [substituicaoId], references: [id])
+  qtdSubstituicao     Decimal?  @db.Decimal(10, 2)
+  precoSubstituicao   Decimal?  @db.Decimal(10, 2)
+  subtotalSubstituicao Decimal? @db.Decimal(10, 2)
+
+  createdAt       DateTime    @default(now())
+
+  @@index([devolucaoId])
+  @@index([itemVendaId])
+}
+
+model ImagemDevolucao {
+  id              String      @id @default(cuid())
+  devolucaoId     String
+  devolucao       Devolucao   @relation(fields: [devolucaoId], references: [id], onDelete: Cascade)
+
+  caminho         String      // File path on server (relative to uploads dir)
+  nomeOriginal    String      // Original filename
+  tamanho         Int         // File size in bytes
+  tipo            String      // MIME type
+
+  createdAt       DateTime    @default(now())
+
+  @@index([devolucaoId])
+}
+
+// ==========================================
+// SALES RECONCILIATION (MAPA 104)
+// ==========================================
+
+enum EstadoReconciliacao {
+  PENDENTE      // Uploaded but not reviewed
+  EM_REVISAO    // Being reviewed
+  APROVADA      // All matches confirmed
+  COM_PROBLEMAS // Has unresolved discrepancies
+}
+
+enum TipoDiscrepancia {
+  VALOR_DIFERENTE     // Amount doesn't match
+  CLIENTE_NAO_EXISTE  // Client in PDF not in system
+  VENDA_NAO_EXISTE    // Client exists but no sale recorded
+  VENDA_EXTRA         // Sale in system not in PDF
+}
+
+model ReconciliacaoMensal {
+  id              String              @id @default(cuid())
+  mes             Int
+  ano             Int
+
+  // PDF file info
+  nomeArquivo     String              // Original filename
+  caminhoArquivo  String              // Path to stored file
+
+  // Date range from PDF
+  dataInicio      DateTime?
+  dataFim         DateTime?
+
+  // Extracted totals from PDF
+  totalBrutoPdf     Decimal           @db.Decimal(10, 2)
+  totalDescontosPdf Decimal           @db.Decimal(10, 2)
+  totalLiquidoPdf   Decimal           @db.Decimal(10, 2)
+
+  // System totals for comparison
+  totalSistema      Decimal           @db.Decimal(10, 2)
+
+  // Difference
+  diferenca         Decimal           @db.Decimal(10, 2) @default(0)
+
+  // Summary
+  totalItens        Int               // Number of client lines in PDF
+  itensCorretos     Int               @default(0)
+  itensComProblema  Int               @default(0)
+
+  estado          EstadoReconciliacao @default(PENDENTE)
+  notas           String?             @db.Text
+
+  dataUpload      DateTime            @default(now())
+  dataRevisao     DateTime?
+
+  itens           ItemReconciliacao[]
+
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@unique([mes, ano])
+  @@index([estado])
+}
+
+model ItemReconciliacao {
+  id                String            @id @default(cuid())
+  reconciliacaoId   String
+  reconciliacao     ReconciliacaoMensal @relation(fields: [reconciliacaoId], references: [id], onDelete: Cascade)
+
+  // From PDF
+  codigoClientePdf  String            // Client code from PDF (e.g., "00036")
+  nomeClientePdf    String            // Client name from PDF
+  valorBrutoPdf     Decimal           @db.Decimal(10, 2)
+  descontoPdf       Decimal           @db.Decimal(10, 2)
+  valorLiquidoPdf   Decimal           @db.Decimal(10, 2)
+
+  // Matched from system (if found)
+  clienteId         String?
+  cliente           Cliente?          @relation(fields: [clienteId], references: [id])
+  vendaId           String?
+  venda             Venda?            @relation(fields: [vendaId], references: [id])
+  valorSistema      Decimal?          @db.Decimal(10, 2)  // Net value from system
+
+  // Comparison result
+  corresponde       Boolean           @default(false)
+  tipoDiscrepancia  TipoDiscrepancia?
+  diferencaValor    Decimal?          @db.Decimal(10, 2)  // PDF value - System value
+
+  // Resolution
+  resolvido         Boolean           @default(false)
+  notaResolucao     String?
+
+  createdAt         DateTime          @default(now())
+
+  @@index([reconciliacaoId])
+  @@index([clienteId])
+  @@index([corresponde])
 }

@@ -15,8 +15,25 @@ export async function GET(request: Request) {
       include: {
         cliente: true,
         itens: {
-          include: { produto: true },
+          include: {
+            produto: true,
+            devolucoes: true  // Include return items to calculate already returned quantities
+          },
           orderBy: { createdAt: "asc" }
+        },
+        devolucoes: {
+          include: {
+            itens: {
+              include: {
+                itemVenda: {
+                  include: { produto: true }
+                },
+                substituicao: true
+              }
+            },
+            imagens: true
+          },
+          orderBy: { dataRegisto: "desc" }
         }
       },
       orderBy: [{ ano: "desc" }, { mes: "desc" }]
@@ -104,13 +121,27 @@ export async function POST(request: Request) {
         })
       }
 
-      // Return venda with items and client
+      // Return venda with items, client, and devolucoes
       return tx.venda.findUnique({
         where: { id: newVenda.id },
         include: {
           cliente: true,
           itens: {
-            include: { produto: true }
+            include: {
+              produto: true,
+              devolucoes: true
+            }
+          },
+          devolucoes: {
+            include: {
+              itens: {
+                include: {
+                  itemVenda: { include: { produto: true } },
+                  substituicao: true
+                }
+              },
+              imagens: true
+            }
           }
         }
       })

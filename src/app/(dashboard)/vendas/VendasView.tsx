@@ -5,6 +5,15 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Swal from "sweetalert2"
 import { formatCurrency } from "@/lib/utils"
+import DevolucaoForm from "@/components/DevolucaoForm"
+import DevolucaoList from "@/components/DevolucaoList"
+import type { DevolucaoWithRelations } from "@/types/devolucao"
+import type { Produto } from "@prisma/client"
+
+type ItemDevolucaoRef = {
+  id: string
+  quantidade: unknown
+}
 
 type ItemVenda = {
   id: string
@@ -17,6 +26,7 @@ type ItemVenda = {
     nome: string
     codigo: string | null
   }
+  devolucoes?: ItemDevolucaoRef[]
 }
 
 type Venda = {
@@ -34,6 +44,7 @@ type Venda = {
     codigo: string | null
   }
   itens?: ItemVenda[]
+  devolucoes?: DevolucaoWithRelations[]
 }
 
 type Cliente = {
@@ -42,7 +53,7 @@ type Cliente = {
   codigo: string | null
 }
 
-type Produto = {
+type ProdutoItem = {
   id: string
   nome: string
   codigo: string | null
@@ -58,7 +69,7 @@ type FormItem = {
 type Props = {
   vendas: Venda[]
   clientes: Cliente[]
-  produtos: Produto[]
+  produtos: ProdutoItem[]
   objetivo: number | null
   total: number
   mes: number
@@ -76,6 +87,17 @@ function calcularIVA(totalComIVA: number) {
   return { semIVA, iva }
 }
 
+// Calculate net total for a venda (accounting for returns)
+function calcularTotalLiquido(venda: Venda): number {
+  const vendaTotal = Number(venda.total)
+  if (!venda.devolucoes || venda.devolucoes.length === 0) return vendaTotal
+
+  const totalDevolvido = venda.devolucoes.reduce((sum, d) => sum + Number(d.totalDevolvido), 0)
+  const totalSubstituido = venda.devolucoes.reduce((sum, d) => sum + Number(d.totalSubstituido), 0)
+
+  return vendaTotal - totalDevolvido + totalSubstituido
+}
+
 export default function VendasView({ vendas, clientes, produtos, objetivo, total, mes, ano, meses }: Props) {
   const router = useRouter()
   const [showForm, setShowForm] = useState(false)
@@ -85,11 +107,21 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
   const [formItems, setFormItems] = useState<FormItem[]>([])
   const [useItems, setUseItems] = useState(false)
 
-  const progresso = objetivo ? (total / objetivo) * 100 : 0
-  const falta = objetivo ? objetivo - total : 0
+  // Returns state
+  const [showDevolucaoForm, setShowDevolucaoForm] = useState(false)
+  const [selectedVendaForDevolucao, setSelectedVendaForDevolucao] = useState<Venda | null>(null)
+  const [expandedDevolucoes, setExpandedDevolucoes] = useState<string | null>(null)
+
+  // Calculate total liquido (accounting for returns)
+  const totalLiquido = useMemo(() => {
+    return vendas.reduce((sum, v) => sum + calcularTotalLiquido(v), 0)
+  }, [vendas])
+
+  const progresso = objetivo ? (totalLiquido / objetivo) * 100 : 0
+  const falta = objetivo ? objetivo - totalLiquido : 0
 
   // Calculate totals with VAT
-  const { semIVA: totalSemIVA, iva: totalIVA } = calcularIVA(total)
+  const { semIVA: totalSemIVA, iva: totalIVA } = calcularIVA(totalLiquido)
 
   // Calculate items total
   const itemsTotal = useMemo(() => {
@@ -102,7 +134,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
 
   // Get client's purchase history for upsell suggestions
   const clientPurchaseHistory = useMemo(() => {
-    if (!selectedClienteId) return { purchased: new Set<string>(), neverPurchased: [] as Produto[] }
+    if (!selectedClienteId) return { purchased: new Set<string>(), neverPurchased: [] as ProdutoItem[] }
 
     const purchasedProductIds = new Set<string>()
     vendas.forEach(v => {
@@ -276,6 +308,93 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
     setShowForm(true)
   }
 
+  // Returns handlers
+  function openDevolucaoForm(venda: Venda) {
+    setSelectedVendaForDevolucao(venda)
+    setShowDevolucaoForm(true)
+  }
+
+  function closeDevolucaoForm() {
+    setSelectedVendaForDevolucao(null)
+    setShowDevolucaoForm(false)
+  }
+
+  function handleDevolucaoSuccess() {
+    closeDevolucaoForm()
+    router.refresh()
+    Swal.fire({
+      icon: "success",
+      title: "Devolução registada",
+      text: "A devolução foi registada com sucesso.",
+      confirmButtonColor: "#b8860b",
+      timer: 2000
+    })
+  }
+
+  async function handleDevolucaoStatusChange(devolucaoId: string, estado: "PENDENTE" | "PROCESSADA" | "CANCELADA") {
+    try {
+      const res = await fetch(`/api/devolucoes/${devolucaoId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estado })
+      })
+      if (res.ok) {
+        router.refresh()
+      }
+    } catch (err) {
+      console.error("Error updating devolucao status:", err)
+    }
+  }
+
+  async function handleDevolucaoDelete(devolucaoId: string) {
+    const result = await Swal.fire({
+      title: "Eliminar devolução?",
+      text: "Tem a certeza que quer eliminar esta devolução?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#c41e3a",
+      cancelButtonColor: "#666666",
+      confirmButtonText: "Sim, eliminar",
+      cancelButtonText: "Cancelar"
+    })
+
+    if (!result.isConfirmed) return
+
+    try {
+      const res = await fetch(`/api/devolucoes/${devolucaoId}`, { method: "DELETE" })
+      if (res.ok) {
+        router.refresh()
+      }
+    } catch (err) {
+      console.error("Error deleting devolucao:", err)
+    }
+  }
+
+  // Prepare items for devolucao form
+  function prepareItensParaDevolucao(venda: Venda) {
+    if (!venda.itens) return []
+
+    return venda.itens.map(item => {
+      // Calculate already returned quantity
+      const quantidadeDevolvida = (item.devolucoes || []).reduce(
+        (sum, d) => sum + Number(d.quantidade),
+        0
+      )
+      const quantidadeDisponivel = Number(item.quantidade) - quantidadeDevolvida
+
+      return {
+        id: item.id,
+        produtoId: item.produtoId,
+        produto: item.produto,
+        quantidade: Number(item.quantidade),
+        precoUnit: Number(item.precoUnit),
+        subtotal: Number(item.subtotal),
+        quantidadeDevolvida,
+        quantidadeDisponivel
+      }
+    })
+  }
+
   const editingVenda = editingId ? vendas.find(v => v.id === editingId) : null
 
   return (
@@ -346,8 +465,8 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
             <p className="text-base md:text-2xl font-bold text-blue-700 dark:text-blue-300">{formatCurrency(totalIVA)} €</p>
           </div>
           <div className="bg-primary/5 rounded-xl p-3 md:p-4 text-center">
-            <p className="text-xs md:text-sm font-medium text-primary mb-1">c/IVA</p>
-            <p className="text-base md:text-2xl font-bold text-primary">{formatCurrency(total)} €</p>
+            <p className="text-xs md:text-sm font-medium text-primary mb-1">c/IVA Líquido</p>
+            <p className="text-base md:text-2xl font-bold text-primary">{formatCurrency(totalLiquido)} €</p>
           </div>
         </div>
 
@@ -678,71 +797,131 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
             <tbody className="divide-y divide-gray-100">
               {vendas.map((venda) => {
                 const vendaTotal = Number(venda.total)
-                const { semIVA, iva } = calcularIVA(vendaTotal)
+                const netTotal = calcularTotalLiquido(venda)
+                const { semIVA, iva } = calcularIVA(netTotal)
                 const hasItems = venda.itens && venda.itens.length > 0
+                const hasDevolucoes = venda.devolucoes && venda.devolucoes.length > 0
+                const hasItemsForReturn = hasItems && venda.itens!.some(item => {
+                  const devolvido = (item.devolucoes || []).reduce((sum, d) => sum + Number(d.quantidade), 0)
+                  return Number(item.quantidade) > devolvido
+                })
+                const isExpanded = expandedDevolucoes === venda.id
+
                 return (
-                  <tr key={venda.id} className="hover:bg-primary/5 transition">
-                    <td className="px-4 lg:px-6 py-4">
-                      <Link href={`/clientes/${venda.cliente.id}`} className="font-semibold text-foreground hover:text-primary transition">
-                        {venda.cliente.nome}
-                      </Link>
-                      {venda.cliente.codigo && (
-                        <span className="text-muted-foreground text-sm ml-2">({venda.cliente.codigo})</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4">
-                      {hasItems ? (
-                        <div className="space-y-1">
-                          {venda.itens!.map((item, idx) => (
-                            <div key={idx} className="text-sm">
-                              <span className="font-medium text-foreground">{item.produto.nome}</span>
-                              <span className="text-muted-foreground ml-1">
-                                ({Number(item.quantidade)} × {formatCurrency(Number(item.precoUnit))}€)
-                              </span>
-                            </div>
-                          ))}
+                  <>
+                    <tr key={venda.id} className={`hover:bg-primary/5 transition ${hasDevolucoes ? "bg-orange-50/30 dark:bg-orange-900/5" : ""}`}>
+                      <td className="px-4 lg:px-6 py-4">
+                        <Link href={`/clientes/${venda.cliente.id}`} className="font-semibold text-foreground hover:text-primary transition">
+                          {venda.cliente.nome}
+                        </Link>
+                        {venda.cliente.codigo && (
+                          <span className="text-muted-foreground text-sm ml-2">({venda.cliente.codigo})</span>
+                        )}
+                        {hasDevolucoes && (
+                          <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 rounded">
+                            {venda.devolucoes!.length} dev.
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4">
+                        {hasItems ? (
+                          <div className="space-y-1">
+                            {venda.itens!.map((item, idx) => (
+                              <div key={idx} className="text-sm">
+                                <span className="font-medium text-foreground">{item.produto.nome}</span>
+                                <span className="text-muted-foreground ml-1">
+                                  ({Number(item.quantidade)} × {formatCurrency(Number(item.precoUnit))}€)
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-muted-foreground">
+                            {venda.valor1 ? <div>V1: {formatCurrency(Number(venda.valor1))}€</div> : null}
+                            {venda.valor2 ? <div>V2: {formatCurrency(Number(venda.valor2))}€</div> : null}
+                            {!venda.valor1 && !venda.valor2 ? <span>-</span> : null}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-right text-muted-foreground font-medium hidden lg:table-cell">
+                        {formatCurrency(semIVA)} €
+                      </td>
+                      <td className="px-4 py-4 text-right text-blue-600 font-medium hidden lg:table-cell">
+                        {formatCurrency(iva)} €
+                      </td>
+                      <td className="px-4 py-4 text-right">
+                        {hasDevolucoes ? (
+                          <div>
+                            <span className="text-sm text-muted-foreground line-through">{formatCurrency(vendaTotal)} €</span>
+                            <br />
+                            <span className="font-bold text-primary">{formatCurrency(netTotal)} €</span>
+                          </div>
+                        ) : (
+                          <span className="font-bold text-primary">{formatCurrency(vendaTotal)} €</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-muted-foreground text-sm hidden xl:table-cell">{venda.notas || "-"}</td>
+                      <td className="px-4 py-4">
+                        <div className="flex justify-center gap-1">
+                          {/* Returns toggle button */}
+                          {hasDevolucoes && (
+                            <button
+                              onClick={() => setExpandedDevolucoes(isExpanded ? null : venda.id)}
+                              className={`p-2 rounded-lg transition ${isExpanded ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" : "text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/30"}`}
+                              title="Ver devoluções"
+                            >
+                              <svg className={`w-5 h-5 transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          )}
+                          {/* Add return button (only if sale has items and items available to return) */}
+                          {hasItemsForReturn && (
+                            <button
+                              onClick={() => openDevolucaoForm(venda)}
+                              className="p-2 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded-lg transition"
+                              title="Registar devolução"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" />
+                              </svg>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => startEdit(venda)}
+                            className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition"
+                            title="Editar"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleDelete(venda.id)}
+                            className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition"
+                            title="Eliminar"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
                         </div>
-                      ) : (
-                        <div className="text-sm text-muted-foreground">
-                          {venda.valor1 ? <div>V1: {formatCurrency(Number(venda.valor1))}€</div> : null}
-                          {venda.valor2 ? <div>V2: {formatCurrency(Number(venda.valor2))}€</div> : null}
-                          {!venda.valor1 && !venda.valor2 ? <span>-</span> : null}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 text-right text-muted-foreground font-medium hidden lg:table-cell">
-                      {formatCurrency(semIVA)} €
-                    </td>
-                    <td className="px-4 py-4 text-right text-blue-600 font-medium hidden lg:table-cell">
-                      {formatCurrency(iva)} €
-                    </td>
-                    <td className="px-4 py-4 text-right font-bold text-primary">
-                      {formatCurrency(vendaTotal)} €
-                    </td>
-                    <td className="px-4 py-4 text-muted-foreground text-sm hidden xl:table-cell">{venda.notas || "-"}</td>
-                    <td className="px-4 py-4">
-                      <div className="flex justify-center gap-1">
-                        <button
-                          onClick={() => startEdit(venda)}
-                          className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition"
-                          title="Editar"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => handleDelete(venda.id)}
-                          className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition"
-                          title="Eliminar"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                      </td>
+                    </tr>
+                    {/* Expanded devolucoes row */}
+                    {isExpanded && hasDevolucoes && (
+                      <tr key={`${venda.id}-devolucoes`}>
+                        <td colSpan={7} className="px-4 lg:px-6 py-4 bg-orange-50/50 dark:bg-orange-900/10">
+                          <DevolucaoList
+                            devolucoes={venda.devolucoes as DevolucaoWithRelations[]}
+                            vendaTotal={vendaTotal}
+                            onStatusChange={handleDevolucaoStatusChange}
+                            onDelete={handleDevolucaoDelete}
+                          />
+                        </td>
+                      </tr>
+                    )}
+                  </>
                 )
               })}
             </tbody>
@@ -758,7 +937,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                     {formatCurrency(totalIVA)} €
                   </td>
                   <td className="px-4 py-4 text-right font-bold text-primary text-lg">
-                    {formatCurrency(total)} €
+                    {formatCurrency(totalLiquido)} €
                   </td>
                   <td className="hidden xl:table-cell"></td>
                   <td></td>
@@ -783,53 +962,108 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
       <div className="md:hidden space-y-3">
         {vendas.map((venda) => {
           const vendaTotal = Number(venda.total)
+          const netTotal = calcularTotalLiquido(venda)
           const hasItems = venda.itens && venda.itens.length > 0
+          const hasDevolucoes = venda.devolucoes && venda.devolucoes.length > 0
+          const hasItemsForReturn = hasItems && venda.itens!.some(item => {
+            const devolvido = (item.devolucoes || []).reduce((sum, d) => sum + Number(d.quantidade), 0)
+            return Number(item.quantidade) > devolvido
+          })
+          const isExpanded = expandedDevolucoes === venda.id
+
           return (
-            <div key={venda.id} className="bg-card rounded-xl shadow-sm p-4 border border-border">
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex-1 min-w-0">
-                  <Link href={`/clientes/${venda.cliente.id}`} className="font-semibold text-foreground hover:text-primary transition block truncate">
-                    {venda.cliente.nome}
-                  </Link>
-                  {venda.cliente.codigo && (
-                    <span className="text-muted-foreground text-xs">({venda.cliente.codigo})</span>
-                  )}
+            <div key={venda.id} className={`bg-card rounded-xl shadow-sm border border-border overflow-hidden ${hasDevolucoes ? "border-orange-200 dark:border-orange-800" : ""}`}>
+              <div className="p-4">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1 min-w-0">
+                    <Link href={`/clientes/${venda.cliente.id}`} className="font-semibold text-foreground hover:text-primary transition block truncate">
+                      {venda.cliente.nome}
+                    </Link>
+                    {venda.cliente.codigo && (
+                      <span className="text-muted-foreground text-xs">({venda.cliente.codigo})</span>
+                    )}
+                    {hasDevolucoes && (
+                      <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 rounded">
+                        {venda.devolucoes!.length} dev.
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-1 ml-2">
+                    {hasDevolucoes && (
+                      <button
+                        onClick={() => setExpandedDevolucoes(isExpanded ? null : venda.id)}
+                        className={`p-2 rounded-lg transition ${isExpanded ? "bg-orange-100 text-orange-700" : "text-orange-600 hover:bg-orange-100"}`}
+                      >
+                        <svg className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                    )}
+                    {hasItemsForReturn && (
+                      <button
+                        onClick={() => openDevolucaoForm(venda)}
+                        className="p-2 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded-lg transition"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" />
+                        </svg>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => startEdit(venda)}
+                      className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleDelete(venda.id)}
+                      className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-1 ml-2">
-                  <button
-                    onClick={() => startEdit(venda)}
-                    className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => handleDelete(venda.id)}
-                    className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
+
+                {hasItems && (
+                  <div className="text-xs text-muted-foreground mb-3 space-y-1">
+                    {venda.itens!.slice(0, 2).map((item, idx) => (
+                      <div key={idx}>{item.produto.nome} ({Number(item.quantidade)}x)</div>
+                    ))}
+                    {venda.itens!.length > 2 && (
+                      <div className="text-primary">+{venda.itens!.length - 2} mais</div>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center pt-2 border-t border-border">
+                  <span className="text-sm text-muted-foreground">Total</span>
+                  {hasDevolucoes ? (
+                    <div className="text-right">
+                      <span className="text-sm text-muted-foreground line-through">{formatCurrency(vendaTotal)} €</span>
+                      <br />
+                      <span className="text-lg font-bold text-primary">{formatCurrency(netTotal)} €</span>
+                    </div>
+                  ) : (
+                    <span className="text-lg font-bold text-primary">{formatCurrency(vendaTotal)} €</span>
+                  )}
                 </div>
               </div>
 
-              {hasItems && (
-                <div className="text-xs text-muted-foreground mb-3 space-y-1">
-                  {venda.itens!.slice(0, 2).map((item, idx) => (
-                    <div key={idx}>{item.produto.nome} ({Number(item.quantidade)}x)</div>
-                  ))}
-                  {venda.itens!.length > 2 && (
-                    <div className="text-primary">+{venda.itens!.length - 2} mais</div>
-                  )}
+              {/* Expanded devolucoes section */}
+              {isExpanded && hasDevolucoes && (
+                <div className="px-4 pb-4 bg-orange-50/50 dark:bg-orange-900/10 border-t border-orange-200 dark:border-orange-800">
+                  <DevolucaoList
+                    devolucoes={venda.devolucoes as DevolucaoWithRelations[]}
+                    vendaTotal={vendaTotal}
+                    onStatusChange={handleDevolucaoStatusChange}
+                    onDelete={handleDevolucaoDelete}
+                  />
                 </div>
               )}
-
-              <div className="flex justify-between items-center pt-2 border-t border-border">
-                <span className="text-sm text-muted-foreground">Total</span>
-                <span className="text-lg font-bold text-primary">{formatCurrency(vendaTotal)} €</span>
-              </div>
             </div>
           )
         })}
@@ -844,6 +1078,22 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
           </div>
         )}
       </div>
+
+      {/* Devolucao Form Modal */}
+      {showDevolucaoForm && selectedVendaForDevolucao && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-card rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <DevolucaoForm
+              vendaId={selectedVendaForDevolucao.id}
+              clienteNome={selectedVendaForDevolucao.cliente.nome}
+              itensVenda={prepareItensParaDevolucao(selectedVendaForDevolucao)}
+              produtos={produtos as Produto[]}
+              onSuccess={handleDevolucaoSuccess}
+              onCancel={closeDevolucaoForm}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

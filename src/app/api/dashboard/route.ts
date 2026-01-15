@@ -16,6 +16,12 @@ export async function GET(request: Request) {
       vendasMes,
       vendasTrimestre,
       vendasAno,
+      // Returns for this month
+      devolucoesMes,
+      // Returns for this quarter
+      devolucoesTrimestre,
+      // Returns for this year
+      devolucoesAno,
       cobrancasPendentes,
       objetivoMensal,
       objetivoTrimestral,
@@ -45,6 +51,42 @@ export async function GET(request: Request) {
       prisma.venda.aggregate({
         where: { ano },
         _sum: { total: true }
+      }),
+      // Returns for this month (based on the original sale's month, not return date)
+      prisma.devolucao.aggregate({
+        where: {
+          venda: { mes, ano }
+        },
+        _sum: {
+          totalDevolvido: true,
+          totalSubstituido: true
+        }
+      }),
+      // Returns for this quarter
+      prisma.devolucao.aggregate({
+        where: {
+          venda: {
+            ano,
+            mes: {
+              gte: (trimestre - 1) * 3 + 1,
+              lte: trimestre * 3
+            }
+          }
+        },
+        _sum: {
+          totalDevolvido: true,
+          totalSubstituido: true
+        }
+      }),
+      // Returns for this year
+      prisma.devolucao.aggregate({
+        where: {
+          venda: { ano }
+        },
+        _sum: {
+          totalDevolvido: true,
+          totalSubstituido: true
+        }
       }),
       prisma.cobranca.aggregate({
         where: { pago: false },
@@ -95,9 +137,24 @@ export async function GET(request: Request) {
       })
     ])
 
-    const vendasMesTotal = Number(vendasMes._sum.total) || 0
-    const vendasTrimestreTotal = Number(vendasTrimestre._sum.total) || 0
-    const vendasAnoTotal = Number(vendasAno._sum.total) || 0
+    // Calculate gross totals
+    const vendasMesBruto = Number(vendasMes._sum.total) || 0
+    const vendasTrimestreBruto = Number(vendasTrimestre._sum.total) || 0
+    const vendasAnoBruto = Number(vendasAno._sum.total) || 0
+
+    // Calculate returns adjustments
+    const devolvidoMes = Number(devolucoesMes._sum.totalDevolvido) || 0
+    const substituidoMes = Number(devolucoesMes._sum.totalSubstituido) || 0
+    const devolvidoTrimestre = Number(devolucoesTrimestre._sum.totalDevolvido) || 0
+    const substituidoTrimestre = Number(devolucoesTrimestre._sum.totalSubstituido) || 0
+    const devolvidoAno = Number(devolucoesAno._sum.totalDevolvido) || 0
+    const substituidoAno = Number(devolucoesAno._sum.totalSubstituido) || 0
+
+    // Calculate net totals (Original - Returns + Substitutions)
+    const vendasMesTotal = vendasMesBruto - devolvidoMes + substituidoMes
+    const vendasTrimestreTotal = vendasTrimestreBruto - devolvidoTrimestre + substituidoTrimestre
+    const vendasAnoTotal = vendasAnoBruto - devolvidoAno + substituidoAno
+
     const pendentesTotal = Number(cobrancasPendentes._sum.valor) || 0
     const objMensal = Number(objetivoMensal?.objetivo) || 0
     const objTrimestral = Number(objetivoTrimestral?.objetivo) || 0
@@ -153,9 +210,30 @@ export async function GET(request: Request) {
     return NextResponse.json({
       totalClientes,
       clientesAtivos,
+      // Net sales (after returns)
       vendasMes: vendasMesTotal,
       vendasTrimestre: vendasTrimestreTotal,
       vendasAno: vendasAnoTotal,
+      // Gross sales (before returns) - for reference
+      vendasMesBruto,
+      vendasTrimestreBruto,
+      vendasAnoBruto,
+      // Returns breakdown
+      devolucoesMes: {
+        devolvido: devolvidoMes,
+        substituido: substituidoMes,
+        liquido: devolvidoMes - substituidoMes
+      },
+      devolucoesTrimestre: {
+        devolvido: devolvidoTrimestre,
+        substituido: substituidoTrimestre,
+        liquido: devolvidoTrimestre - substituidoTrimestre
+      },
+      devolucoesAno: {
+        devolvido: devolvidoAno,
+        substituido: substituidoAno,
+        liquido: devolvidoAno - substituidoAno
+      },
       pendentes: pendentesTotal,
       objetivoMensal: objMensal,
       objetivoTrimestral: objTrimestral,
