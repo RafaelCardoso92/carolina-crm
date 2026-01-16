@@ -8,27 +8,43 @@ export const authConfig: NextAuthConfig = {
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user
-      const isLoginPage = nextUrl.pathname === "/login"
-      const isApiRoute = nextUrl.pathname.startsWith("/api")
+      const pathname = nextUrl.pathname
       
       // Allow public files for PWA
-      const isPublicFile = [
+      const publicPaths = [
         "/manifest.json",
         "/sw.js",
         "/icon-192.png",
-        "/icon-512.png"
-      ].includes(nextUrl.pathname) || nextUrl.pathname.startsWith("/icons")
-
-      if (isApiRoute || isPublicFile) {
+        "/icon-512.png",
+        "/favicon.ico"
+      ]
+      
+      // Check if path is a public file
+      if (publicPaths.some(p => pathname === p || pathname.endsWith(p))) {
+        return true
+      }
+      
+      // Check if path starts with icons
+      if (pathname.startsWith("/icons")) {
+        return true
+      }
+      
+      // Allow API routes
+      if (pathname.startsWith("/api")) {
+        return true
+      }
+      
+      // Allow login page
+      if (pathname === "/login") {
+        if (isLoggedIn) {
+          return Response.redirect(new URL("/", nextUrl))
+        }
         return true
       }
 
-      if (!isLoggedIn && !isLoginPage) {
+      // All other routes require authentication
+      if (!isLoggedIn) {
         return false // Will redirect to login
-      }
-
-      if (isLoggedIn && isLoginPage) {
-        return Response.redirect(new URL("/", nextUrl))
       }
 
       return true
