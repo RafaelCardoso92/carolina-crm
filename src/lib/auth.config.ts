@@ -10,8 +10,16 @@ export const authConfig: NextAuthConfig = {
       const isLoggedIn = !!auth?.user
       const isLoginPage = nextUrl.pathname === "/login"
       const isApiRoute = nextUrl.pathname.startsWith("/api")
+      
+      // Allow public files for PWA
+      const isPublicFile = [
+        "/manifest.json",
+        "/sw.js",
+        "/icon-192.png",
+        "/icon-512.png"
+      ].includes(nextUrl.pathname) || nextUrl.pathname.startsWith("/icons")
 
-      if (isApiRoute) {
+      if (isApiRoute || isPublicFile) {
         return true
       }
 
