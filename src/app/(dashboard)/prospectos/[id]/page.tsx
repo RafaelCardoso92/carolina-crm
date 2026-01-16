@@ -1,3 +1,6 @@
+import WhatsAppButton from "@/components/WhatsAppButton"
+import CommunicationLog from "@/components/CommunicationLog"
+import SampleTracking from "@/components/SampleTracking"
 import { prisma } from "@/lib/prisma"
 import { notFound } from "next/navigation"
 import Link from "next/link"

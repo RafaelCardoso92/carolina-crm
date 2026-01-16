@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import Script from "next/script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,8 +16,25 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Carolina CRM - Gestão de Vendas",
-  description: "Sistema de gestão de clientes e vendas",
+  title: "Carolina CRM - Gestao de Vendas",
+  description: "Sistema de gestao de clientes e vendas",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Carolina CRM",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#d4a574",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
@@ -26,6 +44,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt" suppressHydrationWarning>
+      <head>
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
@@ -34,6 +57,19 @@ export default function RootLayout({
             {children}
           </ThemeProvider>
         </SessionProvider>
+        <Script
+          id="sw-register"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ("serviceWorker" in navigator) {
+                window.addEventListener("load", function() {
+                  navigator.serviceWorker.register("/sw.js");
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );

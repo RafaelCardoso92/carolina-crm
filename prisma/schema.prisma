@@ -16,6 +16,13 @@ model User {
 }
 
 model Cliente {
+  // New relations
+  comunicacoes  Comunicacao[]
+  segmento      ClienteSegmento?
+  amostras      Amostra[]
+  orcamentos    Orcamento[]
+  ultimoContacto DateTime?  // Last contact date for follow-up tracking
+
   id        String    @id @default(cuid())
   nome      String
   codigo    String?   @unique
@@ -31,6 +38,7 @@ model Cliente {
   cobrancas Cobranca[]
   itensReconciliacao ItemReconciliacao[]
   insights    ClienteInsight[]
+  tarefas     Tarefa[]
 }
 
 model Venda {
@@ -186,6 +194,10 @@ model PremioAnual {
 }
 
 model Produto {
+  // New relations
+  amostras        Amostra[]
+  itensOrcamento  ItemOrcamento[]
+
   id          String   @id @default(cuid())
   nome        String
   codigo      String?  @unique
@@ -232,6 +244,11 @@ enum EstadoPipeline {
 
 // Prospects/Leads model
 model Prospecto {
+  // New relations
+  comunicacoes  Comunicacao[]
+  amostras      Amostra[]
+  orcamentos    Orcamento[]
+
   id              String          @id @default(cuid())
 
   // Business Info
@@ -266,6 +283,7 @@ model Prospecto {
   ativo           Boolean         @default(true)
 
   tactics         ProspectoTactic[]
+  tarefas         Tarefa[]
 
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
@@ -480,4 +498,222 @@ model ProspectoTactic {
   updatedAt       DateTime  @updatedAt
 
   @@index([prospectoId])
+}
+
+// ==========================================
+// TASKS / REMINDERS
+// ==========================================
+
+enum PrioridadeTarefa {
+  BAIXA
+  MEDIA
+  ALTA
+  URGENTE
+}
+
+enum EstadoTarefa {
+  PENDENTE
+  EM_PROGRESSO
+  CONCLUIDA
+  CANCELADA
+}
+
+model Tarefa {
+  id              String            @id @default(cuid())
+  titulo          String
+  descricao       String?           @db.Text
+  
+  // Classification
+  tipo            String?           // e.g., "Telefonema", "Visita", "Email", "Reuniao"
+  prioridade      PrioridadeTarefa  @default(MEDIA)
+  estado          EstadoTarefa      @default(PENDENTE)
+  
+  // Dates
+  dataVencimento  DateTime?         // Due date
+  dataLembrete    DateTime?         // Reminder date
+  dataConclusao   DateTime?         // Completion date
+  
+  // Relations (optional - can be standalone or linked)
+  clienteId       String?
+  cliente         Cliente?          @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  prospectoId     String?
+  prospecto       Prospecto?        @relation(fields: [prospectoId], references: [id], onDelete: SetNull)
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  @@index([clienteId])
+  @@index([prospectoId])
+  @@index([estado])
+  @@index([dataVencimento])
+  @@index([prioridade])
+}
+
+// ==========================================
+// COMMUNICATION LOG
+// ==========================================
+
+enum TipoComunicacao {
+  TELEFONEMA
+  EMAIL
+  VISITA
+  WHATSAPP
+  REUNIAO
+  OUTRO
+}
+
+model Comunicacao {
+  id              String            @id @default(cuid())
+  
+  // Can be linked to either cliente or prospecto
+  clienteId       String?
+  cliente         Cliente?          @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  prospectoId     String?
+  prospecto       Prospecto?        @relation(fields: [prospectoId], references: [id], onDelete: Cascade)
+  
+  tipo            TipoComunicacao
+  assunto         String?
+  notas           String?           @db.Text
+  dataContacto    DateTime          @default(now())
+  duracao         Int?              // Duration in minutes (for calls/meetings)
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  @@index([clienteId])
+  @@index([prospectoId])
+  @@index([dataContacto])
+}
+
+// ==========================================
+// CUSTOMER SEGMENTATION
+// ==========================================
+
+enum SegmentoCliente {
+  A   // High value
+  B   // Medium value
+  C   // Low value
+}
+
+model ClienteSegmento {
+  id              String            @id @default(cuid())
+  clienteId       String            @unique
+  cliente         Cliente           @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  
+  segmento        SegmentoCliente   @default(C)
+  tags            String[]          // Array of tags
+  potencialMensal Decimal?          @db.Decimal(10, 2)  // Expected monthly potential
+  notas           String?           @db.Text
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  @@index([segmento])
+}
+
+// ==========================================
+// SAMPLE / GIFT TRACKING
+// ==========================================
+
+enum TipoAmostra {
+  AMOSTRA       // Sample
+  BRINDE        // Gift
+  DEMONSTRACAO  // Demo product
+}
+
+model Amostra {
+  id              String            @id @default(cuid())
+  
+  // Can be linked to either cliente or prospecto
+  clienteId       String?
+  cliente         Cliente?          @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  prospectoId     String?
+  prospecto       Prospecto?        @relation(fields: [prospectoId], references: [id], onDelete: Cascade)
+  
+  produtoId       String?
+  produto         Produto?          @relation(fields: [produtoId], references: [id])
+  
+  tipo            TipoAmostra       @default(AMOSTRA)
+  descricao       String?
+  quantidade      Int               @default(1)
+  valorEstimado   Decimal?          @db.Decimal(10, 2)
+  dataEntrega     DateTime          @default(now())
+  notas           String?           @db.Text
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  @@index([clienteId])
+  @@index([prospectoId])
+  @@index([produtoId])
+}
+
+// ==========================================
+// QUOTATIONS / PROPOSALS
+// ==========================================
+
+enum EstadoOrcamento {
+  RASCUNHO      // Draft
+  ENVIADO       // Sent to prospect
+  ACEITE        // Accepted
+  REJEITADO     // Rejected
+  EXPIRADO      // Expired
+}
+
+model Orcamento {
+  id              String            @id @default(cuid())
+  numero          String            @unique  // Quote number (e.g., ORC-2024-001)
+  
+  prospectoId     String?
+  prospecto       Prospecto?        @relation(fields: [prospectoId], references: [id], onDelete: SetNull)
+  clienteId       String?
+  cliente         Cliente?          @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  
+  // Quote details
+  titulo          String?
+  introducao      String?           @db.Text
+  condicoes       String?           @db.Text
+  validadeDias    Int               @default(30)
+  dataEmissao     DateTime          @default(now())
+  dataValidade    DateTime?
+  
+  // Totals
+  subtotal        Decimal           @db.Decimal(10, 2)
+  desconto        Decimal           @db.Decimal(10, 2) @default(0)
+  iva             Decimal           @db.Decimal(10, 2)
+  total           Decimal           @db.Decimal(10, 2)
+  
+  estado          EstadoOrcamento   @default(RASCUNHO)
+  notas           String?           @db.Text
+  
+  itens           ItemOrcamento[]
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  @@index([prospectoId])
+  @@index([clienteId])
+  @@index([estado])
+}
+
+model ItemOrcamento {
+  id              String            @id @default(cuid())
+  orcamentoId     String
+  orcamento       Orcamento         @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)
+  
+  produtoId       String?
+  produto         Produto?          @relation(fields: [produtoId], references: [id])
+  
+  descricao       String
+  quantidade      Decimal           @db.Decimal(10, 2)
+  precoUnit       Decimal           @db.Decimal(10, 2)
+  desconto        Decimal           @db.Decimal(10, 2) @default(0)
+  subtotal        Decimal           @db.Decimal(10, 2)
+  
+  ordem           Int               @default(0)
+  
+  createdAt       DateTime          @default(now())
+  
+  @@index([orcamentoId])
+  @@index([produtoId])
 }
