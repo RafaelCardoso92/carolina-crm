@@ -38,6 +38,7 @@ type Produto = {
   codigo: string | null
   categoria: string | null
   descricao: string | null
+  preco: number | null
   ativo: boolean
   _count?: { itensVenda: number }
 }
@@ -632,10 +633,10 @@ function ProdutosTable({
 }) {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [formData, setFormData] = useState({ nome: "", codigo: "", categoria: "", descricao: "" })
+  const [formData, setFormData] = useState({ nome: "", codigo: "", categoria: "", descricao: "", preco: "" })
 
   function resetForm() {
-    setFormData({ nome: "", codigo: "", categoria: "", descricao: "" })
+    setFormData({ nome: "", codigo: "", categoria: "", descricao: "", preco: "" })
     setEditingId(null)
     setShowForm(false)
   }
@@ -645,7 +646,8 @@ function ProdutosTable({
       nome: p.nome,
       codigo: p.codigo || "",
       categoria: p.categoria || "",
-      descricao: p.descricao || ""
+      descricao: p.descricao || "",
+      preco: p.preco ? String(p.preco) : ""
     })
     setEditingId(p.id)
     setShowForm(true)
@@ -796,6 +798,20 @@ function ProdutosTable({
                 placeholder="Descrição breve"
               />
             </div>
+            <div>
+              <label className="block text-sm font-bold text-foreground mb-1">Preço (c/IVA)</label>
+              <div className="relative">
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.preco}
+                  onChange={(e) => setFormData({ ...formData, preco: e.target.value })}
+                  className="w-full px-3 py-2 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none pr-8"
+                  placeholder="0.00"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">€</span>
+              </div>
+            </div>
           </div>
           <div className="flex gap-2">
             <button
@@ -846,6 +862,7 @@ function ProdutosTable({
                 <th className="pb-3">Nome</th>
                 <th className="pb-3">Código</th>
                 <th className="pb-3">Categoria</th>
+                <th className="pb-3">Preço</th>
                 <th className="pb-3 text-center">Vendas</th>
                 <th className="pb-3 text-center">Estado</th>
                 <th className="pb-3 w-24"></th>
@@ -865,6 +882,13 @@ function ProdutosTable({
                         {p.categoria}
                       </span>
                     ) : "-"}
+                  </td>
+                  <td className="py-3">
+                    {p.preco ? (
+                      <span className="font-medium text-success">{Number(p.preco).toFixed(2)} €</span>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
                   </td>
                   <td className="py-3 text-center">
                     <span className="px-2 py-1 bg-blue-500/10 text-blue-500 rounded-lg text-sm font-medium">
