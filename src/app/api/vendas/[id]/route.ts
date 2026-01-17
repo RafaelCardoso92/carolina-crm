@@ -47,37 +47,27 @@ export async function PUT(
       return NextResponse.json({ error: "Cliente e obrigatorio" }, { status: 400 })
     }
 
-    // Calculate total from items if provided, otherwise from valor1/valor2
-    let total = 0
+    // Calculate total from both manual values AND items
     const itens: ItemInput[] = data.itens || []
-
-    if (itens.length > 0) {
-      total = itens.reduce((sum: number, item: ItemInput) => {
-        return sum + (item.quantidade * item.precoUnit)
-      }, 0)
-    } else {
-      const valor1 = data.valor1 ? parseFloat(data.valor1) : 0
-      const valor2 = data.valor2 ? parseFloat(data.valor2) : 0
-      total = valor1 + valor2
-    }
+    
+    // Manual values
+    const valor1 = data.valor1 ? parseFloat(data.valor1) : 0
+    const valor2 = data.valor2 ? parseFloat(data.valor2) : 0
+    const manualTotal = valor1 + valor2
+    
+    // Items total
+    const itemsTotal = itens.reduce((sum: number, item: ItemInput) => {
+      return sum + (item.quantidade * item.precoUnit)
+    }, 0)
+    
+    // Combined total
+    const total = manualTotal + itemsTotal
 
     if (total <= 0) {
       return NextResponse.json({ error: "O total deve ser maior que zero" }, { status: 400 })
     }
 
-    // Check if another venda exists for this client/month/year
-    const existing = await prisma.venda.findFirst({
-      where: {
-        clienteId: data.clienteId,
-        mes: data.mes,
-        ano: data.ano,
-        NOT: { id }
-      }
-    })
-
-    if (existing) {
-      return NextResponse.json({ error: "Ja existe outra venda para este cliente neste mes" }, { status: 400 })
-    }
+    // No limit on sales per client per month - removed the check
 
     // Update venda with items in a transaction
     const venda = await prisma.$transaction(async (tx) => {
@@ -91,8 +81,8 @@ export async function PUT(
         where: { id },
         data: {
           clienteId: data.clienteId,
-          valor1: data.valor1 || null,
-          valor2: data.valor2 || null,
+          valor1: valor1 || null,
+          valor2: valor2 || null,
           total,
           notas: data.notas || null
         }

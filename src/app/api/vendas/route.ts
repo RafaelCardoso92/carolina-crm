@@ -17,7 +17,7 @@ export async function GET(request: Request) {
         itens: {
           include: {
             produto: true,
-            devolucoes: true  // Include return items to calculate already returned quantities
+            devolucoes: true
           },
           orderBy: { createdAt: "asc" }
         },
@@ -60,38 +60,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Cliente, mes e ano sao obrigatorios" }, { status: 400 })
     }
 
-    // Calculate total from items if provided, otherwise from valor1/valor2
-    let total = 0
+    // Calculate total from both manual values AND items
     const itens: ItemInput[] = data.itens || []
-
-    if (itens.length > 0) {
-      // Calculate total from items
-      total = itens.reduce((sum: number, item: ItemInput) => {
-        return sum + (item.quantidade * item.precoUnit)
-      }, 0)
-    } else {
-      // Backward compatibility: use valor1/valor2
-      const valor1 = data.valor1 ? parseFloat(data.valor1) : 0
-      const valor2 = data.valor2 ? parseFloat(data.valor2) : 0
-      total = valor1 + valor2
-    }
+    
+    // Manual values
+    const valor1 = data.valor1 ? parseFloat(data.valor1) : 0
+    const valor2 = data.valor2 ? parseFloat(data.valor2) : 0
+    const manualTotal = valor1 + valor2
+    
+    // Items total
+    const itemsTotal = itens.reduce((sum: number, item: ItemInput) => {
+      return sum + (item.quantidade * item.precoUnit)
+    }, 0)
+    
+    // Combined total
+    const total = manualTotal + itemsTotal
 
     if (total <= 0) {
       return NextResponse.json({ error: "O total deve ser maior que zero" }, { status: 400 })
     }
 
-    // Check if venda already exists for this client/month/year
-    const existing = await prisma.venda.findFirst({
-      where: {
-        clienteId: data.clienteId,
-        mes: data.mes,
-        ano: data.ano
-      }
-    })
-
-    if (existing) {
-      return NextResponse.json({ error: "Ja existe uma venda para este cliente neste mes" }, { status: 400 })
-    }
+    // No limit on sales per client per month - removed the check
 
     // Create venda with items in a transaction
     const venda = await prisma.$transaction(async (tx) => {
@@ -99,8 +88,8 @@ export async function POST(request: Request) {
       const newVenda = await tx.venda.create({
         data: {
           clienteId: data.clienteId,
-          valor1: data.valor1 || null,
-          valor2: data.valor2 || null,
+          valor1: valor1 || null,
+          valor2: valor2 || null,
           total,
           mes: data.mes,
           ano: data.ano,

@@ -7,6 +7,7 @@ import Swal from "sweetalert2"
 import { formatCurrency } from "@/lib/utils"
 import DevolucaoForm from "@/components/DevolucaoForm"
 import DevolucaoList from "@/components/DevolucaoList"
+import ProductPicker from "@/components/ProductPicker"
 import type { DevolucaoWithRelations } from "@/types/devolucao"
 import type { Produto } from "@prisma/client"
 
@@ -58,6 +59,7 @@ type ProdutoItem = {
   nome: string
   codigo: string | null
   categoria: string | null
+  preco: string | null
 }
 
 type FormItem = {
@@ -104,8 +106,28 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
   const [editingId, setEditingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [selectedClienteId, setSelectedClienteId] = useState<string>("")
+  const [clienteSearch, setClienteSearch] = useState("")
+  const [showClienteDropdown, setShowClienteDropdown] = useState(false)
   const [formItems, setFormItems] = useState<FormItem[]>([])
-  const [useItems, setUseItems] = useState(false)
+  const [manualValor1, setManualValor1] = useState("")
+  const [manualValor2, setManualValor2] = useState("")
+  // Removed: useItems state - now both modes work together
+
+  // Filter clients based on search
+  const filteredClientes = useMemo(() => {
+    if (!clienteSearch.trim()) return clientes
+    const search = clienteSearch.toLowerCase()
+    return clientes.filter(c => 
+      c.nome.toLowerCase().includes(search) ||
+      (c.codigo && c.codigo.toLowerCase().includes(search))
+    )
+  }, [clientes, clienteSearch])
+
+  // Get selected client name for display
+  const selectedClienteName = useMemo(() => {
+    const client = clientes.find(c => c.id === selectedClienteId)
+    return client ? `${client.nome}${client.codigo ? " (" + client.codigo + ")" : ""}` : ""
+  }, [clientes, selectedClienteId])
 
   // Returns state
   const [showDevolucaoForm, setShowDevolucaoForm] = useState(false)
@@ -132,6 +154,27 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
     }, 0)
   }, [formItems])
 
+  // Calculate combined total (manual + items)
+  const combinedTotal = useMemo(() => {
+    const v1 = parseFloat(manualValor1) || 0
+    const v2 = parseFloat(manualValor2) || 0
+    return v1 + v2 + itemsTotal
+  }, [manualValor1, manualValor2, itemsTotal])
+
+  // Get last prices from previous sales (fallback when product has no price)
+  const lastPrices = useMemo(() => {
+    const prices: Record<string, string> = {}
+    vendas.forEach(v => {
+      if (v.itens) {
+        v.itens.forEach(item => {
+          // Always use the most recent price (vendas are typically ordered)
+          prices[item.produtoId] = String(Number(item.precoUnit))
+        })
+      }
+    })
+    return prices
+  }, [vendas])
+
   // Get client's purchase history for upsell suggestions
   const clientPurchaseHistory = useMemo(() => {
     if (!selectedClienteId) return { purchased: new Set<string>(), neverPurchased: [] as ProdutoItem[] }
@@ -148,12 +191,24 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
     return { purchased: purchasedProductIds, neverPurchased }
   }, [selectedClienteId, vendas, produtos])
 
+  // Products with fallback prices for ProductPicker
+  const produtosWithPrices = useMemo(() => {
+    return produtos.map(p => ({
+      ...p,
+      preco: p.preco || lastPrices[p.id] || null
+    }))
+  }, [produtos, lastPrices])
+
   // Reset form when closing
   useEffect(() => {
     if (!showForm) {
       setSelectedClienteId("")
+      setClienteSearch("")
+      setShowClienteDropdown(false)
       setFormItems([])
-      setUseItems(false)
+      setManualValor1("")
+      setManualValor2("")
+      // Removed: setUseItems(false)
     }
   }, [showForm])
 
@@ -163,16 +218,20 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
       const venda = vendas.find(v => v.id === editingId)
       if (venda) {
         setSelectedClienteId(venda.clienteId)
+        setManualValor1(venda.valor1 ? String(venda.valor1) : "")
+        setManualValor2(venda.valor2 ? String(venda.valor2) : "")
         if (venda.itens && venda.itens.length > 0) {
-          setUseItems(true)
+          // Removed: setUseItems(true)
           setFormItems(venda.itens.map(item => ({
             produtoId: item.produtoId,
             quantidade: String(Number(item.quantidade)),
             precoUnit: String(Number(item.precoUnit))
           })))
         } else {
-          setUseItems(false)
+          // Removed: setUseItems(false)
           setFormItems([])
+      setManualValor1("")
+      setManualValor2("")
         }
       }
     }
@@ -186,9 +245,26 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
     setFormItems(formItems.filter((_, i) => i !== index))
   }
 
-  function updateItem(index: number, field: keyof FormItem, value: string) {
+  function updateItem(index: number, field: keyof FormItem, value: string, price?: string | null) {
     const updated = [...formItems]
     updated[index] = { ...updated[index], [field]: value }
+
+    // Auto-fill price when product is selected (only if price is empty)
+    if (field === "produtoId" && value && !updated[index].precoUnit) {
+      // Priority: 1. Price from ProductPicker, 2. Product's default price, 3. Last sale price
+      if (price) {
+        updated[index].precoUnit = price
+      } else {
+        const produto = produtos.find(p => p.id === value)
+        if (produto?.preco) {
+          updated[index].precoUnit = produto.preco
+        } else if (lastPrices[value]) {
+          // Use last sale price as fallback
+          updated[index].precoUnit = lastPrices[value]
+        }
+      }
+    }
+
     setFormItems(updated)
   }
 
@@ -214,18 +290,18 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
     const formData = new FormData(e.currentTarget)
 
     // Build items array if using items mode
-    const itens = useItems ? formItems
+    const itens = formItems
       .filter(item => item.produtoId && item.quantidade && item.precoUnit)
       .map(item => ({
         produtoId: item.produtoId,
         quantidade: parseFloat(item.quantidade),
         precoUnit: parseFloat(item.precoUnit)
-      })) : []
+      }))
 
     const data = {
       clienteId: formData.get("clienteId") as string,
-      valor1: !useItems && formData.get("valor1") ? parseFloat(formData.get("valor1") as string) : null,
-      valor2: !useItems && formData.get("valor2") ? parseFloat(formData.get("valor2") as string) : null,
+      valor1: formData.get("valor1") ? parseFloat(formData.get("valor1") as string) : null,
+      valor2: formData.get("valor2") ? parseFloat(formData.get("valor2") as string) : null,
       notas: formData.get("notas") as string || null,
       itens,
       mes,
@@ -519,49 +595,58 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                 <label className="block text-sm font-bold text-foreground mb-2">
                   Cliente *
                 </label>
-                <select
-                  name="clienteId"
-                  required
-                  value={selectedClienteId}
-                  onChange={(e) => setSelectedClienteId(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
-                >
-                  <option value="">Escolher cliente...</option>
-                  {clientes.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nome} {c.codigo ? `(${c.codigo})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Mode Toggle */}
-              <div className="md:col-span-2">
-                <div className="flex items-center gap-4 p-3 bg-secondary rounded-xl">
-                  <span className="text-sm font-semibold text-foreground">Modo de entrada:</span>
-                  <label className="flex items-center gap-2 cursor-pointer">
+                <div className="relative">
+                  <input type="hidden" name="clienteId" value={selectedClienteId} required />
+                  <div className="relative">
                     <input
-                      type="radio"
-                      checked={!useItems}
-                      onChange={() => setUseItems(false)}
-                      className="w-4 h-4 text-primary"
+                      type="text"
+                      value={showClienteDropdown ? clienteSearch : selectedClienteName}
+                      onChange={(e) => {
+                        setClienteSearch(e.target.value)
+                        setShowClienteDropdown(true)
+                      }}
+                      onFocus={() => {
+                        setShowClienteDropdown(true)
+                        setClienteSearch("")
+                      }}
+                      onBlur={() => {
+                        setTimeout(() => setShowClienteDropdown(false), 200)
+                      }}
+                      placeholder="Pesquisar cliente..."
+                      className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card pr-10"
                     />
-                    <span className="text-sm text-foreground">Valores manuais</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      checked={useItems}
-                      onChange={() => { setUseItems(true); if (formItems.length === 0) addItem(); }}
-                      className="w-4 h-4 text-primary"
-                    />
-                    <span className="text-sm text-foreground">Por produtos</span>
-                  </label>
+                    <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  {showClienteDropdown && (
+                    <div className="absolute z-50 w-full mt-1 bg-card border-2 border-border rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                      {filteredClientes.length === 0 ? (
+                        <div className="px-4 py-3 text-muted-foreground text-sm">Nenhum cliente encontrado</div>
+                      ) : (
+                        filteredClientes.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedClienteId(c.id)
+                              setClienteSearch("")
+                              setShowClienteDropdown(false)
+                            }}
+                            className={`w-full px-4 py-3 text-left hover:bg-primary/10 transition flex items-center justify-between ${selectedClienteId === c.id ? "bg-primary/10" : ""}`}
+                          >
+                            <span className="font-medium text-foreground">{c.nome}</span>
+                            {c.codigo && <span className="text-muted-foreground text-sm">({c.codigo})</span>}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Manual Values Mode */}
-              {!useItems && (
+              {true && (
                 <>
                   <div>
                     <label className="block text-sm font-bold text-foreground mb-2">
@@ -572,7 +657,8 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                         name="valor1"
                         type="number"
                         step="0.01"
-                        defaultValue={editingVenda?.valor1 ? String(editingVenda.valor1) : ""}
+                        value={manualValor1}
+                        onChange={(e) => setManualValor1(e.target.value)}
                         className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium pr-10"
                         placeholder="0.00"
                       />
@@ -588,7 +674,8 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                         name="valor2"
                         type="number"
                         step="0.01"
-                        defaultValue={editingVenda?.valor2 ? String(editingVenda.valor2) : ""}
+                        value={manualValor2}
+                        onChange={(e) => setManualValor2(e.target.value)}
                         className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium pr-10"
                         placeholder="0.00"
                       />
@@ -599,7 +686,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
               )}
 
               {/* Products Mode */}
-              {useItems && (
+              {true && (
                 <div className="md:col-span-2 space-y-4">
                   <div className="flex items-center justify-between">
                     <label className="block text-sm font-bold text-foreground">
@@ -636,24 +723,18 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                         return (
                           <div key={index} className="grid grid-cols-12 gap-2 items-center">
                             <div className="col-span-5">
-                              <select
-                                value={item.produtoId}
-                                onChange={(e) => updateItem(index, "produtoId", e.target.value)}
-                                className="w-full px-3 py-2 border-2 border-border rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-card"
-                              >
-                                <option value="">Selecionar...</option>
-                                {produtos.map((p) => (
-                                  <option key={p.id} value={p.id}>
-                                    {p.nome} {p.codigo ? `(${p.codigo})` : ""}
-                                  </option>
-                                ))}
-                              </select>
+                              <ProductPicker
+                                products={produtosWithPrices}
+                                selectedProductId={item.produtoId}
+                                onSelect={(productId, price) => updateItem(index, "produtoId", productId, price)}
+                                placeholder="Procurar produto..."
+                              />
                             </div>
                             <div className="col-span-2">
                               <input
                                 type="number"
-                                step="0.01"
-                                min="0"
+                                step="1"
+                                min="1"
                                 value={item.quantidade}
                                 onChange={(e) => updateItem(index, "quantidade", e.target.value)}
                                 className="w-full px-3 py-2 border-2 border-border rounded-lg text-sm text-center focus:ring-2 focus:ring-primary focus:border-primary outline-none"
@@ -693,7 +774,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                       <div className="flex justify-end pt-2 border-t border-border">
                         <div className="text-right">
                           <span className="text-sm text-muted-foreground">Total: </span>
-                          <span className="text-lg font-bold text-primary">{formatCurrency(itemsTotal)} €</span>
+                          <span className="text-lg font-bold text-primary">{formatCurrency(combinedTotal)} €</span>
                         </div>
                       </div>
                     </div>
@@ -715,7 +796,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                             key={p.id}
                             type="button"
                             onClick={() => {
-                              setFormItems([...formItems, { produtoId: p.id, quantidade: "1", precoUnit: "" }])
+                              setFormItems([...formItems, { produtoId: p.id, quantidade: "1", precoUnit: p.preco || "" }])
                             }}
                             className="px-3 py-1 bg-card border border-amber-300 rounded-full text-xs font-medium text-amber-800 hover:bg-amber-100 transition"
                           >

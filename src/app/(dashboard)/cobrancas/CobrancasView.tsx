@@ -280,6 +280,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
   }
 
   function startEdit(cobranca: Cobranca) {
+    setValorTotal(String(cobranca.valor))
     setEditingId(cobranca.id)
     setShowForm(true)
     // Reset installment fields for edit mode (not editable for existing)
@@ -433,7 +434,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
             </svg>
             {editingId ? "Editar Cobranca" : "Nova Cobranca"}
           </h3>
-          <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
+          <form key={editingId || "new"} onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-sm font-bold text-foreground mb-2">Cliente *</label>
@@ -469,7 +470,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                     type="number"
                     step="0.01"
                     required
-                    value={editingCobranca?.valor ? String(editingCobranca.valor) : valorTotal}
+                    value={valorTotal}
                     onChange={(e) => setValorTotal(e.target.value)}
                     className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium pr-10 bg-card"
                     placeholder="0.00"
