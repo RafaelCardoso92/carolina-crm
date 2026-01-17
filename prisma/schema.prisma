@@ -204,6 +204,7 @@ model Produto {
   categoria   String?
   descricao   String?
   ativo       Boolean  @default(true)
+  preco       Decimal? @db.Decimal(10, 2)  // Default price (with VAT)
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -716,4 +717,85 @@ model ItemOrcamento {
   
   @@index([orcamentoId])
   @@index([produtoId])
+}
+
+// ==========================================
+// NOTIFICATIONS SYSTEM
+// ==========================================
+
+enum TipoNotificacao {
+  PAGAMENTO_ATRASADO
+  TAREFA_VENCIDA
+  TAREFA_HOJE
+  LEAD_PARADO
+  CLIENTE_SEM_CONTACTO
+  FORECAST_ALERT
+  HEALTH_ALERT
+}
+
+model Notificacao {
+  id              String            @id @default(cuid())
+  tipo            TipoNotificacao
+  titulo          String
+  mensagem        String
+  lida            Boolean           @default(false)
+  
+  // Optional relations
+  clienteId       String?
+  prospectoId     String?
+  tarefaId        String?
+  parcelaId       String?
+  
+  createdAt       DateTime          @default(now())
+  readAt          DateTime?
+  
+  @@index([lida])
+  @@index([createdAt])
+}
+
+// ==========================================
+// CUSTOMER HEALTH SCORES
+// ==========================================
+
+model ClienteHealth {
+  id              String    @id @default(cuid())
+  clienteId       String    @unique
+  
+  // Scores (0-100)
+  scoreGeral      Int       @default(50)
+  scorePagamento  Int       @default(50)  // Based on payment history
+  scoreEngajamento Int      @default(50)  // Based on communication frequency
+  scoreCompras    Int       @default(50)  // Based on purchase frequency/recency
+  
+  // Risk indicators
+  risco           String    @default("MEDIO")  // BAIXO, MEDIO, ALTO
+  tendencia       String    @default("ESTAVEL") // SUBINDO, ESTAVEL, DESCENDO
+  
+  ultimaAtualizacao DateTime @default(now())
+  
+  @@index([scoreGeral])
+  @@index([risco])
+}
+
+// ==========================================
+// SALES FORECAST
+// ==========================================
+
+model PrevisaoVendas {
+  id              String    @id @default(cuid())
+  mes             Int
+  ano             Int
+  
+  // Forecasted values
+  previsaoBase    Decimal   @db.Decimal(10, 2)  // Based on historical average
+  previsaoPipeline Decimal  @db.Decimal(10, 2)  // Based on pipeline
+  previsaoTotal   Decimal   @db.Decimal(10, 2)  // Combined forecast
+  
+  // Confidence
+  confianca       Int       @default(70)  // 0-100%
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@unique([mes, ano])
 }

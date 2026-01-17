@@ -52,6 +52,7 @@ export async function POST(request: Request) {
         codigo: data.codigo || null,
         categoria: data.categoria || null,
         descricao: data.descricao || null,
+        preco: data.preco ? parseFloat(data.preco) : null,
         ativo: data.ativo !== false
       }
     })

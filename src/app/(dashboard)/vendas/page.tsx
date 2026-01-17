@@ -15,8 +15,27 @@ async function getVendasData(mes: number, ano: number) {
       include: {
         cliente: true,
         itens: {
-          include: { produto: true },
+          include: {
+            produto: true,
+            devolucoes: true
+          },
           orderBy: { createdAt: "asc" }
+        },
+        devolucoes: {
+          include: {
+            venda: {
+              include: { cliente: true }
+            },
+            imagens: true,
+            itens: {
+              include: {
+                itemVenda: {
+                  include: { produto: true }
+                },
+                substituicao: true
+              }
+            }
+          }
         }
       },
       orderBy: { cliente: { nome: "asc" } }
@@ -30,6 +49,13 @@ async function getVendasData(mes: number, ano: number) {
     }),
     prisma.produto.findMany({
       where: { ativo: true },
+      select: {
+        id: true,
+        nome: true,
+        codigo: true,
+        categoria: true,
+        preco: true
+      },
       orderBy: { nome: "asc" }
     })
   ])
@@ -61,7 +87,10 @@ export default async function VendasPage({
       <VendasView
         vendas={data.vendas}
         clientes={data.clientes}
-        produtos={data.produtos}
+        produtos={data.produtos.map(p => ({
+          ...p,
+          preco: p.preco ? String(p.preco) : null
+        }))}
         objetivo={data.objetivo ? Number(data.objetivo.objetivo) : null}
         total={data.total}
         mes={mes}

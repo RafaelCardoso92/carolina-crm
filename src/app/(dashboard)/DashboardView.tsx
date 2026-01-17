@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react"
 import SalesCharts from "./SalesCharts"
 import { TarefasWidget, FollowUpWidget } from "@/components/DashboardWidgets"
+import { NotificationsWidget, ForecastWidget, HealthScoresWidget, QuickStatsWidget } from "@/components/EnhancedDashboardWidgets"
 import { formatCurrency } from "@/lib/utils"
+import HelpTooltip from "@/components/HelpTooltip"
 
 const meses = [
   "", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -66,6 +68,8 @@ export default function DashboardView() {
 
   useEffect(() => {
     fetchData()
+    // Generate follow-up tasks automatically
+    fetch("/api/auto-followup", { method: "POST" })
   }, [ano, mes])
 
   async function fetchData() {
@@ -155,7 +159,7 @@ export default function DashboardView() {
                   <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <span className="font-medium">Relatório Completo</span>
+                  <span className="font-medium">Relatorio Completo</span>
                 </button>
                 <button
                   onClick={() => exportToExcel("detalhado")}
@@ -214,7 +218,7 @@ export default function DashboardView() {
           </div>
 
           <div className="bg-card rounded-xl shadow-sm p-2 flex items-center gap-2 border border-border flex-1 sm:flex-none">
-            <label className="text-xs sm:text-sm font-medium text-muted-foreground pl-2">Mês:</label>
+            <label className="text-xs sm:text-sm font-medium text-muted-foreground pl-2">Mes:</label>
             <select
               value={mes}
               onChange={(e) => setMes(parseInt(e.target.value))}
@@ -252,7 +256,7 @@ export default function DashboardView() {
                   <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <span className="font-medium">Relatório Completo</span>
+                  <span className="font-medium">Relatorio Completo</span>
                 </button>
                 <button
                   onClick={() => exportToExcel("detalhado")}
@@ -287,6 +291,11 @@ export default function DashboardView() {
         </div>
       </div>
 
+      {/* Quick Stats Row - NEW */}
+      <div className="mb-8">
+        <QuickStatsWidget />
+      </div>
+
       {/* Main Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard
@@ -313,10 +322,17 @@ export default function DashboardView() {
         <StatCard
           title="A Receber"
           value={`${formatCurrency(data.pendentes)} €`}
-          subtitle="Cobranças pendentes"
+          subtitle="Cobrancas pendentes"
           color="orange"
           icon="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
         />
+      </div>
+
+      {/* NEW: Notifications, Forecast, and Health Widgets */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <NotificationsWidget />
+        <ForecastWidget />
+        <HealthScoresWidget />
       </div>
 
       {/* Tasks and Follow-up Widgets */}
@@ -347,7 +363,7 @@ export default function DashboardView() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
-                Ver Cobranças
+                Ver Cobrancas
               </a>
             </div>
           </div>
@@ -394,7 +410,7 @@ export default function DashboardView() {
                     }`}>
                       {vencimento.toLocaleDateString("pt-PT")}
                       <span className="ml-1">
-                        ({diasRestantes === 0 ? "Hoje" : diasRestantes === 1 ? "Amanhã" : `${diasRestantes} dias`})
+                        ({diasRestantes === 0 ? "Hoje" : diasRestantes === 1 ? "Amanha" : `${diasRestantes} dias`})
                       </span>
                     </p>
                   </div>
@@ -406,7 +422,7 @@ export default function DashboardView() {
             href="/cobrancas"
             className="mt-4 inline-flex items-center gap-2 text-primary hover:text-primary-hover font-medium text-sm tracking-wide"
           >
-            Ver todas as cobranças
+            Ver todas as cobrancas
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
@@ -519,14 +535,14 @@ export default function DashboardView() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            Prémio Mensal - {meses[data.currentMonth]}
+            Premio Mensal - {meses[data.currentMonth]}
           </h3>
 
           {data.premioMensalAtual ? (
             <div className="bg-green-50 rounded-xl p-4 mb-4 border border-green-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-green-700">Prémio Garantido!</p>
+                  <p className="text-sm font-semibold text-green-700">Premio Garantido!</p>
                   <p className="text-xs text-green-600">Vendas: {formatCurrency(data.vendasMes)} € (min: {formatCurrency(data.premioMensalAtual.minimo)} €)</p>
                 </div>
                 <div className="text-right">
@@ -536,7 +552,7 @@ export default function DashboardView() {
             </div>
           ) : (
             <div className="bg-secondary rounded-xl p-4 mb-4 border border-border">
-              <p className="text-sm text-muted-foreground">Ainda sem prémio este mes</p>
+              <p className="text-sm text-muted-foreground">Ainda sem premio este mes</p>
               <p className="text-xs text-muted-foreground">Vendas: {formatCurrency(data.vendasMes)} €</p>
             </div>
           )}
@@ -545,7 +561,7 @@ export default function DashboardView() {
             <div className="bg-primary/5 rounded-lg p-4 border border-primary/30">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <p className="text-sm font-medium text-primary">Próximo Prémio</p>
+                  <p className="text-sm font-medium text-primary">Proximo Premio</p>
                   <p className="text-xs text-primary/70">Objetivo: {formatCurrency(data.proximoPremioMensal.minimo)} €</p>
                 </div>
                 <div className="text-right">
@@ -564,7 +580,7 @@ export default function DashboardView() {
             </div>
           ) : data.premioMensalAtual ? (
             <div className="bg-success/10 rounded-lg p-4 border border-success/30 text-center">
-              <p className="text-sm font-bold text-success">Parabéns! Prémio máximo atingido!</p>
+              <p className="text-sm font-bold text-success">Parabens! Premio maximo atingido!</p>
             </div>
           ) : null}
         </div>
@@ -577,14 +593,14 @@ export default function DashboardView() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            Prémio Trimestral - {data.currentTrimestre}º Trimestre {data.currentYear}
+            Premio Trimestral - {data.currentTrimestre}º Trimestre {data.currentYear}
           </h3>
 
           {data.premioTrimestralAtual ? (
             <div className="bg-green-50 rounded-xl p-4 mb-4 border border-green-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-green-700">Prémio Garantido!</p>
+                  <p className="text-sm font-semibold text-green-700">Premio Garantido!</p>
                   <p className="text-xs text-green-600">Vendas: {formatCurrency(data.vendasTrimestre)} € (min: {formatCurrency(data.premioTrimestralAtual.minimo)} €)</p>
                 </div>
                 <div className="text-right">
@@ -594,7 +610,7 @@ export default function DashboardView() {
             </div>
           ) : (
             <div className="bg-secondary rounded-xl p-4 mb-4 border border-border">
-              <p className="text-sm text-muted-foreground">Ainda sem prémio este trimestre</p>
+              <p className="text-sm text-muted-foreground">Ainda sem premio este trimestre</p>
               <p className="text-xs text-muted-foreground">Vendas: {formatCurrency(data.vendasTrimestre)} €</p>
             </div>
           )}
@@ -603,7 +619,7 @@ export default function DashboardView() {
             <div className="bg-accent/5 rounded-lg p-4 border border-accent/30">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <p className="text-sm font-medium text-accent">Próximo Prémio</p>
+                  <p className="text-sm font-medium text-accent">Proximo Premio</p>
                   <p className="text-xs text-accent/70">Objetivo: {formatCurrency(data.proximoPremioTrimestral.minimo)} €</p>
                 </div>
                 <div className="text-right">
@@ -622,7 +638,7 @@ export default function DashboardView() {
             </div>
           ) : data.premioTrimestralAtual ? (
             <div className="bg-success/10 rounded-lg p-4 border border-success/30 text-center">
-              <p className="text-sm font-bold text-success">Parabéns! Prémio máximo atingido!</p>
+              <p className="text-sm font-bold text-success">Parabens! Premio maximo atingido!</p>
             </div>
           ) : null}
         </div>
@@ -658,7 +674,7 @@ export default function DashboardView() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </div>
-          Gráficos e Tendências
+          Graficos e Tendencias
         </h2>
         <SalesCharts ano={ano} />
       </div>

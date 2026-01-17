@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { writeFile, mkdir } from "fs/promises"
 import { join } from "path"
 import { randomUUID } from "crypto"
-import pdfParse from "pdf-parse"
+import { PDFParse } from "pdf-parse"
 import type {
   ReconciliacaoResponse,
   ReconciliacaoListResponse,
@@ -217,8 +217,10 @@ export async function POST(request: NextRequest) {
     await writeFile(fullPath, buffer)
 
     // Parse PDF using pdf-parse
-    const pdfData = await pdfParse(buffer)
-    const text = pdfData.text
+    const parser = new PDFParse({ data: buffer })
+    const textResult = await parser.getText()
+    const text = textResult.text
+    await parser.destroy()
 
     const parsed = parseMapaPdfText(text)
 

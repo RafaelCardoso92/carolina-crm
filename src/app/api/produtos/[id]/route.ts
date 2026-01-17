@@ -71,6 +71,7 @@ export async function PUT(
         codigo: data.codigo || null,
         categoria: data.categoria || null,
         descricao: data.descricao || null,
+        preco: data.preco !== undefined ? (data.preco ? parseFloat(data.preco) : null) : undefined,
         ativo: data.ativo !== false
       }
     })

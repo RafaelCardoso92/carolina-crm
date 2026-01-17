@@ -16,13 +16,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Carolina CRM - Gestao de Vendas",
-  description: "Sistema de gestao de clientes e vendas",
-  manifest: "/manifest.json",
+  title: "BABOR Carolina CRM",
+  description: "Sistema de gestao de clientes e vendas BABOR",
+  manifest: "/api/pwa/manifest",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/icon-192.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Carolina CRM",
+    title: "BABOR CRM",
   },
   formatDetection: {
     telephone: false,
@@ -30,7 +34,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#d4a574",
+  themeColor: "#005290",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -45,6 +49,7 @@ export default function RootLayout({
   return (
     <html lang="pt" suppressHydrationWarning>
       <head>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
