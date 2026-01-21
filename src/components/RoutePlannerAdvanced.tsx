@@ -95,6 +95,17 @@ const defaultCenter = { lat: 38.7223, lng: -9.1393 }
 const DEFAULT_CONSUMO_MEDIO = 7.5 // L/100km for GPL
 const DEFAULT_PRECO_LITRO = 0.75 // €/L for GPL (2024 average)
 
+// Portuguese toll cost per km (average for autoestradas)
+const TOLL_COST_PER_KM = 0.085 // €/km average
+
+// Portuguese districts for filtering
+const PORTUGUESE_DISTRICTS = [
+  "Aveiro", "Beja", "Braga", "Bragança", "Castelo Branco", "Coimbra",
+  "Évora", "Faro", "Guarda", "Leiria", "Lisboa", "Portalegre",
+  "Porto", "Santarém", "Setúbal", "Viana do Castelo", "Vila Real", "Viseu",
+  "Açores", "Madeira"
+]
+
 const PIPELINE_STATES = [
   { value: "NOVO", label: "Novo", color: "bg-blue-100 text-blue-800" },
   { value: "CONTACTADO", label: "Contactado", color: "bg-cyan-100 text-cyan-800" },
@@ -113,6 +124,7 @@ export default function RoutePlannerAdvanced() {
   const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([])
 
   // Filter state
+  const [filterDistrict, setFilterDistrict] = useState<string>("")
   const [filterCity, setFilterCity] = useState<string>("")
   const [filterType, setFilterType] = useState<"all" | "cliente" | "prospecto">("all")
   const [filterStates, setFilterStates] = useState<string[]>([])
@@ -188,6 +200,47 @@ export default function RoutePlannerAdvanced() {
     return Math.round((distanceKm / 100) * consumo * preco * 100) / 100
   }, [])
 
+  // Estimate toll cost based on route (checks for A-roads in Portugal)
+  const estimateTollCost = useCallback((result: google.maps.DirectionsResult) => {
+    const route = result.routes[0]
+    if (!route) return { cost: null, count: null }
+
+    let tollDistance = 0
+    let tollCount = 0
+    const tollRoads = new Set<string>()
+
+    // Analyze each step of each leg
+    route.legs.forEach(leg => {
+      leg.steps.forEach(step => {
+        const instructions = step.instructions?.toLowerCase() || ""
+        // Check for Portuguese toll roads (A-roads: A1, A2, etc.)
+        const tollMatches = instructions.match(/\b(a-?\d+|ic\d+|ip\d+|vci|crep|cril|crel)\b/gi)
+        if (tollMatches) {
+          tollMatches.forEach(road => {
+            const normalized = road.toUpperCase().replace("-", "")
+            // A-roads are tolled, some ICs and IPs too
+            if (normalized.startsWith("A") || normalized === "VCI" || normalized === "CREP" || normalized === "CRIL" || normalized === "CREL") {
+              if (!tollRoads.has(normalized)) {
+                tollRoads.add(normalized)
+                tollCount++
+              }
+              tollDistance += step.distance?.value || 0
+            }
+          })
+        }
+      })
+    })
+
+    // If we detected toll roads, estimate cost
+    if (tollDistance > 0) {
+      const tollKm = tollDistance / 1000
+      const estimatedCost = Math.round(tollKm * TOLL_COST_PER_KM * 100) / 100
+      return { cost: estimatedCost, count: tollCount }
+    }
+
+    return { cost: null, count: null }
+  }, [])
+
   // Calculate total parking cost
   const totalParkingCost = useMemo(() => {
     return parkingStops.reduce((sum, p) => sum + (p.custoEstimado || 0), 0)
@@ -245,6 +298,41 @@ export default function RoutePlannerAdvanced() {
     }
     fetchSavedRoutes()
   }, [selectedDate])
+
+  // Get districts from cities
+  const availableDistricts = useMemo(() => {
+    const districts = new Set<string>()
+    cities.forEach(city => {
+      // Try to match city with a district
+      const normalizedCity = city.toLowerCase()
+      PORTUGUESE_DISTRICTS.forEach(district => {
+        if (normalizedCity.includes(district.toLowerCase()) ||
+            district.toLowerCase().includes(normalizedCity.split(" ")[0])) {
+          districts.add(district)
+        }
+      })
+    })
+    // Also check locations for cidade that might match districts
+    locations.forEach(loc => {
+      if (loc.cidade) {
+        const normalizedCity = loc.cidade.toLowerCase()
+        PORTUGUESE_DISTRICTS.forEach(district => {
+          if (normalizedCity.includes(district.toLowerCase())) {
+            districts.add(district)
+          }
+        })
+      }
+    })
+    return Array.from(districts).sort()
+  }, [cities, locations])
+
+  // Filter cities by selected district
+  const filteredCities = useMemo(() => {
+    if (!filterDistrict) return cities
+    return cities.filter(city =>
+      city.toLowerCase().includes(filterDistrict.toLowerCase())
+    )
+  }, [cities, filterDistrict])
 
   // Get current GPS location
   const getCurrentLocation = () => {
@@ -374,7 +462,15 @@ export default function RoutePlannerAdvanced() {
   const filteredLocations = useMemo(() => {
     return locations.filter(loc => {
       if (filterType !== "all" && loc.tipo !== filterType) return false
+
+      // District filter
+      if (filterDistrict && loc.cidade) {
+        if (!loc.cidade.toLowerCase().includes(filterDistrict.toLowerCase())) return false
+      }
+
+      // City filter (exact match)
       if (filterCity && loc.cidade?.toLowerCase() !== filterCity.toLowerCase()) return false
+
       if (filterStates.length > 0 && loc.tipo === "prospecto") {
         if (!loc.estado || !filterStates.includes(loc.estado)) return false
       }
@@ -388,7 +484,7 @@ export default function RoutePlannerAdvanced() {
       }
       return true
     })
-  }, [locations, filterType, filterCity, filterStates, searchQuery])
+  }, [locations, filterType, filterDistrict, filterCity, filterStates, searchQuery])
 
   const validLocations = useMemo(() => {
     return filteredLocations.filter(l => l.latitude && l.longitude)
@@ -485,6 +581,21 @@ export default function RoutePlannerAdvanced() {
       setTotalDistance(distanceStr)
       setTotalDuration(durationStr)
 
+      // Estimate tolls from route
+      const tollEstimate = estimateTollCost(result)
+
+      // Calculate fuel cost
+      const fuelCost = calculateFuelCost(distanceStr, costs.consumoMedio, costs.precoLitro)
+
+      // Update costs with toll estimate
+      setCosts(prev => ({
+        ...prev,
+        custoPortagens: tollEstimate.cost,
+        numPortagens: tollEstimate.count,
+        custoCombuistivel: fuelCost,
+        custoTotal: (tollEstimate.cost || 0) + (fuelCost || 0) + (prev.custoEstacionamento || 0) || null
+      }))
+
       const waypointOrder = route.waypoint_order || []
       const optimized: RouteLocation[] = []
 
@@ -506,7 +617,7 @@ export default function RoutePlannerAdvanced() {
     } finally {
       setCalculatingRoute(false)
     }
-  }, [selectedLocations, validLocations, startingPoint])
+  }, [selectedLocations, validLocations, startingPoint, costs.consumoMedio, costs.precoLitro, estimateTollCost, calculateFuelCost])
 
   // Add parking to route
   const addParkingToRoute = (place: NearbyPlace, afterStopIndex: number) => {
@@ -723,6 +834,14 @@ export default function RoutePlannerAdvanced() {
         {state.label}
       </span>
     )
+  }
+
+  // Format marker title with name and address
+  const getMarkerTitle = (loc: RouteLocation) => {
+    const parts = [loc.nome]
+    if (loc.morada) parts.push(loc.morada)
+    if (loc.cidade) parts.push(loc.cidade)
+    return parts.join(" - ")
   }
 
   const mapCenter = useMemo(() => {
@@ -973,6 +1092,27 @@ export default function RoutePlannerAdvanced() {
               </div>
             </div>
 
+            {/* District Filter */}
+            {availableDistricts.length > 0 && (
+              <div className="mb-3">
+                <label className="text-xs text-muted-foreground mb-1 block">Distrito</label>
+                <select
+                  value={filterDistrict}
+                  onChange={(e) => {
+                    setFilterDistrict(e.target.value)
+                    setFilterCity("") // Reset city when district changes
+                  }}
+                  className="w-full px-2 py-1.5 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">Todos os distritos</option>
+                  {availableDistricts.map(district => (
+                    <option key={district} value={district}>{district}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* City Filter */}
             <div className="mb-3">
               <label className="text-xs text-muted-foreground mb-1 block">Cidade</label>
               <select
@@ -980,8 +1120,8 @@ export default function RoutePlannerAdvanced() {
                 onChange={(e) => setFilterCity(e.target.value)}
                 className="w-full px-2 py-1.5 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                <option value="">Todas</option>
-                {cities.map(city => (
+                <option value="">Todas as cidades</option>
+                {filteredCities.map(city => (
                   <option key={city} value={city}>{city}</option>
                 ))}
               </select>
@@ -1076,6 +1216,9 @@ export default function RoutePlannerAdvanced() {
                                 }`} />
                                 <span className="text-sm font-medium text-foreground truncate">{loc.nome}</span>
                               </div>
+                              {loc.morada && (
+                                <p className="text-xs text-muted-foreground truncate mt-0.5">{loc.morada}</p>
+                              )}
                               {loc.tipo === "prospecto" && loc.estado && (
                                 <div className="mt-0.5">{getStateBadge(loc.estado)}</div>
                               )}
@@ -1213,6 +1356,12 @@ export default function RoutePlannerAdvanced() {
                     <p className="text-xs text-muted-foreground">Duração</p>
                     <p className="font-bold text-foreground">{totalDuration}</p>
                   </div>
+                  {costs.numPortagens && costs.numPortagens > 0 && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Portagens</p>
+                      <p className="font-bold text-amber-600">{costs.numPortagens} · €{(costs.custoPortagens || 0).toFixed(2)}</p>
+                    </div>
+                  )}
                   {costs.custoTotal && costs.custoTotal > 0 && (
                     <div>
                       <p className="text-xs text-muted-foreground">Custo Est.</p>
@@ -1256,6 +1405,11 @@ export default function RoutePlannerAdvanced() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 Estimativa de Custos
+                {costs.numPortagens && costs.numPortagens > 0 && (
+                  <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full ml-2">
+                    {costs.numPortagens} portagen{costs.numPortagens > 1 ? "s" : ""} detetada{costs.numPortagens > 1 ? "s" : ""}
+                  </span>
+                )}
               </h3>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -1478,7 +1632,7 @@ export default function RoutePlannerAdvanced() {
                           strokeColor: "#fff",
                           strokeWeight: 2,
                         }}
-                        title={loc.nome}
+                        title={getMarkerTitle(loc)}
                         onClick={() => setSelectedMarker(loc)}
                       />
                     ))
@@ -1490,10 +1644,16 @@ export default function RoutePlannerAdvanced() {
                     onCloseClick={() => setSelectedMarker(null)}
                   >
                     <div className="p-1">
-                      <h4 className="font-medium text-gray-900">{selectedMarker.nome}</h4>
+                      <h4 className="font-bold text-gray-900">{selectedMarker.nome}</h4>
                       <p className="text-xs text-gray-600 capitalize">{selectedMarker.tipo}</p>
                       {selectedMarker.morada && (
                         <p className="text-xs text-gray-500 mt-1">{selectedMarker.morada}</p>
+                      )}
+                      {selectedMarker.cidade && (
+                        <p className="text-xs text-gray-500">{selectedMarker.cidade}</p>
+                      )}
+                      {selectedMarker.telefone && (
+                        <p className="text-xs text-blue-600 mt-1">{selectedMarker.telefone}</p>
                       )}
                     </div>
                   </InfoWindow>
