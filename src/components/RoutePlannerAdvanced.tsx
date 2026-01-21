@@ -95,16 +95,53 @@ const DEFAULT_CONSUMO_MEDIO = 7.5
 const DEFAULT_PRECO_LITRO = 0.75
 const TOLL_COST_PER_KM = 0.085
 
+// Extract postal code from address string (Portuguese format: XXXX-XXX)
+const extractPostalCodeFromAddress = (morada: string | null): string | null => {
+  if (!morada) return null
+  // Match Portuguese postal code format: 4 digits, optional dash/space, 3 digits
+  const match = morada.match(/(\d{4})[-\s]?(\d{3})/)
+  if (match) {
+    return `${match[1]}-${match[2]}`
+  }
+  return null
+}
+
+// Extract city name from address (usually comes after the postal code)
+const extractCityFromAddress = (morada: string | null): string | null => {
+  if (!morada) return null
+  // Match text after postal code (4 digits, dash/space, 3 digits)
+  const match = morada.match(/\d{4}[-\s]?\d{3}\s+(.+?)(?:\s*$|\s*,|\s*-\s*[A-Z])/)
+  if (match && match[1]) {
+    return match[1].trim()
+  }
+  // Try to get the last word as city name
+  const parts = morada.split(/\s+/)
+  if (parts.length > 0) {
+    const lastPart = parts[parts.length - 1]
+    // If it's not a number or postal code, it might be a city
+    if (!/^\d/.test(lastPart)) {
+      return lastPart
+    }
+  }
+  return null
+}
+
 // Portuguese postal code to district mapping
 // Format: first 4 digits of postal code -> district
-const getDistrictFromPostalCode = (postalCode: string | null): string => {
-  if (!postalCode) return "Sem Distrito"
+// Falls back to city name if postal code is not available
+const getDistrictFromPostalCode = (postalCode: string | null, cityFallback?: string | null): string => {
+  if (!postalCode) {
+    // Fall back to city if no postal code
+    return cityFallback || "Sem Localização"
+  }
 
   // Extract first 4 digits
   const code = postalCode.replace(/\D/g, "").substring(0, 4)
   const num = parseInt(code, 10)
 
-  if (isNaN(num)) return "Sem Distrito"
+  if (isNaN(num)) {
+    return cityFallback || "Sem Localização"
+  }
 
   // Lisboa
   if (num >= 1000 && num <= 1998) return "Lisboa"
@@ -171,7 +208,8 @@ const getDistrictFromPostalCode = (postalCode: string | null): string => {
   if (num >= 9000 && num <= 9499) return "Madeira"
   if (num >= 9500 && num <= 9999) return "Açores"
 
-  return "Sem Distrito"
+  // Unknown postal code, fall back to city
+  return cityFallback || "Sem Localização"
 }
 
 // Get route letter (A, B, C, etc.)
@@ -358,21 +396,27 @@ export default function RoutePlannerAdvanced() {
     fetchSavedRoutes()
   }, [selectedDate])
 
-  // Get available districts from locations based on postal codes
+  // Get available districts from locations based on postal codes (fallback to city)
   const availableDistricts = useMemo(() => {
     const districts = new Set<string>()
     locations.forEach(loc => {
-      const district = getDistrictFromPostalCode(loc.codigoPostal)
-      if (district !== "Sem Distrito") {
+      // Extract postal code from morada if not in dedicated field
+      const postalCode = loc.codigoPostal || extractPostalCodeFromAddress(loc.morada)
+      const city = loc.cidade || extractCityFromAddress(loc.morada)
+      const district = getDistrictFromPostalCode(postalCode, city)
+      if (district !== "Sem Localização") {
         districts.add(district)
       }
     })
     return Array.from(districts).sort()
   }, [locations])
 
-  // Get location's district
+  // Get location's district (or city as fallback)
+  // Extracts postal code from morada if codigoPostal field is empty
   const getLocationDistrict = useCallback((loc: RouteLocation): string => {
-    return getDistrictFromPostalCode(loc.codigoPostal)
+    const postalCode = loc.codigoPostal || extractPostalCodeFromAddress(loc.morada)
+    const city = loc.cidade || extractCityFromAddress(loc.morada)
+    return getDistrictFromPostalCode(postalCode, city)
   }, [])
 
   const getCurrentLocation = () => {
@@ -1229,10 +1273,10 @@ export default function RoutePlannerAdvanced() {
                               />
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-1.5">
-                                  {/* Route letter badge */}
+                                  {/* Route letter badge (starts from B since A is starting point) */}
                                   {isInRoute && (
                                     <span className="w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
-                                      {getRouteLetter(routeIndex)}
+                                      {getRouteLetter(routeIndex + 1)}
                                     </span>
                                   )}
                                   <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
@@ -1735,7 +1779,7 @@ export default function RoutePlannerAdvanced() {
                   <div key={loc.id}>
                     <div className="flex items-center gap-3 p-2 bg-secondary/50 rounded-lg">
                       <span className="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs font-bold">
-                        {getRouteLetter(i)}
+                        {getRouteLetter(i + 1)}
                       </span>
                       <div className="flex-1 min-w-0">
                         <span className="text-sm font-medium text-foreground">{loc.nome}</span>
