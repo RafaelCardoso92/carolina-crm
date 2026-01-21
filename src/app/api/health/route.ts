@@ -17,7 +17,7 @@ function calculateHealthScore(data: {
 
   // Payment score (0-100)
   if (data.totalVendas > 0) {
-    const taxaPagamento = data.totalPago / (data.totalPago + data.totalPendente) * 100
+    const totalPagamentos = data.totalPago + data.totalPendente; const taxaPagamento = totalPagamentos > 0 ? (data.totalPago / totalPagamentos * 100) : 100
     scorePagamento = Math.round(taxaPagamento)
     // Penalize for overdue payments
     if (data.parcelasAtrasadas > 0) {

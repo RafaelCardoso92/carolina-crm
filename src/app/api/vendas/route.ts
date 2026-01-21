@@ -61,30 +61,29 @@ export async function POST(request: Request) {
     }
 
     // Calculate total from both manual values AND items
+    // All values are stored ex-VAT (sem IVA)
     const itens: ItemInput[] = data.itens || []
     
-    // Manual values
+    // Manual values (ex-VAT)
     const valor1 = data.valor1 ? parseFloat(data.valor1) : 0
     const valor2 = data.valor2 ? parseFloat(data.valor2) : 0
     const manualTotal = valor1 + valor2
     
-    // Items total
+    // Items total (ex-VAT)
     const itemsTotal = itens.reduce((sum: number, item: ItemInput) => {
       return sum + (item.quantidade * item.precoUnit)
     }, 0)
     
-    // Combined total
+    // Combined total (ex-VAT)
     const total = manualTotal + itemsTotal
 
     if (total <= 0) {
       return NextResponse.json({ error: "O total deve ser maior que zero" }, { status: 400 })
     }
 
-    // No limit on sales per client per month - removed the check
-
     // Create venda with items in a transaction
     const venda = await prisma.$transaction(async (tx) => {
-      // Create the venda
+      // Create the venda (stored ex-VAT)
       const newVenda = await tx.venda.create({
         data: {
           clienteId: data.clienteId,
@@ -97,7 +96,7 @@ export async function POST(request: Request) {
         }
       })
 
-      // Create items if provided
+      // Create items if provided (stored ex-VAT)
       if (itens.length > 0) {
         await tx.itemVenda.createMany({
           data: itens.map((item: ItemInput) => ({

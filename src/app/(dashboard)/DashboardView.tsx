@@ -14,10 +14,10 @@ const meses = [
 
 const IVA_RATE = 0.23
 
-function calcularIVA(totalComIVA: number) {
-  const semIVA = totalComIVA / (1 + IVA_RATE)
-  const iva = totalComIVA - semIVA
-  return { semIVA, iva }
+function calcularIVA(totalSemIVA: number) {
+  const comIVA = totalSemIVA * (1 + IVA_RATE)
+  const iva = comIVA - totalSemIVA
+  return { semIVA: totalSemIVA, comIVA, iva }
 }
 
 interface ProximaParcela {
@@ -307,14 +307,14 @@ export default function DashboardView() {
         />
         <StatCard
           title={`Vendas ${meses[data.currentMonth]}`}
-          value={`${formatCurrency(data.vendasMes)} €`}
+          value={`${formatCurrency(ivaMes.semIVA)} €`}
           subtitle={data.objetivoMensal > 0 ? `Objetivo: ${formatCurrency(data.objetivoMensal)} €` : "Sem objetivo definido"}
           color="green"
           icon="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
         />
         <StatCard
           title={`Vendas ${data.currentTrimestre}º Trimestre`}
-          value={`${formatCurrency(data.vendasTrimestre)} €`}
+          value={`${formatCurrency(ivaTrimestre.semIVA)} €`}
           subtitle={data.objetivoTrimestral > 0 ? `Objetivo: ${formatCurrency(data.objetivoTrimestral)} €` : "Sem objetivo definido"}
           color="blue"
           icon="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
@@ -442,12 +442,12 @@ export default function DashboardView() {
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-secondary rounded-lg p-4 text-center">
-            <p className="text-xs font-medium tracking-wide text-muted-foreground mb-1 uppercase">Total Vendas</p>
-            <p className="text-xl font-bold text-foreground">{formatCurrency(data.vendasAno)} €</p>
+            <p className="text-xs font-medium tracking-wide text-muted-foreground mb-1 uppercase">Total Vendas (sem IVA)</p>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(ivaAno.semIVA)} €</p>
           </div>
           <div className="bg-primary/5 rounded-lg p-4 text-center">
-            <p className="text-xs font-medium tracking-wide text-primary mb-1 uppercase">Sem IVA</p>
-            <p className="text-xl font-bold text-primary">{formatCurrency(ivaAno.semIVA)} €</p>
+            <p className="text-xs font-medium tracking-wide text-primary mb-1 uppercase">Total c/IVA</p>
+            <p className="text-xl font-bold text-primary">{formatCurrency(ivaAno.comIVA)} €</p>
           </div>
           <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
             <p className="text-xs font-medium tracking-wide text-blue-600 dark:text-blue-400 mb-1 uppercase">IVA (23%)</p>
@@ -495,7 +495,7 @@ export default function DashboardView() {
             </div>
             <div className="bg-success/10 rounded-lg p-4 text-center">
               <p className="text-xs font-medium tracking-wide text-success mb-1 uppercase">Total c/IVA</p>
-              <p className="text-xl font-bold text-success">{formatCurrency(data.vendasMes)} €</p>
+              <p className="text-xl font-bold text-success">{formatCurrency(ivaMes.comIVA)} €</p>
             </div>
           </div>
         </div>
@@ -519,7 +519,7 @@ export default function DashboardView() {
             </div>
             <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center border border-blue-200 dark:border-blue-700">
               <p className="text-xs font-medium tracking-wide text-blue-600 dark:text-blue-400 mb-1 uppercase">Total c/IVA</p>
-              <p className="text-xl font-bold text-blue-700 dark:text-blue-300">{formatCurrency(data.vendasTrimestre)} €</p>
+              <p className="text-xl font-bold text-blue-700 dark:text-blue-300">{formatCurrency(ivaTrimestre.comIVA)} €</p>
             </div>
           </div>
         </div>
@@ -553,7 +553,7 @@ export default function DashboardView() {
           ) : (
             <div className="bg-secondary rounded-xl p-4 mb-4 border border-border">
               <p className="text-sm text-muted-foreground">Ainda sem premio este mes</p>
-              <p className="text-xs text-muted-foreground">Vendas: {formatCurrency(data.vendasMes)} €</p>
+              <p className="text-xs text-muted-foreground">Vendas: {formatCurrency(ivaMes.comIVA)} €</p>
             </div>
           )}
 
@@ -611,7 +611,7 @@ export default function DashboardView() {
           ) : (
             <div className="bg-secondary rounded-xl p-4 mb-4 border border-border">
               <p className="text-sm text-muted-foreground">Ainda sem premio este trimestre</p>
-              <p className="text-xs text-muted-foreground">Vendas: {formatCurrency(data.vendasTrimestre)} €</p>
+              <p className="text-xs text-muted-foreground">Vendas: {formatCurrency(ivaTrimestre.comIVA)} €</p>
             </div>
           )}
 
