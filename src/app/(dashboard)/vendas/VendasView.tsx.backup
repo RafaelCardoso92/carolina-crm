@@ -55,8 +55,6 @@ type Cliente = {
 }
 
 type ProdutoItem = {
-  tipo: string | null
-  ativo: boolean
   id: string
   nome: string
   codigo: string | null
@@ -85,10 +83,10 @@ type Props = {
 const IVA_RATE = 0.23
 
 // Calculate VAT values
-function calcularIVA(totalSemIVA: number) {
-  const comIVA = totalSemIVA * (1 + IVA_RATE)
-  const iva = comIVA - totalSemIVA
-  return { semIVA: totalSemIVA, comIVA, iva }
+function calcularIVA(totalComIVA: number) {
+  const semIVA = totalComIVA / (1 + IVA_RATE)
+  const iva = totalComIVA - semIVA
+  return { semIVA, iva }
 }
 
 // Calculate net total for a venda (accounting for returns)
@@ -145,7 +143,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
   const falta = objetivo ? objetivo - totalLiquido : 0
 
   // Calculate totals with VAT
-  const { semIVA: totalSemIVA, comIVA: totalComIVA, iva: totalIVA } = calcularIVA(totalLiquido)
+  const { semIVA: totalSemIVA, iva: totalIVA } = calcularIVA(totalLiquido)
 
   // Calculate items total
   const itemsTotal = useMemo(() => {
@@ -478,7 +476,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
   return (
     <div>
       {/* Navigation and Summary */}
-      <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 rounded-xl shadow-sm p-4 md:p-6 mb-6 border border-indigo-100">
+      <div className="bg-card rounded-xl shadow-sm p-4 md:p-6 mb-6">
         {/* Year and Month Selectors */}
         <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3 mb-4 md:mb-6">
           <div className="flex items-center gap-2">
@@ -511,7 +509,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
         <div className="flex items-center justify-between mb-4 md:mb-6">
           <button
             onClick={() => navigateMonth(-1)}
-            className="flex items-center gap-1 md:gap-2 px-3 md:px-4 py-2 bg-secondary hover:bg-violet-100 rounded-xl transition text-foreground font-medium text-sm md:text-base"
+            className="flex items-center gap-1 md:gap-2 px-3 md:px-4 py-2 bg-secondary hover:bg-muted rounded-xl transition text-foreground font-medium text-sm md:text-base"
           >
             <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -523,7 +521,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
           </div>
           <button
             onClick={() => navigateMonth(1)}
-            className="flex items-center gap-1 md:gap-2 px-3 md:px-4 py-2 bg-secondary hover:bg-violet-100 rounded-xl transition text-foreground font-medium text-sm md:text-base"
+            className="flex items-center gap-1 md:gap-2 px-3 md:px-4 py-2 bg-secondary hover:bg-muted rounded-xl transition text-foreground font-medium text-sm md:text-base"
           >
             <span className="hidden sm:inline">Seguinte</span>
             <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -534,23 +532,23 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
 
         {/* VAT Summary Cards */}
         <div className="grid grid-cols-3 gap-2 md:gap-4 mb-4 md:mb-6">
-          <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 md:p-4 text-center">
+          <div className="bg-secondary rounded-xl p-3 md:p-4 text-center">
             <p className="text-xs md:text-sm font-medium text-muted-foreground mb-1">Sem IVA</p>
             <p className="text-base md:text-2xl font-bold text-foreground">{formatCurrency(totalSemIVA)} €</p>
           </div>
-          <div className="bg-sky-50 border border-sky-200 rounded-xl p-3 md:p-4 text-center">
+          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 md:p-4 text-center">
             <p className="text-xs md:text-sm font-medium text-blue-600 dark:text-blue-400 mb-1">IVA (23%)</p>
             <p className="text-base md:text-2xl font-bold text-blue-700 dark:text-blue-300">{formatCurrency(totalIVA)} €</p>
           </div>
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 md:p-4 text-center">
+          <div className="bg-primary/5 rounded-xl p-3 md:p-4 text-center">
             <p className="text-xs md:text-sm font-medium text-primary mb-1">c/IVA Líquido</p>
-            <p className="text-base md:text-2xl font-bold text-primary">{formatCurrency(totalComIVA)} €</p>
+            <p className="text-base md:text-2xl font-bold text-primary">{formatCurrency(totalLiquido)} €</p>
           </div>
         </div>
 
         {/* Progress Bar */}
         {objetivo && (
-          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4">
+          <div className="bg-secondary rounded-xl p-4">
             <div className="flex justify-between text-sm mb-2">
               <span className="font-medium text-foreground">Objetivo: {formatCurrency(objetivo)} €</span>
               <span className={`font-bold ${progresso >= 100 ? "text-green-600" : "text-orange-600"}`}>
@@ -572,7 +570,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
       <div className="flex justify-end mb-4 md:mb-6">
         <button
           onClick={() => { setShowForm(true); setEditingId(null); }}
-          className="bg-gradient-to-r from-emerald-400 to-teal-400 text-white px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold hover:from-emerald-500 hover:to-teal-500 transition flex items-center gap-2 shadow-lg shadow-primary/20 text-sm md:text-base"
+          className="bg-primary text-white px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold hover:bg-primary-hover transition flex items-center gap-2 shadow-lg shadow-primary/20 text-sm md:text-base"
         >
           <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -584,7 +582,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
 
       {/* Add/Edit Form */}
       {showForm && (
-        <div className="bg-gradient-to-br from-rose-50 to-pink-50 rounded-xl shadow-sm p-4 md:p-6 mb-4 md:mb-6 border-2 border-rose-200">
+        <div className="bg-card rounded-xl shadow-sm p-4 md:p-6 mb-4 md:mb-6 border-2 border-primary/20">
           <h3 className="text-lg md:text-xl font-bold text-foreground mb-4 md:mb-6 flex items-center gap-2">
             <svg className="w-5 h-5 md:w-6 md:h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -635,7 +633,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                               setClienteSearch("")
                               setShowClienteDropdown(false)
                             }}
-                            className={`w-full px-4 py-3 text-left hover:bg-rose-100 transition flex items-center justify-between ${selectedClienteId === c.id ? "bg-rose-100" : ""}`}
+                            className={`w-full px-4 py-3 text-left hover:bg-primary/10 transition flex items-center justify-between ${selectedClienteId === c.id ? "bg-primary/10" : ""}`}
                           >
                             <span className="font-medium text-foreground">{c.nome}</span>
                             {c.codigo && <span className="text-muted-foreground text-sm">({c.codigo})</span>}
@@ -652,7 +650,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                 <>
                   <div>
                     <label className="block text-sm font-bold text-foreground mb-2">
-                      Valor 1 (sem IVA)
+                      Valor 1 (com IVA)
                     </label>
                     <div className="relative">
                       <input
@@ -669,7 +667,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-foreground mb-2">
-                      Valor 2 (sem IVA)
+                      Valor 2 (com IVA)
                     </label>
                     <div className="relative">
                       <input
@@ -697,7 +695,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                     <button
                       type="button"
                       onClick={addItem}
-                      className="px-3 py-1.5 bg-rose-100 text-primary rounded-lg text-sm font-semibold hover:bg-primary/20 transition flex items-center gap-1"
+                      className="px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-sm font-semibold hover:bg-primary/20 transition flex items-center gap-1"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -784,7 +782,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
 
                   {/* Upsell Suggestions */}
                   {selectedClienteId && clientPurchaseHistory.neverPurchased.length > 0 && (
-                    <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4">
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
@@ -866,13 +864,13 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
       <div className="hidden md:block bg-card rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gradient-to-r from-violet-100 to-purple-100 border-b-2 border-violet-200">
+            <thead className="bg-secondary border-b-2 border-border">
               <tr>
                 <th className="px-4 lg:px-6 py-4 text-left text-sm font-bold text-foreground">Cliente</th>
                 <th className="px-4 py-4 text-left text-sm font-bold text-foreground">Produtos</th>
                 <th className="px-4 py-4 text-right text-sm font-bold text-foreground hidden lg:table-cell">Sem IVA</th>
                 <th className="px-4 py-4 text-right text-sm font-bold text-blue-700 hidden lg:table-cell">IVA</th>
-                <th className="px-4 py-4 text-right text-sm font-bold text-primary">Total (sem IVA)</th>
+                <th className="px-4 py-4 text-right text-sm font-bold text-primary">Total</th>
                 <th className="px-4 py-4 text-left text-sm font-bold text-foreground hidden xl:table-cell">Notas</th>
                 <th className="px-4 py-4 text-center text-sm font-bold text-foreground">Ações</th>
               </tr>
@@ -881,7 +879,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
               {vendas.map((venda) => {
                 const vendaTotal = Number(venda.total)
                 const netTotal = calcularTotalLiquido(venda)
-                const { semIVA, comIVA, iva } = calcularIVA(netTotal)
+                const { semIVA, iva } = calcularIVA(netTotal)
                 const hasItems = venda.itens && venda.itens.length > 0
                 const hasDevolucoes = venda.devolucoes && venda.devolucoes.length > 0
                 const hasItemsForReturn = hasItems && venda.itens!.some(item => {
@@ -892,7 +890,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
 
                 return (
                   <>
-                    <tr key={venda.id} className={`hover:bg-pink-50 transition ${hasDevolucoes ? "bg-orange-50/30 dark:bg-orange-900/5" : ""}`}>
+                    <tr key={venda.id} className={`hover:bg-primary/5 transition ${hasDevolucoes ? "bg-orange-50/30 dark:bg-orange-900/5" : ""}`}>
                       <td className="px-4 lg:px-6 py-4">
                         <Link href={`/clientes/${venda.cliente.id}`} className="font-semibold text-foreground hover:text-primary transition">
                           {venda.cliente.nome}
@@ -950,7 +948,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                           {hasDevolucoes && (
                             <button
                               onClick={() => setExpandedDevolucoes(isExpanded ? null : venda.id)}
-                              className={`p-2 rounded-lg transition ${isExpanded ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" : "text-amber-500 hover:bg-amber-100 dark:hover:bg-orange-900/30"}`}
+                              className={`p-2 rounded-lg transition ${isExpanded ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" : "text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/30"}`}
                               title="Ver devoluções"
                             >
                               <svg className={`w-5 h-5 transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -962,7 +960,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                           {hasItemsForReturn && (
                             <button
                               onClick={() => openDevolucaoForm(venda)}
-                              className="p-2 text-amber-500 hover:bg-amber-100 dark:hover:bg-orange-900/30 rounded-lg transition"
+                              className="p-2 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded-lg transition"
                               title="Registar devolução"
                             >
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -972,7 +970,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                           )}
                           <button
                             onClick={() => startEdit(venda)}
-                            className="p-2 text-sky-500 hover:bg-sky-100 dark:hover:bg-blue-900/30 rounded-lg transition"
+                            className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition"
                             title="Editar"
                           >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -981,7 +979,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                           </button>
                           <button
                             onClick={() => handleDelete(venda.id)}
-                            className="p-2 text-rose-500 hover:bg-rose-100 dark:hover:bg-red-900/30 rounded-lg transition"
+                            className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition"
                             title="Eliminar"
                           >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1055,7 +1053,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
           const isExpanded = expandedDevolucoes === venda.id
 
           return (
-            <div key={venda.id} className={`bg-white rounded-xl shadow-sm border-2 border-violet-100 overflow-hidden ${hasDevolucoes ? "border-orange-200 dark:border-orange-800" : ""}`}>
+            <div key={venda.id} className={`bg-card rounded-xl shadow-sm border border-border overflow-hidden ${hasDevolucoes ? "border-orange-200 dark:border-orange-800" : ""}`}>
               <div className="p-4">
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1 min-w-0">
@@ -1075,7 +1073,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                     {hasDevolucoes && (
                       <button
                         onClick={() => setExpandedDevolucoes(isExpanded ? null : venda.id)}
-                        className={`p-2 rounded-lg transition ${isExpanded ? "bg-orange-100 text-orange-700" : "text-amber-500 hover:bg-amber-100"}`}
+                        className={`p-2 rounded-lg transition ${isExpanded ? "bg-orange-100 text-orange-700" : "text-orange-600 hover:bg-orange-100"}`}
                       >
                         <svg className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -1085,7 +1083,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                     {hasItemsForReturn && (
                       <button
                         onClick={() => openDevolucaoForm(venda)}
-                        className="p-2 text-amber-500 hover:bg-amber-100 dark:hover:bg-orange-900/30 rounded-lg transition"
+                        className="p-2 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded-lg transition"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" />
@@ -1094,7 +1092,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                     )}
                     <button
                       onClick={() => startEdit(venda)}
-                      className="p-2 text-sky-500 hover:bg-sky-100 dark:hover:bg-blue-900/30 rounded-lg transition"
+                      className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -1102,7 +1100,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                     </button>
                     <button
                       onClick={() => handleDelete(venda.id)}
-                      className="p-2 text-rose-500 hover:bg-rose-100 dark:hover:bg-red-900/30 rounded-lg transition"
+                      className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -1170,7 +1168,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
               vendaId={selectedVendaForDevolucao.id}
               clienteNome={selectedVendaForDevolucao.cliente.nome}
               itensVenda={prepareItensParaDevolucao(selectedVendaForDevolucao)}
-              produtos={produtos}
+              produtos={produtos as Produto[]}
               onSuccess={handleDevolucaoSuccess}
               onCancel={closeDevolucaoForm}
             />

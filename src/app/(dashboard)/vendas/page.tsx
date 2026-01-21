@@ -54,7 +54,9 @@ async function getVendasData(mes: number, ano: number) {
         nome: true,
         codigo: true,
         categoria: true,
-        preco: true
+        preco: true,
+        tipo: true,
+        ativo: true
       },
       orderBy: { nome: "asc" }
     })

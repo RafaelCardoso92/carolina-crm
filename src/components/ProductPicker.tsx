@@ -7,6 +7,7 @@ type Product = {
   nome: string
   codigo: string | null
   categoria: string | null
+  tipo: string | null
   preco: string | null
 }
 
@@ -17,6 +18,13 @@ type ProductPickerProps = {
   placeholder?: string
 }
 
+const TIPO_OPTIONS = [
+  { value: null, label: "Todos" },
+  { value: "Venda Público", label: "Venda ao Público" },
+  { value: "Profissional", label: "Profissional" },
+  { value: "Material Promocional", label: "Material Promocional" },
+]
+
 export default function ProductPicker({
   products,
   selectedProductId,
@@ -25,6 +33,7 @@ export default function ProductPicker({
 }: ProductPickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState("")
+  const [selectedTipo, setSelectedTipo] = useState<string | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -38,18 +47,20 @@ export default function ProductPicker({
     return Array.from(cats).sort()
   }, [products])
 
-  // Filter products based on search and category
+  // Filter products based on search, tipo, and category
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
       const matchesSearch = search === "" ||
         p.nome.toLowerCase().includes(search.toLowerCase()) ||
         (p.codigo && p.codigo.toLowerCase().includes(search.toLowerCase()))
 
+      const matchesTipo = selectedTipo === null || p.tipo === selectedTipo
+
       const matchesCategory = selectedCategory === null || p.categoria === selectedCategory
 
-      return matchesSearch && matchesCategory
+      return matchesSearch && matchesTipo && matchesCategory
     })
-  }, [products, search, selectedCategory])
+  }, [products, search, selectedTipo, selectedCategory])
 
   // Group products by category for display
   const groupedProducts = useMemo(() => {
@@ -168,7 +179,7 @@ export default function ProductPicker({
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Procurar por nome ou codigo..."
+                placeholder="Procurar por nome ou código..."
                 className="w-full pl-9 pr-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-background"
               />
               {search && (
@@ -185,9 +196,30 @@ export default function ProductPicker({
             </div>
           </div>
 
+          {/* Tipo Filter - Sales Channel */}
+          <div className="p-2 border-b border-border bg-muted/30">
+            <p className="text-xs text-muted-foreground mb-1.5 font-medium">Canal de Venda</p>
+            <div className="flex gap-1 flex-wrap">
+              {TIPO_OPTIONS.map(opt => (
+                <button
+                  key={opt.label}
+                  type="button"
+                  onClick={() => setSelectedTipo(selectedTipo === opt.value ? null : opt.value)}
+                  className={`px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                    selectedTipo === opt.value
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-card border border-border text-foreground hover:bg-secondary"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Category Filter */}
           {categories.length > 0 && (
-            <div className="p-2 border-b border-border flex gap-1 flex-wrap">
+            <div className="p-2 border-b border-border flex gap-1 flex-wrap max-h-24 overflow-y-auto">
               <button
                 type="button"
                 onClick={() => setSelectedCategory(null)}
@@ -197,7 +229,7 @@ export default function ProductPicker({
                     : "bg-muted text-muted-foreground hover:bg-secondary"
                 }`}
               >
-                Todos
+                Todas Categorias
               </button>
               {categories.map(cat => (
                 <button
@@ -243,12 +275,24 @@ export default function ProductPicker({
                         <p className="text-sm font-medium text-foreground truncate">
                           {product.nome}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {product.codigo && <span className="mr-2">{product.codigo}</span>}
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          {product.codigo && <span>{product.codigo}</span>}
+                          {product.tipo && (
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                              product.tipo === "Venda Público"
+                                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                : product.tipo === "Profissional"
+                                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                                : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                            }`}>
+                              {product.tipo === "Venda Público" ? "Público" :
+                               product.tipo === "Material Promocional" ? "Promo" : product.tipo}
+                            </span>
+                          )}
                           {product.preco && (
                             <span className="text-primary font-medium">{parseFloat(product.preco).toFixed(2)}€</span>
                           )}
-                        </p>
+                        </div>
                       </div>
                       {product.id === selectedProductId && (
                         <svg className="w-4 h-4 text-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

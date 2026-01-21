@@ -2,7 +2,14 @@
 
 import { useState, useRef } from "react"
 import { MOTIVOS_DEVOLUCAO } from "@/types/devolucao"
-import type { Produto } from "@prisma/client"
+type ProdutoBasic = {
+  id: string
+  nome: string
+  codigo: string | null
+  ativo: boolean
+  preco?: string | null
+  tipo?: string | null
+}
 
 interface ItemVendaParaDevolucao {
   id: string
@@ -19,7 +26,7 @@ interface Props {
   vendaId: string
   clienteNome: string
   itensVenda: ItemVendaParaDevolucao[]
-  produtos: Produto[]  // For replacement selection
+  produtos: ProdutoBasic[]  // For replacement selection
   onSuccess: () => void
   onCancel: () => void
 }
