@@ -33,6 +33,27 @@ interface NearbyPlace {
   openNow?: boolean
 }
 
+interface ParkingStop {
+  lat: number
+  lng: number
+  nome: string
+  endereco: string | null
+  custoEstimado: number | null
+  afterStopIndex: number // Which stop this parking is after
+}
+
+interface RouteCosts {
+  custoPortagens: number | null
+  numPortagens: number | null
+  custoCombuistivel: number | null
+  consumoMedio: number
+  precoLitro: number
+  custoEstacionamento: number | null
+  custoTotal: number | null
+  custoReal: number | null
+  notasCustos: string
+}
+
 interface SavedRoute {
   id: string
   nome: string | null
@@ -41,8 +62,18 @@ interface SavedRoute {
   origemLongitude: number
   origemEndereco: string | null
   locais: { id: string; tipo: string; ordem: number }[]
+  paragens: ParkingStop[] | null
   distanciaTotal: string | null
   duracaoTotal: string | null
+  custoPortagens: number | null
+  numPortagens: number | null
+  custoCombuistivel: number | null
+  consumoMedio: number | null
+  precoLitro: number | null
+  custoEstacionamento: number | null
+  custoTotal: number | null
+  custoReal: number | null
+  notasCustos: string | null
   concluida: boolean
 }
 
@@ -59,6 +90,10 @@ const mapContainerStyle = {
 }
 
 const defaultCenter = { lat: 38.7223, lng: -9.1393 }
+
+// Default fuel settings for GPL in Portugal
+const DEFAULT_CONSUMO_MEDIO = 7.5 // L/100km for GPL
+const DEFAULT_PRECO_LITRO = 0.75 // €/L for GPL (2024 average)
 
 const PIPELINE_STATES = [
   { value: "NOVO", label: "Novo", color: "bg-blue-100 text-blue-800" },
@@ -99,6 +134,23 @@ export default function RoutePlannerAdvanced() {
   const [totalDuration, setTotalDuration] = useState<string>("")
   const [calculatingRoute, setCalculatingRoute] = useState(false)
 
+  // Parking stops state
+  const [parkingStops, setParkingStops] = useState<ParkingStop[]>([])
+
+  // Cost state
+  const [costs, setCosts] = useState<RouteCosts>({
+    custoPortagens: null,
+    numPortagens: null,
+    custoCombuistivel: null,
+    consumoMedio: DEFAULT_CONSUMO_MEDIO,
+    precoLitro: DEFAULT_PRECO_LITRO,
+    custoEstacionamento: null,
+    custoTotal: null,
+    custoReal: null,
+    notasCustos: ""
+  })
+  const [showCostPanel, setShowCostPanel] = useState(false)
+
   // Calendar/Date state
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split("T")[0])
   const [routeName, setRouteName] = useState("")
@@ -128,6 +180,31 @@ export default function RoutePlannerAdvanced() {
     id: "google-map-script",
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""
   })
+
+  // Calculate fuel cost based on distance
+  const calculateFuelCost = useCallback((distanceStr: string, consumo: number, preco: number) => {
+    const distanceKm = parseFloat(distanceStr.replace(/[^\d.]/g, ""))
+    if (isNaN(distanceKm)) return null
+    return Math.round((distanceKm / 100) * consumo * preco * 100) / 100
+  }, [])
+
+  // Calculate total parking cost
+  const totalParkingCost = useMemo(() => {
+    return parkingStops.reduce((sum, p) => sum + (p.custoEstimado || 0), 0)
+  }, [parkingStops])
+
+  // Update costs when distance changes
+  useEffect(() => {
+    if (totalDistance) {
+      const fuelCost = calculateFuelCost(totalDistance, costs.consumoMedio, costs.precoLitro)
+      setCosts(prev => ({
+        ...prev,
+        custoCombuistivel: fuelCost,
+        custoEstacionamento: totalParkingCost || null,
+        custoTotal: (prev.custoPortagens || 0) + (fuelCost || 0) + (totalParkingCost || 0) || null
+      }))
+    }
+  }, [totalDistance, costs.consumoMedio, costs.precoLitro, totalParkingCost, calculateFuelCost])
 
   // Fetch locations and geocode status
   useEffect(() => {
@@ -229,7 +306,6 @@ export default function RoutePlannerAdvanced() {
       const result = await response.json()
       alert(`Geocodificação completa!\nSucesso: ${result.success}\nFalhados: ${result.failed}`)
 
-      // Refresh data
       const [locResponse, statusResponse] = await Promise.all([
         fetch("/api/rotas/locations"),
         fetch("/api/clientes/batch-geocode")
@@ -265,7 +341,6 @@ export default function RoutePlannerAdvanced() {
         return
       }
 
-      // Update the location in database
       const endpoint = tipo === "cliente" ? `/api/clientes/${locationId}` : `/api/prospectos/${locationId}`
       await fetch(endpoint, {
         method: "PATCH",
@@ -279,7 +354,6 @@ export default function RoutePlannerAdvanced() {
         })
       })
 
-      // Update local state
       setLocations(prev => prev.map(loc =>
         loc.id === locationId
           ? { ...loc, ...editAddress, latitude: geocodeData.latitude, longitude: geocodeData.longitude }
@@ -405,8 +479,11 @@ export default function RoutePlannerAdvanced() {
         duration += leg.duration?.value || 0
       })
 
-      setTotalDistance(`${(distance / 1000).toFixed(1)} km`)
-      setTotalDuration(`${Math.round(duration / 60)} min`)
+      const distanceStr = `${(distance / 1000).toFixed(1)} km`
+      const durationStr = `${Math.round(duration / 60)} min`
+
+      setTotalDistance(distanceStr)
+      setTotalDuration(durationStr)
 
       const waypointOrder = route.waypoint_order || []
       const optimized: RouteLocation[] = []
@@ -419,6 +496,10 @@ export default function RoutePlannerAdvanced() {
       }
 
       setOptimizedRoute(optimized)
+
+      // Clear parking stops when recalculating
+      setParkingStops([])
+
     } catch (error) {
       console.error("Directions error:", error)
       alert("Erro ao calcular rota. Verifica se os locais tem coordenadas válidas.")
@@ -426,6 +507,32 @@ export default function RoutePlannerAdvanced() {
       setCalculatingRoute(false)
     }
   }, [selectedLocations, validLocations, startingPoint])
+
+  // Add parking to route
+  const addParkingToRoute = (place: NearbyPlace, afterStopIndex: number) => {
+    const newParking: ParkingStop = {
+      lat: place.latitude,
+      lng: place.longitude,
+      nome: place.name,
+      endereco: place.address,
+      custoEstimado: null,
+      afterStopIndex
+    }
+    setParkingStops(prev => [...prev, newParking])
+    setNearbyPanelOpen(false)
+  }
+
+  // Remove parking from route
+  const removeParkingStop = (index: number) => {
+    setParkingStops(prev => prev.filter((_, i) => i !== index))
+  }
+
+  // Update parking cost
+  const updateParkingCost = (index: number, cost: number | null) => {
+    setParkingStops(prev => prev.map((p, i) =>
+      i === index ? { ...p, custoEstimado: cost } : p
+    ))
+  }
 
   // Save route
   const saveRoute = async () => {
@@ -446,8 +553,17 @@ export default function RoutePlannerAdvanced() {
           origemLongitude: startingPoint.longitude,
           origemEndereco: startingPoint.address,
           locais: optimizedRoute.map((loc, i) => ({ id: loc.id, tipo: loc.tipo, ordem: i })),
+          paragens: parkingStops.length > 0 ? parkingStops : null,
           distanciaTotal: totalDistance,
-          duracaoTotal: totalDuration
+          duracaoTotal: totalDuration,
+          // Cost fields
+          custoPortagens: costs.custoPortagens,
+          numPortagens: costs.numPortagens,
+          custoCombuistivel: costs.custoCombuistivel,
+          consumoMedio: costs.consumoMedio,
+          precoLitro: costs.precoLitro,
+          custoEstacionamento: costs.custoEstacionamento || totalParkingCost || null,
+          notasCustos: costs.notasCustos || null
         })
       })
 
@@ -480,9 +596,25 @@ export default function RoutePlannerAdvanced() {
     setSelectedLocations(locationIds)
     setSelectedDate(route.data.split("T")[0])
     setRouteName(route.nome || "")
+
+    // Load parking stops
+    setParkingStops(route.paragens || [])
+
+    // Load costs
+    setCosts({
+      custoPortagens: route.custoPortagens,
+      numPortagens: route.numPortagens,
+      custoCombuistivel: route.custoCombuistivel,
+      consumoMedio: route.consumoMedio || DEFAULT_CONSUMO_MEDIO,
+      precoLitro: route.precoLitro || DEFAULT_PRECO_LITRO,
+      custoEstacionamento: route.custoEstacionamento,
+      custoTotal: route.custoTotal,
+      custoReal: route.custoReal,
+      notasCustos: route.notasCustos || ""
+    })
+
     setShowSavedRoutes(false)
 
-    // Recalculate the route
     setTimeout(() => {
       calculateRoute()
     }, 500)
@@ -524,7 +656,7 @@ export default function RoutePlannerAdvanced() {
     }
   }
 
-  // Generate navigation URL for Google Maps
+  // Generate navigation URLs
   const getGoogleMapsUrl = () => {
     if (optimizedRoute.length === 0 || !startingPoint.latitude || !startingPoint.longitude) return ""
 
@@ -539,21 +671,17 @@ export default function RoutePlannerAdvanced() {
     return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}${waypointsStr ? `&waypoints=${waypointsStr}` : ""}&travelmode=driving`
   }
 
-  // Generate navigation URL for Waze
   const getWazeUrl = () => {
     if (optimizedRoute.length === 0) return ""
-    // Waze only supports single destination, so use the first stop
     const firstStop = optimizedRoute[0]
     return `https://waze.com/ul?ll=${firstStop.latitude},${firstStop.longitude}&navigate=yes`
   }
 
-  // Open navigation app
   const openNavigation = (app: "google" | "waze") => {
     const url = app === "google" ? getGoogleMapsUrl() : getWazeUrl()
     if (url) window.open(url, "_blank")
   }
 
-  // Navigate to nearby place
   const navigateToPlace = (place: NearbyPlace, app: "google" | "waze") => {
     let url = ""
     if (app === "google") {
@@ -573,6 +701,18 @@ export default function RoutePlannerAdvanced() {
     setNearbyPlaces([])
     setNearbyPanelOpen(false)
     setRouteName("")
+    setParkingStops([])
+    setCosts({
+      custoPortagens: null,
+      numPortagens: null,
+      custoCombuistivel: null,
+      consumoMedio: DEFAULT_CONSUMO_MEDIO,
+      precoLitro: DEFAULT_PRECO_LITRO,
+      custoEstacionamento: null,
+      custoTotal: null,
+      custoReal: null,
+      notasCustos: ""
+    })
   }
 
   const getStateBadge = (estado: string | undefined) => {
@@ -595,7 +735,6 @@ export default function RoutePlannerAdvanced() {
     return defaultCenter
   }, [startingPoint, validLocations])
 
-  // Get routes for selected date
   const routesForSelectedDate = savedRoutes.filter(r => r.data.split("T")[0] === selectedDate)
 
   if (loading) {
@@ -615,18 +754,8 @@ export default function RoutePlannerAdvanced() {
       {geocodeStatus && geocodeStatus.pendingGeocoding > 0 && (
         <div className="flex items-center justify-between gap-4 bg-amber-500 text-white rounded-xl px-4 py-3">
           <div className="flex items-center gap-3">
-            <svg
-              className="w-5 h-5 flex-shrink-0"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-              />
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
             </svg>
             <span className="text-sm font-medium">
               <span className="font-bold">{geocodeStatus.pendingGeocoding}</span> clientes sem coordenadas
@@ -642,42 +771,17 @@ export default function RoutePlannerAdvanced() {
           >
             {batchGeocoding ? (
               <>
-                <svg
-                  className="w-4 h-4 animate-spin"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
                 <span className="hidden sm:inline">A geocodificar...</span>
               </>
             ) : (
               <>
                 <span>Geocodificar</span>
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </>
             )}
@@ -720,6 +824,7 @@ export default function RoutePlannerAdvanced() {
                 <div key={route.id} className="flex items-center gap-1 bg-primary/10 text-primary px-2 py-1 rounded-lg text-sm">
                   <button onClick={() => loadSavedRoute(route)} className="hover:underline">
                     {route.nome || "Rota"} ({route.locais.length} locais)
+                    {route.custoTotal && <span className="ml-1 text-xs opacity-75">· €{Number(route.custoTotal).toFixed(2)}</span>}
                   </button>
                   <button onClick={() => deleteSavedRoute(route.id)} className="ml-1 text-red-500 hover:text-red-700">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -745,6 +850,7 @@ export default function RoutePlannerAdvanced() {
                       <p className="text-sm font-medium">{route.nome || "Rota sem nome"}</p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(route.data).toLocaleDateString("pt-PT")} · {route.locais.length} locais · {route.distanciaTotal}
+                        {route.custoTotal && <span className="ml-1 text-green-600 font-medium">· €{Number(route.custoTotal).toFixed(2)}</span>}
                       </p>
                     </div>
                     <div className="flex gap-1">
@@ -854,7 +960,7 @@ export default function RoutePlannerAdvanced() {
                 ].map(opt => (
                   <button
                     key={opt.value}
-                    onClick={() => setFilterType(opt.value as any)}
+                    onClick={() => setFilterType(opt.value as typeof filterType)}
                     className={`px-2 py-1 rounded text-xs font-medium transition ${
                       filterType === opt.value
                         ? "bg-primary text-white"
@@ -1072,15 +1178,26 @@ export default function RoutePlannerAdvanced() {
               </button>
 
               {optimizedRoute.length > 0 && (
-                <button
-                  onClick={clearRoute}
-                  className="flex items-center justify-center gap-2 px-4 py-3 bg-secondary text-foreground rounded-xl font-medium hover:bg-secondary/80 transition"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  Limpar
-                </button>
+                <>
+                  <button
+                    onClick={() => setShowCostPanel(!showCostPanel)}
+                    className="flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Custos
+                  </button>
+                  <button
+                    onClick={clearRoute}
+                    className="flex items-center justify-center gap-2 px-4 py-3 bg-secondary text-foreground rounded-xl font-medium hover:bg-secondary/80 transition"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Limpar
+                  </button>
+                </>
               )}
             </div>
 
@@ -1096,6 +1213,18 @@ export default function RoutePlannerAdvanced() {
                     <p className="text-xs text-muted-foreground">Duração</p>
                     <p className="font-bold text-foreground">{totalDuration}</p>
                   </div>
+                  {costs.custoTotal && costs.custoTotal > 0 && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Custo Est.</p>
+                      <p className="font-bold text-green-600">€{costs.custoTotal.toFixed(2)}</p>
+                    </div>
+                  )}
+                  {parkingStops.length > 0 && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Paragens</p>
+                      <p className="font-bold text-blue-600">{parkingStops.length}</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Save route section */}
@@ -1118,6 +1247,173 @@ export default function RoutePlannerAdvanced() {
               </div>
             )}
           </div>
+
+          {/* Cost Panel */}
+          {showCostPanel && optimizedRoute.length > 0 && (
+            <div className="bg-card rounded-xl shadow-sm p-4">
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Estimativa de Custos
+              </h3>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {/* Tolls */}
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Portagens (€)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={costs.custoPortagens || ""}
+                    onChange={(e) => {
+                      const val = e.target.value ? parseFloat(e.target.value) : null
+                      setCosts(prev => ({
+                        ...prev,
+                        custoPortagens: val,
+                        custoTotal: (val || 0) + (prev.custoCombuistivel || 0) + (prev.custoEstacionamento || 0) || null
+                      }))
+                    }}
+                    className="w-full px-2 py-1.5 bg-secondary border border-border rounded-lg text-sm"
+                  />
+                </div>
+
+                {/* Number of tolls */}
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Nº Portagens</label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={costs.numPortagens || ""}
+                    onChange={(e) => setCosts(prev => ({ ...prev, numPortagens: e.target.value ? parseInt(e.target.value) : null }))}
+                    className="w-full px-2 py-1.5 bg-secondary border border-border rounded-lg text-sm"
+                  />
+                </div>
+
+                {/* Fuel consumption */}
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Consumo (L/100km)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={costs.consumoMedio}
+                    onChange={(e) => setCosts(prev => ({ ...prev, consumoMedio: parseFloat(e.target.value) || DEFAULT_CONSUMO_MEDIO }))}
+                    className="w-full px-2 py-1.5 bg-secondary border border-border rounded-lg text-sm"
+                  />
+                </div>
+
+                {/* Fuel price */}
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Preço GPL (€/L)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={costs.precoLitro}
+                    onChange={(e) => setCosts(prev => ({ ...prev, precoLitro: parseFloat(e.target.value) || DEFAULT_PRECO_LITRO }))}
+                    className="w-full px-2 py-1.5 bg-secondary border border-border rounded-lg text-sm"
+                  />
+                </div>
+
+                {/* Fuel cost (calculated) */}
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Combustível (€)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={costs.custoCombuistivel?.toFixed(2) || ""}
+                    onChange={(e) => {
+                      const val = e.target.value ? parseFloat(e.target.value) : null
+                      setCosts(prev => ({
+                        ...prev,
+                        custoCombuistivel: val,
+                        custoTotal: (prev.custoPortagens || 0) + (val || 0) + (prev.custoEstacionamento || 0) || null
+                      }))
+                    }}
+                    className="w-full px-2 py-1.5 bg-secondary border border-border rounded-lg text-sm"
+                  />
+                </div>
+
+                {/* Parking cost */}
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Estacionamento (€)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={costs.custoEstacionamento || totalParkingCost || ""}
+                    onChange={(e) => {
+                      const val = e.target.value ? parseFloat(e.target.value) : null
+                      setCosts(prev => ({
+                        ...prev,
+                        custoEstacionamento: val,
+                        custoTotal: (prev.custoPortagens || 0) + (prev.custoCombuistivel || 0) + (val || 0) || null
+                      }))
+                    }}
+                    className="w-full px-2 py-1.5 bg-secondary border border-border rounded-lg text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div className="mt-3">
+                <label className="text-xs text-muted-foreground block mb-1">Notas</label>
+                <input
+                  type="text"
+                  placeholder="Notas sobre custos..."
+                  value={costs.notasCustos}
+                  onChange={(e) => setCosts(prev => ({ ...prev, notasCustos: e.target.value }))}
+                  className="w-full px-2 py-1.5 bg-secondary border border-border rounded-lg text-sm"
+                />
+              </div>
+
+              {/* Total */}
+              <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
+                <span className="font-medium text-foreground">Total Estimado:</span>
+                <span className="text-xl font-bold text-green-600">€{(costs.custoTotal || 0).toFixed(2)}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Parking Stops */}
+          {parkingStops.length > 0 && (
+            <div className="bg-card rounded-xl shadow-sm p-4">
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                Paragens de Estacionamento ({parkingStops.length})
+              </h3>
+              <div className="space-y-2">
+                {parkingStops.map((parking, i) => (
+                  <div key={i} className="flex items-center gap-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <span className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">P</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{parking.nome}</p>
+                      {parking.endereco && <p className="text-xs text-muted-foreground truncate">{parking.endereco}</p>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        step="0.50"
+                        placeholder="€"
+                        value={parking.custoEstimado || ""}
+                        onChange={(e) => updateParkingCost(i, e.target.value ? parseFloat(e.target.value) : null)}
+                        className="w-16 px-2 py-1 bg-card border border-border rounded text-xs text-center"
+                      />
+                      <button
+                        onClick={() => removeParkingStop(i)}
+                        className="p-1 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Map */}
           <div className="bg-card rounded-xl shadow-sm overflow-hidden h-[300px] sm:h-[350px] lg:h-[400px]">
@@ -1147,6 +1443,23 @@ export default function RoutePlannerAdvanced() {
                     title="Ponto de partida"
                   />
                 )}
+
+                {/* Parking markers */}
+                {parkingStops.map((parking, i) => (
+                  <Marker
+                    key={`parking-${i}`}
+                    position={{ lat: parking.lat, lng: parking.lng }}
+                    icon={{
+                      path: google.maps.SymbolPath.CIRCLE,
+                      scale: 8,
+                      fillColor: "#3b82f6",
+                      fillOpacity: 1,
+                      strokeColor: "#fff",
+                      strokeWeight: 2,
+                    }}
+                    title={parking.nome}
+                  />
+                ))}
 
                 {directions ? (
                   <DirectionsRenderer directions={directions} />
@@ -1198,7 +1511,6 @@ export default function RoutePlannerAdvanced() {
             <div className="bg-card rounded-xl shadow-sm p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold text-foreground">Ordem Otimizada</h3>
-                {/* Navigation buttons - hidden on mobile (shown in bottom bar) */}
                 <div className="hidden lg:flex gap-2">
                   <button
                     onClick={() => openNavigation("google")}
@@ -1283,7 +1595,6 @@ export default function RoutePlannerAdvanced() {
       {/* Nearby Places Panel */}
       {nearbyPanelOpen && (
         <>
-          {/* Overlay */}
           <div
             className="fixed inset-0 bg-black/50 z-40 lg:hidden"
             onClick={() => setNearbyPanelOpen(false)}
@@ -1303,70 +1614,78 @@ export default function RoutePlannerAdvanced() {
               </button>
             </div>
 
-          <div className="p-4">
-            {loadingNearby ? (
-              <div className="flex items-center justify-center py-8">
-                <svg className="w-6 h-6 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              </div>
-            ) : nearbyPlaces.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">Nenhum local encontrado</p>
-            ) : (
-              <div className="space-y-3">
-                {nearbyPlaces.map(place => (
-                  <div key={place.id} className="bg-secondary/50 rounded-lg p-3">
-                    <div className="flex-1 min-w-0 mb-2">
-                      <h4 className="text-sm font-medium text-foreground">{place.name}</h4>
-                      {place.address && (
-                        <p className="text-xs text-muted-foreground mt-0.5">{place.address}</p>
-                      )}
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-primary font-medium">{place.distance}m</span>
-                        {place.hasGPL && (
-                          <span className="text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded">GPL</span>
+            <div className="p-4">
+              {loadingNearby ? (
+                <div className="flex items-center justify-center py-8">
+                  <svg className="w-6 h-6 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+              ) : nearbyPlaces.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">Nenhum local encontrado</p>
+              ) : (
+                <div className="space-y-3">
+                  {nearbyPlaces.map(place => (
+                    <div key={place.id} className="bg-secondary/50 rounded-lg p-3">
+                      <div className="flex-1 min-w-0 mb-2">
+                        <h4 className="text-sm font-medium text-foreground">{place.name}</h4>
+                        {place.address && (
+                          <p className="text-xs text-muted-foreground mt-0.5">{place.address}</p>
                         )}
-                        {place.rating && (
-                          <span className="text-xs text-amber-600 flex items-center gap-0.5">
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                            </svg>
-                            {place.rating}
-                          </span>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-primary font-medium">{place.distance}m</span>
+                          {place.hasGPL && (
+                            <span className="text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded">GPL</span>
+                          )}
+                          {place.rating && (
+                            <span className="text-xs text-amber-600 flex items-center gap-0.5">
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                              </svg>
+                              {place.rating}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {nearbyType === "parking" && nearbySearchPoint && (
+                          <button
+                            onClick={() => addParkingToRoute(place, nearbySearchPoint.index)}
+                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700"
+                          >
+                            + Adicionar
+                          </button>
                         )}
+                        <button
+                          onClick={() => navigateToPlace(place, "google")}
+                          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+                        >
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                          </svg>
+                          Maps
+                        </button>
+                        <button
+                          onClick={() => navigateToPlace(place, "waze")}
+                          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-[#33ccff] text-white rounded-lg text-sm font-medium hover:bg-[#2ab8e6]"
+                        >
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                          </svg>
+                          Waze
+                        </button>
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => navigateToPlace(place, "google")}
-                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-                      >
-                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-                        </svg>
-                        Maps
-                      </button>
-                      <button
-                        onClick={() => navigateToPlace(place, "waze")}
-                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-[#33ccff] text-white rounded-lg text-sm font-medium hover:bg-[#2ab8e6]"
-                      >
-                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                        </svg>
-                        Waze
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
         </>
       )}
 
-      {/* Mobile Navigation Bar - Fixed at bottom when route is calculated */}
+      {/* Mobile Navigation Bar */}
       {optimizedRoute.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-3 z-30 lg:hidden safe-area-bottom">
           <div className="flex gap-2">

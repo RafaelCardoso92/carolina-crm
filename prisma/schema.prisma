@@ -822,9 +822,25 @@ model RotaSalva {
   // Route data (JSON array of location IDs and order)
   locais          Json      // Array of { id, tipo, ordem }
   
+  // Parking stops (JSON array)
+  paragens        Json?     // Array of { lat, lng, nome, endereco, custoEstimado }
+  
   // Calculated route info
   distanciaTotal  String?   // e.g., "45.2 km"
   duracaoTotal    String?   // e.g., "1h 30min"
+  
+  // Cost estimates
+  custoPortagens      Decimal?  @db.Decimal(10, 2)  // Toll costs
+  numPortagens        Int?      // Number of tolls
+  custoCombuistivel   Decimal?  @db.Decimal(10, 2)  // Fuel costs
+  consumoMedio        Decimal?  @db.Decimal(4, 1)   // L/100km (default ~7.0 for GPL)
+  precoLitro          Decimal?  @db.Decimal(4, 3)   // Price per liter
+  custoEstacionamento Decimal?  @db.Decimal(10, 2)  // Parking costs
+  custoTotal          Decimal?  @db.Decimal(10, 2)  // Total estimated cost
+  
+  // Actual costs (after completing route)
+  custoReal           Decimal?  @db.Decimal(10, 2)  // Actual total cost
+  notasCustos         String?   // Notes about costs
   
   // Status
   concluida       Boolean   @default(false)

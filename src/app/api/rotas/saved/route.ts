@@ -58,6 +58,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Calculate fuel cost if distance and consumption provided
+    let custoCombuistivel = data.custoCombuistivel
+    if (!custoCombuistivel && data.distanciaTotal && data.consumoMedio && data.precoLitro) {
+      const distanceKm = parseFloat(data.distanciaTotal.replace(/[^\d.]/g, ""))
+      if (!isNaN(distanceKm)) {
+        custoCombuistivel = (distanceKm / 100) * data.consumoMedio * data.precoLitro
+      }
+    }
+
+    // Calculate total cost
+    const custoTotal = (
+      (parseFloat(data.custoPortagens) || 0) +
+      (parseFloat(custoCombuistivel) || 0) +
+      (parseFloat(data.custoEstacionamento) || 0)
+    ) || null
+
     const rota = await prisma.rotaSalva.create({
       data: {
         nome: data.nome || null,
@@ -66,8 +82,18 @@ export async function POST(request: NextRequest) {
         origemLongitude: data.origemLongitude,
         origemEndereco: data.origemEndereco || null,
         locais: data.locais,
+        paragens: data.paragens || null,
         distanciaTotal: data.distanciaTotal || null,
         duracaoTotal: data.duracaoTotal || null,
+        // Cost fields
+        custoPortagens: data.custoPortagens || null,
+        numPortagens: data.numPortagens || null,
+        custoCombuistivel: custoCombuistivel || null,
+        consumoMedio: data.consumoMedio || null,
+        precoLitro: data.precoLitro || null,
+        custoEstacionamento: data.custoEstacionamento || null,
+        custoTotal: custoTotal,
+        notasCustos: data.notasCustos || null,
         concluida: false
       }
     })

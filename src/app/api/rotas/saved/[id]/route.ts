@@ -29,7 +29,7 @@ export async function GET(
   }
 }
 
-// PUT - Update a saved route
+// PUT - Update a saved route (full update)
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -37,6 +37,22 @@ export async function PUT(
   try {
     const { id } = await params
     const data = await request.json()
+
+    // Calculate fuel cost if needed
+    let custoCombuistivel = data.custoCombuistivel
+    if (data.distanciaTotal && data.consumoMedio && data.precoLitro && !custoCombuistivel) {
+      const distanceKm = parseFloat(String(data.distanciaTotal).replace(/[^\d.]/g, ""))
+      if (!isNaN(distanceKm)) {
+        custoCombuistivel = (distanceKm / 100) * data.consumoMedio * data.precoLitro
+      }
+    }
+
+    // Calculate total cost
+    const custoTotal = (
+      (parseFloat(data.custoPortagens) || 0) +
+      (parseFloat(custoCombuistivel) || 0) +
+      (parseFloat(data.custoEstacionamento) || 0)
+    ) || null
 
     const rota = await prisma.rotaSalva.update({
       where: { id },
@@ -47,8 +63,19 @@ export async function PUT(
         origemLongitude: data.origemLongitude,
         origemEndereco: data.origemEndereco,
         locais: data.locais,
+        paragens: data.paragens,
         distanciaTotal: data.distanciaTotal,
         duracaoTotal: data.duracaoTotal,
+        // Cost fields
+        custoPortagens: data.custoPortagens,
+        numPortagens: data.numPortagens,
+        custoCombuistivel: custoCombuistivel,
+        consumoMedio: data.consumoMedio,
+        precoLitro: data.precoLitro,
+        custoEstacionamento: data.custoEstacionamento,
+        custoTotal: custoTotal,
+        custoReal: data.custoReal,
+        notasCustos: data.notasCustos,
         concluida: data.concluida
       }
     })
@@ -63,7 +90,7 @@ export async function PUT(
   }
 }
 
-// PATCH - Mark route as complete/incomplete
+// PATCH - Partial update (mark complete, update costs, etc.)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -71,6 +98,22 @@ export async function PATCH(
   try {
     const { id } = await params
     const data = await request.json()
+
+    // If updating cost fields, recalculate total
+    if (data.custoPortagens !== undefined || data.custoCombuistivel !== undefined || data.custoEstacionamento !== undefined) {
+      const existing = await prisma.rotaSalva.findUnique({ where: { id } })
+      if (existing) {
+        const custoPortagens = data.custoPortagens ?? existing.custoPortagens ?? 0
+        const custoCombuistivel = data.custoCombuistivel ?? existing.custoCombuistivel ?? 0
+        const custoEstacionamento = data.custoEstacionamento ?? existing.custoEstacionamento ?? 0
+
+        data.custoTotal = (
+          parseFloat(String(custoPortagens)) +
+          parseFloat(String(custoCombuistivel)) +
+          parseFloat(String(custoEstacionamento))
+        ) || null
+      }
+    }
 
     const rota = await prisma.rotaSalva.update({
       where: { id },
