@@ -39,7 +39,7 @@ interface ParkingStop {
   nome: string
   endereco: string | null
   custoEstimado: number | null
-  afterStopIndex: number // Which stop this parking is after
+  afterStopIndex: number
 }
 
 interface RouteCosts {
@@ -91,20 +91,93 @@ const mapContainerStyle = {
 
 const defaultCenter = { lat: 38.7223, lng: -9.1393 }
 
-// Default fuel settings for GPL in Portugal
-const DEFAULT_CONSUMO_MEDIO = 7.5 // L/100km for GPL
-const DEFAULT_PRECO_LITRO = 0.75 // €/L for GPL (2024 average)
+const DEFAULT_CONSUMO_MEDIO = 7.5
+const DEFAULT_PRECO_LITRO = 0.75
+const TOLL_COST_PER_KM = 0.085
 
-// Portuguese toll cost per km (average for autoestradas)
-const TOLL_COST_PER_KM = 0.085 // €/km average
+// Portuguese postal code to district mapping
+// Format: first 4 digits of postal code -> district
+const getDistrictFromPostalCode = (postalCode: string | null): string => {
+  if (!postalCode) return "Sem Distrito"
 
-// Portuguese districts for filtering
-const PORTUGUESE_DISTRICTS = [
-  "Aveiro", "Beja", "Braga", "Bragança", "Castelo Branco", "Coimbra",
-  "Évora", "Faro", "Guarda", "Leiria", "Lisboa", "Portalegre",
-  "Porto", "Santarém", "Setúbal", "Viana do Castelo", "Vila Real", "Viseu",
-  "Açores", "Madeira"
-]
+  // Extract first 4 digits
+  const code = postalCode.replace(/\D/g, "").substring(0, 4)
+  const num = parseInt(code, 10)
+
+  if (isNaN(num)) return "Sem Distrito"
+
+  // Lisboa
+  if (num >= 1000 && num <= 1998) return "Lisboa"
+  if (num >= 2500 && num <= 2599) return "Leiria" // Caldas da Rainha
+  if (num >= 2600 && num <= 2699) return "Lisboa" // Vila Franca de Xira
+  if (num >= 2700 && num <= 2799) return "Lisboa" // Amadora
+  if (num >= 2800 && num <= 2829) return "Setúbal" // Almada
+  if (num >= 2830 && num <= 2999) return "Setúbal"
+  if (num >= 2000 && num <= 2139) return "Santarém"
+  if (num >= 2140 && num <= 2199) return "Santarém" // Chamusca
+  if (num >= 2200 && num <= 2299) return "Santarém" // Abrantes
+  if (num >= 2300 && num <= 2399) return "Leiria" // Tomar area
+  if (num >= 2400 && num <= 2499) return "Leiria"
+
+  // Coimbra, Aveiro, Viseu
+  if (num >= 3000 && num <= 3099) return "Coimbra"
+  if (num >= 3100 && num <= 3199) return "Leiria" // Pombal
+  if (num >= 3200 && num <= 3299) return "Coimbra" // Lousã
+  if (num >= 3300 && num <= 3399) return "Coimbra" // Arganil
+  if (num >= 3400 && num <= 3499) return "Coimbra" // Oliveira do Hospital
+  if (num >= 3500 && num <= 3599) return "Viseu"
+  if (num >= 3600 && num <= 3699) return "Viseu" // Castro Daire
+  if (num >= 3700 && num <= 3799) return "Aveiro" // São João da Madeira
+  if (num >= 3800 && num <= 3899) return "Aveiro"
+
+  // Porto, Braga, Viana, Vila Real, Bragança
+  if (num >= 4000 && num <= 4099) return "Porto"
+  if (num >= 4100 && num <= 4199) return "Porto"
+  if (num >= 4200 && num <= 4299) return "Porto"
+  if (num >= 4300 && num <= 4399) return "Porto"
+  if (num >= 4400 && num <= 4499) return "Porto" // Vila Nova de Gaia
+  if (num >= 4500 && num <= 4599) return "Aveiro" // Espinho
+  if (num >= 4600 && num <= 4699) return "Porto" // Amarante
+  if (num >= 4700 && num <= 4799) return "Braga"
+  if (num >= 4800 && num <= 4899) return "Braga" // Guimarães
+  if (num >= 4900 && num <= 4999) return "Viana do Castelo"
+  if (num >= 5000 && num <= 5099) return "Vila Real"
+  if (num >= 5100 && num <= 5199) return "Viseu" // Lamego
+  if (num >= 5200 && num <= 5299) return "Bragança" // Mogadouro
+  if (num >= 5300 && num <= 5399) return "Bragança"
+  if (num >= 5400 && num <= 5499) return "Vila Real" // Chaves
+
+  // Castelo Branco, Guarda
+  if (num >= 6000 && num <= 6099) return "Castelo Branco"
+  if (num >= 6100 && num <= 6199) return "Castelo Branco" // Sertã
+  if (num >= 6200 && num <= 6299) return "Castelo Branco" // Covilhã
+  if (num >= 6300 && num <= 6399) return "Guarda"
+
+  // Alentejo
+  if (num >= 7000 && num <= 7099) return "Évora"
+  if (num >= 7100 && num <= 7199) return "Évora" // Estremoz
+  if (num >= 7200 && num <= 7299) return "Évora" // Reguengos
+  if (num >= 7300 && num <= 7399) return "Portalegre"
+  if (num >= 7400 && num <= 7499) return "Portalegre" // Ponte de Sor
+  if (num >= 7500 && num <= 7599) return "Setúbal" // Santiago do Cacém
+  if (num >= 7600 && num <= 7699) return "Beja" // Aljustrel
+  if (num >= 7700 && num <= 7799) return "Beja" // Odemira
+  if (num >= 7800 && num <= 7899) return "Beja"
+
+  // Algarve
+  if (num >= 8000 && num <= 8999) return "Faro"
+
+  // Islands
+  if (num >= 9000 && num <= 9499) return "Madeira"
+  if (num >= 9500 && num <= 9999) return "Açores"
+
+  return "Sem Distrito"
+}
+
+// Get route letter (A, B, C, etc.)
+const getRouteLetter = (index: number): string => {
+  return String.fromCharCode(65 + index) // A=65 in ASCII
+}
 
 const PIPELINE_STATES = [
   { value: "NOVO", label: "Novo", color: "bg-blue-100 text-blue-800" },
@@ -117,15 +190,12 @@ const PIPELINE_STATES = [
 ]
 
 export default function RoutePlannerAdvanced() {
-  // Data state
   const [locations, setLocations] = useState<RouteLocation[]>([])
-  const [cities, setCities] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([])
 
   // Filter state
   const [filterDistrict, setFilterDistrict] = useState<string>("")
-  const [filterCity, setFilterCity] = useState<string>("")
   const [filterType, setFilterType] = useState<"all" | "cliente" | "prospecto">("all")
   const [filterStates, setFilterStates] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState("")
@@ -193,14 +263,12 @@ export default function RoutePlannerAdvanced() {
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""
   })
 
-  // Calculate fuel cost based on distance
   const calculateFuelCost = useCallback((distanceStr: string, consumo: number, preco: number) => {
     const distanceKm = parseFloat(distanceStr.replace(/[^\d.]/g, ""))
     if (isNaN(distanceKm)) return null
     return Math.round((distanceKm / 100) * consumo * preco * 100) / 100
   }, [])
 
-  // Estimate toll cost based on route (checks for A-roads in Portugal)
   const estimateTollCost = useCallback((result: google.maps.DirectionsResult) => {
     const route = result.routes[0]
     if (!route) return { cost: null, count: null }
@@ -209,16 +277,13 @@ export default function RoutePlannerAdvanced() {
     let tollCount = 0
     const tollRoads = new Set<string>()
 
-    // Analyze each step of each leg
     route.legs.forEach(leg => {
       leg.steps.forEach(step => {
         const instructions = step.instructions?.toLowerCase() || ""
-        // Check for Portuguese toll roads (A-roads: A1, A2, etc.)
         const tollMatches = instructions.match(/\b(a-?\d+|ic\d+|ip\d+|vci|crep|cril|crel)\b/gi)
         if (tollMatches) {
           tollMatches.forEach(road => {
             const normalized = road.toUpperCase().replace("-", "")
-            // A-roads are tolled, some ICs and IPs too
             if (normalized.startsWith("A") || normalized === "VCI" || normalized === "CREP" || normalized === "CRIL" || normalized === "CREL") {
               if (!tollRoads.has(normalized)) {
                 tollRoads.add(normalized)
@@ -231,7 +296,6 @@ export default function RoutePlannerAdvanced() {
       })
     })
 
-    // If we detected toll roads, estimate cost
     if (tollDistance > 0) {
       const tollKm = tollDistance / 1000
       const estimatedCost = Math.round(tollKm * TOLL_COST_PER_KM * 100) / 100
@@ -241,12 +305,10 @@ export default function RoutePlannerAdvanced() {
     return { cost: null, count: null }
   }, [])
 
-  // Calculate total parking cost
   const totalParkingCost = useMemo(() => {
     return parkingStops.reduce((sum, p) => sum + (p.custoEstimado || 0), 0)
   }, [parkingStops])
 
-  // Update costs when distance changes
   useEffect(() => {
     if (totalDistance) {
       const fuelCost = calculateFuelCost(totalDistance, costs.consumoMedio, costs.precoLitro)
@@ -259,7 +321,6 @@ export default function RoutePlannerAdvanced() {
     }
   }, [totalDistance, costs.consumoMedio, costs.precoLitro, totalParkingCost, calculateFuelCost])
 
-  // Fetch locations and geocode status
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -270,7 +331,6 @@ export default function RoutePlannerAdvanced() {
         const locData = await locResponse.json()
         const statusData = await statusResponse.json()
         setLocations(locData.locations || [])
-        setCities(locData.cities || [])
         setGeocodeStatus(statusData)
       } catch (error) {
         console.error("Error fetching data:", error)
@@ -281,7 +341,6 @@ export default function RoutePlannerAdvanced() {
     fetchData()
   }, [])
 
-  // Fetch saved routes for current month
   useEffect(() => {
     const fetchSavedRoutes = async () => {
       const date = new Date(selectedDate)
@@ -299,42 +358,23 @@ export default function RoutePlannerAdvanced() {
     fetchSavedRoutes()
   }, [selectedDate])
 
-  // Get districts from cities
+  // Get available districts from locations based on postal codes
   const availableDistricts = useMemo(() => {
     const districts = new Set<string>()
-    cities.forEach(city => {
-      // Try to match city with a district
-      const normalizedCity = city.toLowerCase()
-      PORTUGUESE_DISTRICTS.forEach(district => {
-        if (normalizedCity.includes(district.toLowerCase()) ||
-            district.toLowerCase().includes(normalizedCity.split(" ")[0])) {
-          districts.add(district)
-        }
-      })
-    })
-    // Also check locations for cidade that might match districts
     locations.forEach(loc => {
-      if (loc.cidade) {
-        const normalizedCity = loc.cidade.toLowerCase()
-        PORTUGUESE_DISTRICTS.forEach(district => {
-          if (normalizedCity.includes(district.toLowerCase())) {
-            districts.add(district)
-          }
-        })
+      const district = getDistrictFromPostalCode(loc.codigoPostal)
+      if (district !== "Sem Distrito") {
+        districts.add(district)
       }
     })
     return Array.from(districts).sort()
-  }, [cities, locations])
+  }, [locations])
 
-  // Filter cities by selected district
-  const filteredCities = useMemo(() => {
-    if (!filterDistrict) return cities
-    return cities.filter(city =>
-      city.toLowerCase().includes(filterDistrict.toLowerCase())
-    )
-  }, [cities, filterDistrict])
+  // Get location's district
+  const getLocationDistrict = useCallback((loc: RouteLocation): string => {
+    return getDistrictFromPostalCode(loc.codigoPostal)
+  }, [])
 
-  // Get current GPS location
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
       alert("Geolocalização não suportada pelo browser")
@@ -357,7 +397,6 @@ export default function RoutePlannerAdvanced() {
     )
   }
 
-  // Geocode address for starting point
   const geocodeStartingAddress = async () => {
     if (!startingPoint.address.trim()) return
 
@@ -384,7 +423,6 @@ export default function RoutePlannerAdvanced() {
     }
   }
 
-  // Batch geocode all customers
   const runBatchGeocode = async () => {
     if (!confirm("Isto vai geocodificar todos os clientes sem coordenadas. Continuar?")) return
 
@@ -410,7 +448,6 @@ export default function RoutePlannerAdvanced() {
     }
   }
 
-  // Inline geocode for a single location
   const geocodeInlineAddress = async (locationId: string, tipo: "cliente" | "prospecto") => {
     setGeocodingInline(true)
     try {
@@ -463,13 +500,11 @@ export default function RoutePlannerAdvanced() {
     return locations.filter(loc => {
       if (filterType !== "all" && loc.tipo !== filterType) return false
 
-      // District filter
-      if (filterDistrict && loc.cidade) {
-        if (!loc.cidade.toLowerCase().includes(filterDistrict.toLowerCase())) return false
+      // District filter based on postal code
+      if (filterDistrict) {
+        const locDistrict = getLocationDistrict(loc)
+        if (locDistrict !== filterDistrict) return false
       }
-
-      // City filter (exact match)
-      if (filterCity && loc.cidade?.toLowerCase() !== filterCity.toLowerCase()) return false
 
       if (filterStates.length > 0 && loc.tipo === "prospecto") {
         if (!loc.estado || !filterStates.includes(loc.estado)) return false
@@ -484,21 +519,30 @@ export default function RoutePlannerAdvanced() {
       }
       return true
     })
-  }, [locations, filterType, filterDistrict, filterCity, filterStates, searchQuery])
+  }, [locations, filterType, filterDistrict, filterStates, searchQuery, getLocationDistrict])
 
   const validLocations = useMemo(() => {
     return filteredLocations.filter(l => l.latitude && l.longitude)
   }, [filteredLocations])
 
-  const locationsByCity = useMemo(() => {
+  // Group locations by district (from postal code)
+  const locationsByDistrict = useMemo(() => {
     const grouped: Record<string, RouteLocation[]> = {}
     filteredLocations.forEach(loc => {
-      const city = loc.cidade || "Sem cidade"
-      if (!grouped[city]) grouped[city] = []
-      grouped[city].push(loc)
+      const district = getLocationDistrict(loc)
+      if (!grouped[district]) grouped[district] = []
+      grouped[district].push(loc)
     })
-    return grouped
-  }, [filteredLocations])
+    // Sort districts alphabetically
+    return Object.fromEntries(
+      Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b))
+    )
+  }, [filteredLocations, getLocationDistrict])
+
+  // Get the route index for a location (if selected and in optimized route)
+  const getRouteIndex = useCallback((locationId: string): number => {
+    return optimizedRoute.findIndex(loc => loc.id === locationId)
+  }, [optimizedRoute])
 
   const toggleLocation = (id: string) => {
     setSelectedLocations(prev =>
@@ -506,19 +550,18 @@ export default function RoutePlannerAdvanced() {
     )
   }
 
-  const selectAllInCity = (city: string) => {
-    const cityLocations = locationsByCity[city] || []
-    const cityIds = cityLocations.filter(l => l.latitude && l.longitude).map(l => l.id)
-    const allSelected = cityIds.every(id => selectedLocations.includes(id))
+  const selectAllInDistrict = (district: string) => {
+    const districtLocations = locationsByDistrict[district] || []
+    const districtIds = districtLocations.filter(l => l.latitude && l.longitude).map(l => l.id)
+    const allSelected = districtIds.every(id => selectedLocations.includes(id))
 
     if (allSelected) {
-      setSelectedLocations(prev => prev.filter(id => !cityIds.includes(id)))
+      setSelectedLocations(prev => prev.filter(id => !districtIds.includes(id)))
     } else {
-      setSelectedLocations(prev => [...new Set([...prev, ...cityIds])])
+      setSelectedLocations(prev => [...new Set([...prev, ...districtIds])])
     }
   }
 
-  // Calculate route
   const calculateRoute = useCallback(async () => {
     if (selectedLocations.length < 1) {
       alert("Seleciona pelo menos 1 local para visitar")
@@ -540,7 +583,6 @@ export default function RoutePlannerAdvanced() {
     }
 
     const directionsService = new google.maps.DirectionsService()
-
     const origin = { lat: startingPoint.latitude, lng: startingPoint.longitude }
 
     let destination: google.maps.LatLngLiteral
@@ -581,13 +623,9 @@ export default function RoutePlannerAdvanced() {
       setTotalDistance(distanceStr)
       setTotalDuration(durationStr)
 
-      // Estimate tolls from route
       const tollEstimate = estimateTollCost(result)
-
-      // Calculate fuel cost
       const fuelCost = calculateFuelCost(distanceStr, costs.consumoMedio, costs.precoLitro)
 
-      // Update costs with toll estimate
       setCosts(prev => ({
         ...prev,
         custoPortagens: tollEstimate.cost,
@@ -607,8 +645,6 @@ export default function RoutePlannerAdvanced() {
       }
 
       setOptimizedRoute(optimized)
-
-      // Clear parking stops when recalculating
       setParkingStops([])
 
     } catch (error) {
@@ -619,7 +655,6 @@ export default function RoutePlannerAdvanced() {
     }
   }, [selectedLocations, validLocations, startingPoint, costs.consumoMedio, costs.precoLitro, estimateTollCost, calculateFuelCost])
 
-  // Add parking to route
   const addParkingToRoute = (place: NearbyPlace, afterStopIndex: number) => {
     const newParking: ParkingStop = {
       lat: place.latitude,
@@ -633,19 +668,16 @@ export default function RoutePlannerAdvanced() {
     setNearbyPanelOpen(false)
   }
 
-  // Remove parking from route
   const removeParkingStop = (index: number) => {
     setParkingStops(prev => prev.filter((_, i) => i !== index))
   }
 
-  // Update parking cost
   const updateParkingCost = (index: number, cost: number | null) => {
     setParkingStops(prev => prev.map((p, i) =>
       i === index ? { ...p, custoEstimado: cost } : p
     ))
   }
 
-  // Save route
   const saveRoute = async () => {
     if (optimizedRoute.length === 0) {
       alert("Calcula uma rota primeiro")
@@ -667,7 +699,6 @@ export default function RoutePlannerAdvanced() {
           paragens: parkingStops.length > 0 ? parkingStops : null,
           distanciaTotal: totalDistance,
           duracaoTotal: totalDuration,
-          // Cost fields
           custoPortagens: costs.custoPortagens,
           numPortagens: costs.numPortagens,
           custoCombuistivel: costs.custoCombuistivel,
@@ -694,7 +725,6 @@ export default function RoutePlannerAdvanced() {
     }
   }
 
-  // Load saved route
   const loadSavedRoute = async (route: SavedRoute) => {
     setStartingPoint({
       type: "address",
@@ -707,11 +737,8 @@ export default function RoutePlannerAdvanced() {
     setSelectedLocations(locationIds)
     setSelectedDate(route.data.split("T")[0])
     setRouteName(route.nome || "")
-
-    // Load parking stops
     setParkingStops(route.paragens || [])
 
-    // Load costs
     setCosts({
       custoPortagens: route.custoPortagens,
       numPortagens: route.numPortagens,
@@ -731,7 +758,6 @@ export default function RoutePlannerAdvanced() {
     }, 500)
   }
 
-  // Delete saved route
   const deleteSavedRoute = async (routeId: string) => {
     if (!confirm("Eliminar esta rota?")) return
 
@@ -744,7 +770,6 @@ export default function RoutePlannerAdvanced() {
     }
   }
 
-  // Find nearby places
   const findNearbyPlaces = async (lat: number, lng: number, type: "parking" | "gas_station", index: number) => {
     setLoadingNearby(true)
     setNearbyPanelOpen(true)
@@ -767,7 +792,6 @@ export default function RoutePlannerAdvanced() {
     }
   }
 
-  // Generate navigation URLs
   const getGoogleMapsUrl = () => {
     if (optimizedRoute.length === 0 || !startingPoint.latitude || !startingPoint.longitude) return ""
 
@@ -803,7 +827,6 @@ export default function RoutePlannerAdvanced() {
     window.open(url, "_blank")
   }
 
-  // Clear route
   const clearRoute = () => {
     setDirections(null)
     setOptimizedRoute([])
@@ -834,14 +857,6 @@ export default function RoutePlannerAdvanced() {
         {state.label}
       </span>
     )
-  }
-
-  // Format marker title with name and address
-  const getMarkerTitle = (loc: RouteLocation) => {
-    const parts = [loc.nome]
-    if (loc.morada) parts.push(loc.morada)
-    if (loc.cidade) parts.push(loc.cidade)
-    return parts.join(" - ")
   }
 
   const mapCenter = useMemo(() => {
@@ -934,7 +949,6 @@ export default function RoutePlannerAdvanced() {
           </div>
         </div>
 
-        {/* Routes for selected date */}
         {routesForSelectedDate.length > 0 && (
           <div className="mt-3 pt-3 border-t border-border">
             <p className="text-xs text-muted-foreground mb-2">Rotas para {selectedDate}:</p>
@@ -956,7 +970,6 @@ export default function RoutePlannerAdvanced() {
           </div>
         )}
 
-        {/* Saved routes panel */}
         {showSavedRoutes && (
           <div className="mt-3 pt-3 border-t border-border max-h-48 overflow-y-auto">
             {savedRoutes.length === 0 ? (
@@ -1092,39 +1105,34 @@ export default function RoutePlannerAdvanced() {
               </div>
             </div>
 
-            {/* District Filter */}
-            {availableDistricts.length > 0 && (
-              <div className="mb-3">
-                <label className="text-xs text-muted-foreground mb-1 block">Distrito</label>
-                <select
-                  value={filterDistrict}
-                  onChange={(e) => {
-                    setFilterDistrict(e.target.value)
-                    setFilterCity("") // Reset city when district changes
-                  }}
-                  className="w-full px-2 py-1.5 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="">Todos os distritos</option>
-                  {availableDistricts.map(district => (
-                    <option key={district} value={district}>{district}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {/* City Filter */}
+            {/* District Filter - based on postal code */}
             <div className="mb-3">
-              <label className="text-xs text-muted-foreground mb-1 block">Cidade</label>
-              <select
-                value={filterCity}
-                onChange={(e) => setFilterCity(e.target.value)}
-                className="w-full px-2 py-1.5 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="">Todas as cidades</option>
-                {filteredCities.map(city => (
-                  <option key={city} value={city}>{city}</option>
+              <label className="text-xs text-muted-foreground mb-1.5 block">Distrito</label>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  onClick={() => setFilterDistrict("")}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition ${
+                    filterDistrict === ""
+                      ? "bg-primary text-white"
+                      : "bg-secondary text-foreground hover:bg-secondary/80"
+                  }`}
+                >
+                  Todos
+                </button>
+                {availableDistricts.map(district => (
+                  <button
+                    key={district}
+                    onClick={() => setFilterDistrict(filterDistrict === district ? "" : district)}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition ${
+                      filterDistrict === district
+                        ? "bg-primary text-white"
+                        : "bg-secondary text-foreground hover:bg-secondary/80"
+                    }`}
+                  >
+                    {district}
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
 
             {filterType !== "cliente" && (
@@ -1166,7 +1174,7 @@ export default function RoutePlannerAdvanced() {
             </div>
           </div>
 
-          {/* Location List */}
+          {/* Location List - Grouped by District */}
           <div className="bg-card rounded-xl shadow-sm p-4 max-h-[50vh] lg:max-h-[400px] overflow-y-auto">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-foreground">
@@ -1177,118 +1185,137 @@ export default function RoutePlannerAdvanced() {
               </span>
             </div>
 
-            {Object.keys(locationsByCity).length === 0 ? (
+            {Object.keys(locationsByDistrict).length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">Nenhum local encontrado</p>
             ) : (
               <div className="space-y-3">
-                {Object.entries(locationsByCity).map(([city, locs]) => (
-                  <div key={city}>
-                    <div className="flex items-center justify-between mb-1">
-                      <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{city}</h4>
+                {Object.entries(locationsByDistrict).map(([district, locs]) => (
+                  <div key={district}>
+                    <div className="flex items-center justify-between mb-1.5 sticky top-0 bg-card py-1">
+                      <h4 className="text-xs font-semibold text-primary uppercase tracking-wide flex items-center gap-1.5">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        </svg>
+                        {district}
+                        <span className="text-muted-foreground font-normal">({locs.length})</span>
+                      </h4>
                       <button
-                        onClick={() => selectAllInCity(city)}
+                        onClick={() => selectAllInDistrict(district)}
                         className="text-xs text-primary hover:underline"
                       >
                         {locs.filter(l => l.latitude).every(l => selectedLocations.includes(l.id)) ? "Desmarcar" : "Selecionar"} todos
                       </button>
                     </div>
                     <div className="space-y-1">
-                      {locs.map(loc => (
-                        <div key={loc.id}>
-                          <label
-                            className={`flex items-start gap-2 p-2 rounded-lg cursor-pointer transition ${
-                              selectedLocations.includes(loc.id)
-                                ? "bg-primary/10 border border-primary/30"
-                                : loc.latitude ? "bg-secondary/50 hover:bg-secondary" : "bg-red-50 dark:bg-red-900/20"
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedLocations.includes(loc.id)}
-                              onChange={() => loc.latitude ? toggleLocation(loc.id) : setEditingLocation(loc.id)}
-                              disabled={!loc.latitude && editingLocation !== loc.id}
-                              className="mt-0.5 rounded text-primary focus:ring-primary"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                                  loc.tipo === "cliente" ? "bg-blue-500" : "bg-orange-500"
-                                }`} />
-                                <span className="text-sm font-medium text-foreground truncate">{loc.nome}</span>
-                              </div>
-                              {loc.morada && (
-                                <p className="text-xs text-muted-foreground truncate mt-0.5">{loc.morada}</p>
-                              )}
-                              {loc.tipo === "prospecto" && loc.estado && (
-                                <div className="mt-0.5">{getStateBadge(loc.estado)}</div>
-                              )}
-                              {!loc.latitude && editingLocation !== loc.id && (
-                                <button
-                                  onClick={(e) => {
-                                    e.preventDefault()
-                                    setEditingLocation(loc.id)
-                                    setEditAddress({
-                                      morada: loc.morada || "",
-                                      cidade: loc.cidade || "",
-                                      codigoPostal: loc.codigoPostal || ""
-                                    })
-                                  }}
-                                  className="text-xs text-red-600 hover:underline mt-0.5"
-                                >
-                                  + Adicionar morada
-                                </button>
-                              )}
-                            </div>
-                          </label>
+                      {locs.map(loc => {
+                        const routeIndex = getRouteIndex(loc.id)
+                        const isInRoute = routeIndex >= 0
 
-                          {/* Inline address edit */}
-                          {editingLocation === loc.id && (
-                            <div className="ml-6 mt-2 p-3 bg-secondary rounded-lg space-y-2">
+                        return (
+                          <div key={loc.id}>
+                            <label
+                              className={`flex items-start gap-2 p-2 rounded-lg cursor-pointer transition ${
+                                selectedLocations.includes(loc.id)
+                                  ? "bg-primary/10 border border-primary/30"
+                                  : loc.latitude ? "bg-secondary/50 hover:bg-secondary" : "bg-red-50 dark:bg-red-900/20"
+                              }`}
+                            >
                               <input
-                                type="text"
-                                placeholder="Morada"
-                                value={editAddress.morada}
-                                onChange={(e) => setEditAddress(prev => ({ ...prev, morada: e.target.value }))}
-                                className="w-full px-2 py-1.5 bg-card border border-border rounded text-sm"
+                                type="checkbox"
+                                checked={selectedLocations.includes(loc.id)}
+                                onChange={() => loc.latitude ? toggleLocation(loc.id) : setEditingLocation(loc.id)}
+                                disabled={!loc.latitude && editingLocation !== loc.id}
+                                className="mt-0.5 rounded text-primary focus:ring-primary"
                               />
-                              <div className="flex gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  {/* Route letter badge */}
+                                  {isInRoute && (
+                                    <span className="w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                                      {getRouteLetter(routeIndex)}
+                                    </span>
+                                  )}
+                                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                    loc.tipo === "cliente" ? "bg-blue-500" : "bg-orange-500"
+                                  }`} />
+                                  <span className="text-sm font-medium text-foreground truncate">{loc.nome}</span>
+                                </div>
+                                {loc.morada && (
+                                  <p className="text-xs text-muted-foreground truncate mt-0.5 ml-7">{loc.morada}</p>
+                                )}
+                                {loc.codigoPostal && (
+                                  <p className="text-xs text-muted-foreground/70 ml-7">{loc.codigoPostal} {loc.cidade && `· ${loc.cidade}`}</p>
+                                )}
+                                {loc.tipo === "prospecto" && loc.estado && (
+                                  <div className="mt-0.5 ml-7">{getStateBadge(loc.estado)}</div>
+                                )}
+                                {!loc.latitude && editingLocation !== loc.id && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.preventDefault()
+                                      setEditingLocation(loc.id)
+                                      setEditAddress({
+                                        morada: loc.morada || "",
+                                        cidade: loc.cidade || "",
+                                        codigoPostal: loc.codigoPostal || ""
+                                      })
+                                    }}
+                                    className="text-xs text-red-600 hover:underline mt-0.5"
+                                  >
+                                    + Adicionar morada
+                                  </button>
+                                )}
+                              </div>
+                            </label>
+
+                            {editingLocation === loc.id && (
+                              <div className="ml-6 mt-2 p-3 bg-secondary rounded-lg space-y-2">
                                 <input
                                   type="text"
-                                  placeholder="Cidade"
-                                  value={editAddress.cidade}
-                                  onChange={(e) => setEditAddress(prev => ({ ...prev, cidade: e.target.value }))}
-                                  className="flex-1 px-2 py-1.5 bg-card border border-border rounded text-sm"
+                                  placeholder="Morada"
+                                  value={editAddress.morada}
+                                  onChange={(e) => setEditAddress(prev => ({ ...prev, morada: e.target.value }))}
+                                  className="w-full px-2 py-1.5 bg-card border border-border rounded text-sm"
                                 />
-                                <input
-                                  type="text"
-                                  placeholder="Cod. Postal"
-                                  value={editAddress.codigoPostal}
-                                  onChange={(e) => setEditAddress(prev => ({ ...prev, codigoPostal: e.target.value }))}
-                                  className="w-24 px-2 py-1.5 bg-card border border-border rounded text-sm"
-                                />
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    placeholder="Cidade"
+                                    value={editAddress.cidade}
+                                    onChange={(e) => setEditAddress(prev => ({ ...prev, cidade: e.target.value }))}
+                                    className="flex-1 px-2 py-1.5 bg-card border border-border rounded text-sm"
+                                  />
+                                  <input
+                                    type="text"
+                                    placeholder="Cod. Postal"
+                                    value={editAddress.codigoPostal}
+                                    onChange={(e) => setEditAddress(prev => ({ ...prev, codigoPostal: e.target.value }))}
+                                    className="w-24 px-2 py-1.5 bg-card border border-border rounded text-sm"
+                                  />
+                                </div>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => geocodeInlineAddress(loc.id, loc.tipo)}
+                                    disabled={geocodingInline || (!editAddress.morada && !editAddress.cidade)}
+                                    className="flex-1 px-3 py-1.5 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700 disabled:opacity-50"
+                                  >
+                                    {geocodingInline ? "A localizar..." : "Localizar e Guardar"}
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setEditingLocation(null)
+                                      setEditAddress({ morada: "", cidade: "", codigoPostal: "" })
+                                    }}
+                                    className="px-3 py-1.5 bg-secondary text-foreground rounded text-xs font-medium hover:bg-secondary/80"
+                                  >
+                                    Cancelar
+                                  </button>
+                                </div>
                               </div>
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => geocodeInlineAddress(loc.id, loc.tipo)}
-                                  disabled={geocodingInline || (!editAddress.morada && !editAddress.cidade)}
-                                  className="flex-1 px-3 py-1.5 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700 disabled:opacity-50"
-                                >
-                                  {geocodingInline ? "A localizar..." : "Localizar e Guardar"}
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setEditingLocation(null)
-                                    setEditAddress({ morada: "", cidade: "", codigoPostal: "" })
-                                  }}
-                                  className="px-3 py-1.5 bg-secondary text-foreground rounded text-xs font-medium hover:bg-secondary/80"
-                                >
-                                  Cancelar
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                            )}
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 ))}
@@ -1344,7 +1371,6 @@ export default function RoutePlannerAdvanced() {
               )}
             </div>
 
-            {/* Route Info & Save */}
             {totalDistance && (
               <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                 <div className="flex flex-wrap items-center gap-4 mb-3">
@@ -1376,7 +1402,6 @@ export default function RoutePlannerAdvanced() {
                   )}
                 </div>
 
-                {/* Save route section */}
                 <div className="flex flex-col sm:flex-row gap-2 pt-3 border-t border-green-200 dark:border-green-800">
                   <input
                     type="text"
@@ -1413,7 +1438,6 @@ export default function RoutePlannerAdvanced() {
               </h3>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {/* Tolls */}
                 <div>
                   <label className="text-xs text-muted-foreground block mb-1">Portagens (€)</label>
                   <input
@@ -1433,7 +1457,6 @@ export default function RoutePlannerAdvanced() {
                   />
                 </div>
 
-                {/* Number of tolls */}
                 <div>
                   <label className="text-xs text-muted-foreground block mb-1">Nº Portagens</label>
                   <input
@@ -1445,7 +1468,6 @@ export default function RoutePlannerAdvanced() {
                   />
                 </div>
 
-                {/* Fuel consumption */}
                 <div>
                   <label className="text-xs text-muted-foreground block mb-1">Consumo (L/100km)</label>
                   <input
@@ -1457,7 +1479,6 @@ export default function RoutePlannerAdvanced() {
                   />
                 </div>
 
-                {/* Fuel price */}
                 <div>
                   <label className="text-xs text-muted-foreground block mb-1">Preço GPL (€/L)</label>
                   <input
@@ -1469,7 +1490,6 @@ export default function RoutePlannerAdvanced() {
                   />
                 </div>
 
-                {/* Fuel cost (calculated) */}
                 <div>
                   <label className="text-xs text-muted-foreground block mb-1">Combustível (€)</label>
                   <input
@@ -1488,7 +1508,6 @@ export default function RoutePlannerAdvanced() {
                   />
                 </div>
 
-                {/* Parking cost */}
                 <div>
                   <label className="text-xs text-muted-foreground block mb-1">Estacionamento (€)</label>
                   <input
@@ -1508,7 +1527,6 @@ export default function RoutePlannerAdvanced() {
                 </div>
               </div>
 
-              {/* Notes */}
               <div className="mt-3">
                 <label className="text-xs text-muted-foreground block mb-1">Notas</label>
                 <input
@@ -1520,7 +1538,6 @@ export default function RoutePlannerAdvanced() {
                 />
               </div>
 
-              {/* Total */}
               <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
                 <span className="font-medium text-foreground">Total Estimado:</span>
                 <span className="text-xl font-bold text-green-600">€{(costs.custoTotal || 0).toFixed(2)}</span>
@@ -1598,7 +1615,6 @@ export default function RoutePlannerAdvanced() {
                   />
                 )}
 
-                {/* Parking markers */}
                 {parkingStops.map((parking, i) => (
                   <Marker
                     key={`parking-${i}`}
@@ -1616,7 +1632,15 @@ export default function RoutePlannerAdvanced() {
                 ))}
 
                 {directions ? (
-                  <DirectionsRenderer directions={directions} />
+                  <DirectionsRenderer
+                    directions={directions}
+                    options={{
+                      suppressMarkers: false,
+                      markerOptions: {
+                        clickable: true
+                      }
+                    }}
+                  />
                 ) : (
                   validLocations
                     .filter(l => selectedLocations.includes(l.id))
@@ -1632,7 +1656,7 @@ export default function RoutePlannerAdvanced() {
                           strokeColor: "#fff",
                           strokeWeight: 2,
                         }}
-                        title={getMarkerTitle(loc)}
+                        title={`${loc.nome}${loc.morada ? ` - ${loc.morada}` : ""}${loc.cidade ? `, ${loc.cidade}` : ""}`}
                         onClick={() => setSelectedMarker(loc)}
                       />
                     ))
@@ -1643,17 +1667,21 @@ export default function RoutePlannerAdvanced() {
                     position={{ lat: selectedMarker.latitude!, lng: selectedMarker.longitude! }}
                     onCloseClick={() => setSelectedMarker(null)}
                   >
-                    <div className="p-1">
-                      <h4 className="font-bold text-gray-900">{selectedMarker.nome}</h4>
-                      <p className="text-xs text-gray-600 capitalize">{selectedMarker.tipo}</p>
+                    <div className="p-1 min-w-[180px]">
+                      <h4 className="font-bold text-gray-900 text-sm">{selectedMarker.nome}</h4>
+                      <p className="text-xs text-gray-600 capitalize mt-0.5">
+                        {selectedMarker.tipo === "cliente" ? "Cliente" : "Prospecto"}
+                      </p>
                       {selectedMarker.morada && (
                         <p className="text-xs text-gray-500 mt-1">{selectedMarker.morada}</p>
                       )}
-                      {selectedMarker.cidade && (
-                        <p className="text-xs text-gray-500">{selectedMarker.cidade}</p>
+                      {selectedMarker.codigoPostal && (
+                        <p className="text-xs text-gray-500">{selectedMarker.codigoPostal} {selectedMarker.cidade}</p>
                       )}
                       {selectedMarker.telefone && (
-                        <p className="text-xs text-blue-600 mt-1">{selectedMarker.telefone}</p>
+                        <a href={`tel:${selectedMarker.telefone}`} className="text-xs text-blue-600 mt-1 block hover:underline">
+                          {selectedMarker.telefone}
+                        </a>
                       )}
                     </div>
                   </InfoWindow>
@@ -1694,7 +1722,6 @@ export default function RoutePlannerAdvanced() {
               </div>
 
               <div className="space-y-2">
-                {/* Starting point */}
                 <div className="flex items-center gap-3 p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
                   <span className="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1707,8 +1734,8 @@ export default function RoutePlannerAdvanced() {
                 {optimizedRoute.map((loc, i) => (
                   <div key={loc.id}>
                     <div className="flex items-center gap-3 p-2 bg-secondary/50 rounded-lg">
-                      <span className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
-                        {i + 1}
+                      <span className="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs font-bold">
+                        {getRouteLetter(i)}
                       </span>
                       <div className="flex-1 min-w-0">
                         <span className="text-sm font-medium text-foreground">{loc.nome}</span>
@@ -1721,7 +1748,6 @@ export default function RoutePlannerAdvanced() {
                       }`} />
                     </div>
 
-                    {/* Find nearby buttons */}
                     {i < optimizedRoute.length - 1 && (
                       <div className="flex gap-2 ml-9 my-2">
                         <button
