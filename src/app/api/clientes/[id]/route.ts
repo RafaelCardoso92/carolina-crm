@@ -59,6 +59,10 @@ export async function PUT(
         telefone: data.telefone || null,
         email: data.email || null,
         morada: data.morada || null,
+        cidade: data.cidade || null,
+        codigoPostal: data.codigoPostal || null,
+        latitude: data.latitude || null,
+        longitude: data.longitude || null,
         notas: data.notas || null
       }
     })

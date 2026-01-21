@@ -291,7 +291,53 @@ export default function DashboardView() {
         </div>
       </div>
 
-      {/* Quick Stats Row - NEW */}
+      {/* Late Payments Alert - Top Banner */}
+      {data.parcelasAtrasadas > 0 && (
+        <a
+          href="/cobrancas"
+          className="flex items-center justify-between gap-4 bg-red-600 hover:bg-red-700 text-white rounded-xl px-4 py-3 mb-6 transition group"
+        >
+          <div className="flex items-center gap-3">
+            <svg
+              className="w-5 h-5 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+            <span className="font-medium">
+              <span className="font-bold">{data.parcelasAtrasadas}</span> pagamento{data.parcelasAtrasadas !== 1 ? "s" : ""} em atraso
+              <span className="hidden sm:inline"> — Total: </span>
+              <span className="sm:hidden"> · </span>
+              <span className="font-bold">{formatCurrency(data.valorAtrasado)} €</span>
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <span className="hidden sm:inline">Ver Cobranças</span>
+            <svg
+              className="w-4 h-4 group-hover:translate-x-1 transition-transform"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+          </div>
+        </a>
+      )}
+
+      {/* Quick Stats Row */}
       <div className="mb-8">
         <QuickStatsWidget />
       </div>
@@ -340,35 +386,6 @@ export default function DashboardView() {
         <TarefasWidget />
         <FollowUpWidget />
       </div>
-
-      {/* Late Payments Alert */}
-      {data.parcelasAtrasadas > 0 && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6 mb-8">
-          <div className="flex items-start gap-4">
-            <div className="p-3 bg-red-100 dark:bg-red-800/30 rounded-xl">
-              <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-bold text-red-700 dark:text-red-400 mb-1">Pagamentos em Atraso</h3>
-              <p className="text-red-600 dark:text-red-300 mb-3">
-                Tens <span className="font-bold">{data.parcelasAtrasadas} parcela{data.parcelasAtrasadas !== 1 ? "s" : ""}</span> em atraso no valor total de <span className="font-bold">{formatCurrency(data.valorAtrasado)} €</span>
-              </p>
-              <a
-                href="/cobrancas"
-                className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg transition"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                Ver Cobrancas
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Upcoming Payments */}
       {data.proximasParcelas.length > 0 && (

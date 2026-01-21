@@ -8,7 +8,7 @@ Analise este cliente e forneca insights personalizados COM EXPLICACOES de porque
 
 DADOS DO CLIENTE:
 - Nome: {nome}
-- Codigo: {codigo}
+- Código: {codigo}
 - Email: {email}
 - Telefone: {telefone}
 - Morada: {morada}

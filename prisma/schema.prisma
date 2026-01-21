@@ -29,6 +29,10 @@ model Cliente {
   telefone  String?
   email     String?
   morada    String?
+  cidade        String?
+  codigoPostal  String?
+  latitude      Float?
+  longitude     Float?
   notas     String?
   ativo     Boolean   @default(true)
   createdAt DateTime  @default(now())
@@ -203,6 +207,7 @@ model Produto {
   codigo      String?  @unique
   categoria   String?
   descricao   String?
+  tipo        String?  // Venda Público, Profissional, Material Promocional
   ativo       Boolean  @default(true)
   preco       Decimal? @db.Decimal(10, 2)  // Default price (with VAT)
 
@@ -798,4 +803,35 @@ model PrevisaoVendas {
   updatedAt       DateTime  @updatedAt
   
   @@unique([mes, ano])
+}
+
+// ==========================================
+// SAVED ROUTES
+// ==========================================
+
+model RotaSalva {
+  id              String    @id @default(cuid())
+  nome            String?   // Optional name for the route
+  data            DateTime  // Date the route is planned for
+  
+  // Starting point
+  origemLatitude  Float
+  origemLongitude Float
+  origemEndereco  String?
+  
+  // Route data (JSON array of location IDs and order)
+  locais          Json      // Array of { id, tipo, ordem }
+  
+  // Calculated route info
+  distanciaTotal  String?   // e.g., "45.2 km"
+  duracaoTotal    String?   // e.g., "1h 30min"
+  
+  // Status
+  concluida       Boolean   @default(false)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([data])
+  @@index([concluida])
 }

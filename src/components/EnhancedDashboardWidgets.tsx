@@ -273,7 +273,7 @@ export function ForecastWidget() {
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground flex items-center gap-1">
               Pipeline ativo
-              <HelpTooltip text="Prospectos em fase de Proposta ou Negociacao que podem converter em vendas." position="right" />
+              <HelpTooltip text="Prospectos em fase de Proposta ou Negociação que podem converter em vendas." position="right" />
             </span>
             <span className="font-medium text-foreground">
               {data.pipeline.total} ({formatCurrency(data.pipeline.valor)} €)
@@ -652,7 +652,7 @@ export function BulkActionsPanel({
                   <option value="Telefonema">Telefonema</option>
                   <option value="Visita">Visita</option>
                   <option value="Email">Email</option>
-                  <option value="Reuniao">Reuniao</option>
+                  <option value="Reunião">Reunião</option>
                 </select>
                 <select
                   value={taskPriority}
@@ -685,7 +685,7 @@ export function BulkActionsPanel({
                 <option value="EMAIL">Email</option>
                 <option value="VISITA">Visita</option>
                 <option value="WHATSAPP">WhatsApp</option>
-                <option value="REUNIAO">Reuniao</option>
+                <option value="REUNIAO">Reunião</option>
               </select>
               <input
                 type="text"

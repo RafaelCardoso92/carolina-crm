@@ -110,7 +110,7 @@ export default function CommunicationLog({ clienteId, prospectoId }: Props) {
                   <option value="EMAIL">📧 Email</option>
                   <option value="VISITA">🚗 Visita</option>
                   <option value="WHATSAPP">💬 WhatsApp</option>
-                  <option value="REUNIAO">🤝 Reuniao</option>
+                  <option value="REUNIAO">🤝 Reunião</option>
                   <option value="OUTRO">📋 Outro</option>
                 </select>
               </div>

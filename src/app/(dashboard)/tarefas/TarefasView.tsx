@@ -164,7 +164,7 @@ export default function TarefasView() {
                     <option>Telefonema</option>
                     <option>Email</option>
                     <option>Visita</option>
-                    <option>Reuniao</option>
+                    <option>Reunião</option>
                     <option>Outro</option>
                   </select>
                 </div>
