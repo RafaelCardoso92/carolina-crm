@@ -87,7 +87,22 @@ export default async function VendasPage({
       </div>
 
       <VendasView
-        vendas={data.vendas}
+        vendas={data.vendas.map(v => ({
+          ...v,
+          valor1: v.valor1 ? String(v.valor1) : null,
+          valor2: v.valor2 ? String(v.valor2) : null,
+          total: String(v.total),
+          itens: v.itens?.map(i => ({
+            ...i,
+            quantidade: String(i.quantidade),
+            precoUnit: String(i.precoUnit),
+            subtotal: String(i.subtotal),
+            devolucoes: i.devolucoes?.map(d => ({
+              ...d,
+              quantidade: String(d.quantidade)
+            }))
+          }))
+        }))}
         clientes={data.clientes}
         produtos={data.produtos.map(p => ({
           ...p,
