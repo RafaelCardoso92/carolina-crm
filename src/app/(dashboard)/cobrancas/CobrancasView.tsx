@@ -721,7 +721,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={cobranca.pago ? "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" : "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"} />
                             </svg>
-                            {cobranca.pago ? "Pago" : "Pendente"}
+                            {cobranca.pago ? "Marcar Pendente" : "Marcar Pago"}
                           </button>
                         ) : (
                           <span className={`px-4 py-2 rounded-xl text-sm font-bold inline-flex items-center gap-2 ${
@@ -824,7 +824,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                                     : "bg-orange-100 text-orange-700 hover:bg-orange-200"
                               }`}
                             >
-                              {parcela.pago ? "Pago" : "Marcar Pago"}
+                              {parcela.pago ? "Marcar Pendente" : "Marcar Pago"}
                             </button>
                           </td>
                           <td className="px-4 py-3"></td>

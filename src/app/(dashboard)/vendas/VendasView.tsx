@@ -232,8 +232,6 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
         } else {
           // Removed: setUseItems(false)
           setFormItems([])
-      setManualValor1("")
-      setManualValor2("")
         }
       }
     }
