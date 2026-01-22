@@ -46,6 +46,31 @@ type Venda = {
   }
   itens?: ItemVenda[]
   devolucoes?: DevolucaoWithRelations[]
+  cobranca?: Cobranca | null
+}
+
+
+type Parcela = {
+  id: string
+  numero: number
+  valor: string
+  dataVencimento: Date | string
+  dataPago: Date | string | null
+  pago: boolean
+}
+
+type Cobranca = {
+  id: string
+  fatura: string | null
+  valor: string
+  valorSemIva: string | null
+  comissao: string | null
+  dataEmissao: Date | string | null
+  dataPago: Date | string | null
+  pago: boolean
+  numeroParcelas: number
+  dataInicioVencimento: Date | string | null
+  parcelas: Parcela[]
 }
 
 type Cliente = {
@@ -113,6 +138,9 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
   const [formItems, setFormItems] = useState<FormItem[]>([])
   const [manualValor1, setManualValor1] = useState("")
   const [manualValor2, setManualValor2] = useState("")
+  const [fatura, setFatura] = useState("")
+  const [numeroParcelas, setNumeroParcelas] = useState("1")
+  const [dataInicioVencimento, setDataInicioVencimento] = useState("")
   // Removed: useItems state - now both modes work together
 
   // Filter clients based on search
@@ -210,6 +238,9 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
       setFormItems([])
       setManualValor1("")
       setManualValor2("")
+      setFatura("")
+      setNumeroParcelas("1")
+      setDataInicioVencimento("")
       // Removed: setUseItems(false)
     }
   }, [showForm])
@@ -232,6 +263,19 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
         } else {
           // Removed: setUseItems(false)
           setFormItems([])
+        }
+        // Initialize payment fields from cobranca
+        if (venda.cobranca) {
+          setFatura(venda.cobranca.fatura || "")
+          setNumeroParcelas(String(venda.cobranca.numeroParcelas || 1))
+          if (venda.cobranca.dataInicioVencimento) {
+            const d = new Date(venda.cobranca.dataInicioVencimento)
+            setDataInicioVencimento(d.toISOString().split("T")[0])
+          }
+        } else {
+          setFatura("")
+          setNumeroParcelas("1")
+          setDataInicioVencimento("")
         }
       }
     }
@@ -305,7 +349,10 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
       notas: formData.get("notas") as string || null,
       itens,
       mes,
-      ano
+      ano,
+      fatura: fatura || null,
+      numeroParcelas: parseInt(numeroParcelas) || 1,
+      dataInicioVencimento: dataInicioVencimento || null
     }
 
     try {
@@ -376,6 +423,45 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
         text: "Erro ao eliminar venda",
         confirmButtonColor: "#b8860b"
       })
+    }
+  }
+
+  async function handleTogglePago(vendaId: string, cobrancaId: string, currentPago: boolean) {
+    const action = currentPago ? "marcar como pendente" : "marcar como pago"
+    const result = await Swal.fire({
+      title: currentPago ? "Marcar como pendente?" : "Marcar como pago?",
+      text: "Tem a certeza que quer " + action + "?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: currentPago ? "#f59e0b" : "#10b981",
+      cancelButtonColor: "#666666",
+      confirmButtonText: "Sim, confirmar",
+      cancelButtonText: "Cancelar"
+    })
+
+    if (!result.isConfirmed) return
+
+    try {
+      const res = await fetch("/api/cobrancas/" + cobrancaId, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pago: !currentPago,
+          dataPago: !currentPago ? new Date().toISOString() : null
+        })
+      })
+
+      if (res.ok) {
+        router.refresh()
+        Swal.fire({
+          icon: "success",
+          title: currentPago ? "Marcado como pendente" : "Marcado como pago",
+          timer: 1500,
+          showConfirmButton: false
+        })
+      }
+    } catch (err) {
+      console.error("Error toggling payment:", err)
     }
   }
 
@@ -809,6 +895,59 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                 </div>
               )}
 
+              
+              {/* Payment Tracking Section */}
+              <div className="md:col-span-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
+                <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  Pagamento
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                      Num Fatura
+                    </label>
+                    <input
+                      type="text"
+                      value={fatura}
+                      onChange={(e) => setFatura(e.target.value)}
+                      className="w-full px-3 py-2 border-2 border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                      placeholder="FA 2024/001"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                      Parcelas
+                    </label>
+                    <select
+                      value={numeroParcelas}
+                      onChange={(e) => setNumeroParcelas(e.target.value)}
+                      className="w-full px-3 py-2 border-2 border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                    >
+                      <option value="1">1x (Pronto)</option>
+                      <option value="2">2x</option>
+                      <option value="3">3x</option>
+                      <option value="4">4x</option>
+                      <option value="6">6x</option>
+                      <option value="12">12x</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                      Vencimento
+                    </label>
+                    <input
+                      type="date"
+                      value={dataInicioVencimento}
+                      onChange={(e) => setDataInicioVencimento(e.target.value)}
+                      className="w-full px-3 py-2 border-2 border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="md:col-span-2">
                 <label className="block text-sm font-bold text-foreground mb-2">
                   Notas
@@ -882,6 +1021,8 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                 const { semIVA, comIVA, iva } = calcularIVA(netTotal)
                 const hasItems = venda.itens && venda.itens.length > 0
                 const hasDevolucoes = venda.devolucoes && venda.devolucoes.length > 0
+                const isPago = venda.cobranca?.pago || false
+                const cobrancaId = venda.cobranca?.id
                 const hasItemsForReturn = hasItems && venda.itens!.some(item => {
                   const devolvido = (item.devolucoes || []).reduce((sum, d) => sum + Number(d.quantidade), 0)
                   return Number(item.quantidade) > devolvido
@@ -892,17 +1033,29 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                   <>
                     <tr key={venda.id} className={`hover:bg-pink-50 transition ${hasDevolucoes ? "bg-orange-50/30 dark:bg-orange-900/5" : ""}`}>
                       <td className="px-4 lg:px-6 py-4">
-                        <Link href={`/clientes/${venda.cliente.id}`} className="font-semibold text-foreground hover:text-primary transition">
-                          {venda.cliente.nome}
-                        </Link>
-                        {venda.cliente.codigo && (
-                          <span className="text-muted-foreground text-sm ml-2">({venda.cliente.codigo})</span>
-                        )}
-                        {hasDevolucoes && (
-                          <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 rounded">
-                            {venda.devolucoes!.length} dev.
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {isPago ? (
+                            <span className="px-2 py-0.5 text-xs font-bold bg-green-100 text-green-700 rounded-full">PAGO</span>
+                          ) : (
+                            <span className="px-2 py-0.5 text-xs font-bold bg-amber-100 text-amber-700 rounded-full">PEND</span>
+                          )}
+                          <div>
+                            <Link href={`/clientes/${venda.cliente.id}`} className="font-semibold text-foreground hover:text-primary transition">
+                              {venda.cliente.nome}
+                            </Link>
+                            {venda.cliente.codigo && (
+                              <span className="text-muted-foreground text-sm ml-2">({venda.cliente.codigo})</span>
+                            )}
+                            {hasDevolucoes && (
+                              <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 rounded">
+                                {venda.devolucoes!.length} dev.
+                              </span>
+                            )}
+                            {venda.cobranca?.fatura && (
+                              <span className="ml-2 text-xs text-blue-600">{venda.cobranca.fatura}</span>
+                            )}
+                          </div>
+                        </div>
                       </td>
                       <td className="px-4 py-4">
                         {hasItems ? (
@@ -966,6 +1119,24 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" />
                               </svg>
+                            </button>
+                          )}
+                          
+                          {cobrancaId && (
+                            <button
+                              onClick={() => handleTogglePago(venda.id, cobrancaId, isPago)}
+                              className={`p-2 rounded-lg transition ${isPago ? "text-green-600 hover:bg-green-100" : "text-amber-500 hover:bg-amber-100"}`}
+                              title={isPago ? "Pago - clique para marcar pendente" : "Pendente - clique para marcar pago"}
+                            >
+                              {isPago ? (
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              ) : (
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              )}
                             </button>
                           )}
                           <button

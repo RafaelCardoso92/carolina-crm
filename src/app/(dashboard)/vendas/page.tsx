@@ -36,6 +36,13 @@ async function getVendasData(mes: number, ano: number) {
               }
             }
           }
+        },
+        cobranca: {
+          include: {
+            parcelas: {
+              orderBy: { numero: "asc" }
+            }
+          }
         }
       },
       orderBy: { cliente: { nome: "asc" } }
@@ -101,7 +108,17 @@ export default async function VendasPage({
               ...d,
               quantidade: String(d.quantidade)
             }))
-          }))
+          })),
+          cobranca: v.cobranca ? {
+            ...v.cobranca,
+            valor: String(v.cobranca.valor),
+            valorSemIva: v.cobranca.valorSemIva ? String(v.cobranca.valorSemIva) : null,
+            comissao: v.cobranca.comissao ? String(v.cobranca.comissao) : null,
+            parcelas: v.cobranca.parcelas.map(p => ({
+              ...p,
+              valor: String(p.valor)
+            }))
+          } : null
         }))}
         clientes={data.clientes}
         produtos={data.produtos.map(p => ({

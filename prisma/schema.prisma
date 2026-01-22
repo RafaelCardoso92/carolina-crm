@@ -64,6 +64,7 @@ model Venda {
   itens       ItemVenda[]
   devolucoes  Devolucao[]
   itensReconciliacao ItemReconciliacao[]
+  cobranca    Cobranca?
 
   @@index([clienteId])
   @@index([mes, ano])
@@ -73,6 +74,9 @@ model Cobranca {
   id          String    @id @default(cuid())
   clienteId   String
   cliente     Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  vendaId     String?   @unique
+  venda       Venda?    @relation(fields: [vendaId], references: [id], onDelete: Cascade)
 
   fatura      String?   // FA number
   valor       Decimal   @db.Decimal(10, 2)

@@ -34,6 +34,13 @@ export async function GET(request: Request) {
             imagens: true
           },
           orderBy: { dataRegisto: "desc" }
+        },
+        cobranca: {
+          include: {
+            parcelas: {
+              orderBy: { numero: "asc" }
+            }
+          }
         }
       },
       orderBy: [{ ano: "desc" }, { mes: "desc" }]
@@ -81,7 +88,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "O total deve ser maior que zero" }, { status: 400 })
     }
 
-    // Create venda with items in a transaction
+    // Payment tracking fields
+    const fatura = data.fatura || null
+    const numeroParcelas = data.numeroParcelas ? parseInt(data.numeroParcelas) : 1
+    const dataInicioVencimento = data.dataInicioVencimento ? new Date(data.dataInicioVencimento) : null
+
+    // Create venda with items and cobranca in a transaction
     const venda = await prisma.$transaction(async (tx) => {
       // Create the venda (stored ex-VAT)
       const newVenda = await tx.venda.create({
@@ -109,7 +121,60 @@ export async function POST(request: Request) {
         })
       }
 
-      // Return venda with items, client, and devolucoes
+      // Auto-create linked cobranca for payment tracking
+      // Value with VAT (23%)
+      const valorComIva = total * 1.23
+      const comissaoPercent = 3.5
+      const comissao = total * (comissaoPercent / 100)
+
+      const cobranca = await tx.cobranca.create({
+        data: {
+          clienteId: data.clienteId,
+          vendaId: newVenda.id,
+          fatura,
+          valor: valorComIva,
+          valorSemIva: total,
+          comissao,
+          dataEmissao: new Date(),
+          numeroParcelas,
+          dataInicioVencimento,
+          pago: false
+        }
+      })
+
+      // Create installments if more than 1
+      if (numeroParcelas > 1 && dataInicioVencimento) {
+        const valorParcela = valorComIva / numeroParcelas
+        const parcelas = []
+        
+        for (let i = 0; i < numeroParcelas; i++) {
+          const dataVencimento = new Date(dataInicioVencimento)
+          dataVencimento.setMonth(dataVencimento.getMonth() + i)
+          
+          parcelas.push({
+            cobrancaId: cobranca.id,
+            numero: i + 1,
+            valor: valorParcela,
+            dataVencimento,
+            pago: false
+          })
+        }
+        
+        await tx.parcela.createMany({ data: parcelas })
+      } else if (dataInicioVencimento) {
+        // Single payment - create one parcela
+        await tx.parcela.create({
+          data: {
+            cobrancaId: cobranca.id,
+            numero: 1,
+            valor: valorComIva,
+            dataVencimento: dataInicioVencimento,
+            pago: false
+          }
+        })
+      }
+
+      // Return venda with all relations
       return tx.venda.findUnique({
         where: { id: newVenda.id },
         include: {
@@ -129,6 +194,11 @@ export async function POST(request: Request) {
                 }
               },
               imagens: true
+            }
+          },
+          cobranca: {
+            include: {
+              parcelas: { orderBy: { numero: "asc" } }
             }
           }
         }
