@@ -134,9 +134,9 @@ export default function TarefasView() {
 
       {/* New Task Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title">
           <div className="bg-card rounded-xl p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4 text-foreground">Nova Tarefa</h2>
+            <h2 id="modal-title" className="text-xl font-bold mb-4 text-foreground">Nova Tarefa</h2>
             <form onSubmit={createTarefa} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-1">Titulo</label>
