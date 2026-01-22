@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Swal from "sweetalert2"
@@ -78,20 +78,24 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
   const [dataInicioVencimento, setDataInicioVencimento] = useState("")
   const [valorTotal, setValorTotal] = useState("")
 
-  const filtered = cobrancas.filter(c => {
-    if (filter === "pending") return !c.pago
-    if (filter === "paid") return c.pago
-    if (filter === "overdue") {
-      // Has at least one overdue parcela
-      return c.parcelas.some(p => isParcelaAtrasada(p))
-    }
-    return true
-  })
+  const filtered = useMemo(() => {
+    return cobrancas.filter(c => {
+      if (filter === "pending") return !c.pago
+      if (filter === "paid") return c.pago
+      if (filter === "overdue") {
+        // Has at least one overdue parcela
+        return c.parcelas.some(p => isParcelaAtrasada(p))
+      }
+      return true
+    })
+  }, [cobrancas, filter])
 
-  // Count overdue parcelas
-  const totalAtrasadas = cobrancas.reduce((acc, c) => {
-    return acc + c.parcelas.filter(p => isParcelaAtrasada(p)).length
-  }, 0)
+  // Count overdue parcelas (memoized)
+  const totalAtrasadas = useMemo(() => {
+    return cobrancas.reduce((acc, c) => {
+      return acc + c.parcelas.filter(p => isParcelaAtrasada(p)).length
+    }, 0)
+  }, [cobrancas])
 
   function toggleRowExpanded(id: string) {
     setExpandedRows(prev => {

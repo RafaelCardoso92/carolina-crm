@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import Swal from "sweetalert2"
@@ -22,13 +22,30 @@ export default function ClientesList({ clientes }: { clientes: Cliente[] }) {
   const router = useRouter()
   const [search, setSearch] = useState("")
   const [showInactive, setShowInactive] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 20
 
-  const filtered = clientes.filter(c => {
-    const matchSearch = c.nome.toLowerCase().includes(search.toLowerCase()) ||
-      c.codigo?.toLowerCase().includes(search.toLowerCase())
-    const matchActive = showInactive || c.ativo
-    return matchSearch && matchActive
-  })
+  const filtered = useMemo(() => {
+    return clientes.filter(c => {
+      const matchSearch = c.nome.toLowerCase().includes(search.toLowerCase()) ||
+        c.codigo?.toLowerCase().includes(search.toLowerCase())
+      const matchActive = showInactive || c.ativo
+      return matchSearch && matchActive
+    })
+  }, [clientes, search, showInactive])
+
+  // Reset to page 1 when filter changes
+  const totalPages = Math.ceil(filtered.length / itemsPerPage)
+  const paginatedClientes = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    return filtered.slice(start, start + itemsPerPage)
+  }, [filtered, currentPage])
+
+  // Reset page when search changes
+  const handleSearch = (value: string) => {
+    setSearch(value)
+    setCurrentPage(1)
+  }
 
   async function handleDelete(id: string, nome: string) {
     const result = await Swal.fire({
@@ -95,7 +112,7 @@ export default function ClientesList({ clientes }: { clientes: Cliente[] }) {
             type="text"
             placeholder="Pesquisar por nome ou código..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearch(e.target.value)}
             className="w-full px-3 md:px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-card text-foreground text-sm md:text-base"
           />
         </div>
@@ -124,7 +141,7 @@ export default function ClientesList({ clientes }: { clientes: Cliente[] }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {filtered.map((cliente) => (
+            {paginatedClientes.map((cliente) => (
               <tr key={cliente.id} className={!cliente.ativo ? "bg-secondary opacity-60" : "hover:bg-table-row-hover"}>
                 <td className="px-4 lg:px-6 py-4">
                   <Link href={`/clientes/${cliente.id}`} className="font-medium text-foreground hover:text-primary">
@@ -197,7 +214,7 @@ export default function ClientesList({ clientes }: { clientes: Cliente[] }) {
 
       {/* Mobile Cards */}
       <div className="md:hidden space-y-3">
-        {filtered.map((cliente) => (
+        {paginatedClientes.map((cliente) => (
           <div key={cliente.id} className={`bg-card rounded-xl shadow-sm p-4 border border-border ${!cliente.ativo ? "opacity-60" : ""}`}>
             <div className="flex justify-between items-start mb-2">
               <div className="flex-1 min-w-0">
@@ -261,6 +278,34 @@ export default function ClientesList({ clientes }: { clientes: Cliente[] }) {
           </div>
         )}
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6 px-2">
+          <p className="text-sm text-muted-foreground">
+            A mostrar {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filtered.length)} de {filtered.length} clientes
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 border border-border rounded-lg text-sm hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Anterior
+            </button>
+            <span className="text-sm text-muted-foreground">
+              Página {currentPage} de {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 border border-border rounded-lg text-sm hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Seguinte
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

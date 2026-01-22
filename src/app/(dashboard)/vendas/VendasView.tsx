@@ -13,15 +13,15 @@ import type { Produto } from "@prisma/client"
 
 type ItemDevolucaoRef = {
   id: string
-  quantidade: unknown
+  quantidade: string | number
 }
 
 type ItemVenda = {
   id: string
   produtoId: string
-  quantidade: unknown
-  precoUnit: unknown
-  subtotal: unknown
+  quantidade: string | number
+  precoUnit: string | number
+  subtotal: string | number
   produto: {
     id: string
     nome: string
@@ -33,9 +33,9 @@ type ItemVenda = {
 type Venda = {
   id: string
   clienteId: string
-  valor1: unknown
-  valor2: unknown
-  total: unknown
+  valor1: string | number | null
+  valor2: string | number | null
+  total: string | number
   mes: number
   ano: number
   notas: string | null
