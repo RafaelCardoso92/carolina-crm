@@ -173,7 +173,7 @@ export default function ClienteForm({ cliente }: { cliente?: ClienteData }) {
             name="email"
             type="email"
             defaultValue={cliente?.email || ""}
-            className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium bg-card"
+            className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium bg-card invalid:border-red-500"
             placeholder="cliente@email.com"
           />
         </div>
@@ -223,7 +223,9 @@ export default function ClienteForm({ cliente }: { cliente?: ClienteData }) {
             name="codigoPostal"
             type="text"
             defaultValue={cliente?.codigoPostal || ""}
-            className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium bg-card"
+            pattern="[0-9]{4}-[0-9]{3}"
+            title="Formato: XXXX-XXX (ex: 1000-000)"
+            className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium bg-card invalid:border-red-500"
             placeholder="1000-000"
           />
         </div>

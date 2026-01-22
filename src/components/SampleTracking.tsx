@@ -23,6 +23,7 @@ export default function SampleTracking({ clienteId, prospectoId, produtos = [] }
   const [amostras, setAmostras] = useState<Amostra[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState({
     tipo: "AMOSTRA",
     produtoId: "",
@@ -53,6 +54,7 @@ export default function SampleTracking({ clienteId, prospectoId, produtos = [] }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setSaving(true)
     try {
       const res = await fetch("/api/amostras", {
         method: "POST",
@@ -73,6 +75,8 @@ export default function SampleTracking({ clienteId, prospectoId, produtos = [] }
       }
     } catch (error) {
       console.error("Error:", error)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -162,8 +166,8 @@ export default function SampleTracking({ clienteId, prospectoId, produtos = [] }
                 <button type="button" onClick={() => setShowForm(false)} className="flex-1 px-4 py-2 border border-border rounded-lg text-foreground hover:bg-secondary">
                   Cancelar
                 </button>
-                <button type="submit" className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover">
-                  Guardar
+                <button type="submit" disabled={saving} className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover disabled:opacity-50">
+                  {saving ? "A guardar..." : "Guardar"}
                 </button>
               </div>
             </form>
