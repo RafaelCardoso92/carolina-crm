@@ -1207,10 +1207,10 @@ export default function RoutePlannerAdvanced() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Filters & Location List */}
-        <div className="lg:col-span-1 space-y-4 order-2 lg:order-1">
+        <div className="lg:col-span-1 space-y-3 lg:space-y-4 order-2 lg:order-1">
           {/* Filters */}
           <div className="bg-card rounded-xl shadow-sm p-4">
-            <h3 className="text-sm font-semibold text-foreground mb-3">Filtros</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-2 sm:mb-3">Filtros</h3>
 
             <div className="mb-3">
               <label className="text-xs text-muted-foreground mb-1 block">Tipo</label>
@@ -1305,7 +1305,7 @@ export default function RoutePlannerAdvanced() {
           </div>
 
           {/* Calcular Rota Button */}
-          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl shadow-sm p-3 border border-emerald-200 dark:border-emerald-800">
+          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl shadow-sm p-2 sm:p-3 border border-emerald-200 dark:border-emerald-800">
             <button
               onClick={() => {
                 if (!startingPoint.latitude && !startingPoint.longitude) {
@@ -1346,7 +1346,7 @@ export default function RoutePlannerAdvanced() {
           </div>
 
           {/* Location List - Grouped by District */}
-          <div className="bg-card rounded-xl shadow-sm p-4 max-h-[60vh] lg:max-h-[500px] overflow-y-auto">
+          <div className="bg-card rounded-xl shadow-sm p-4 max-h-[40vh] sm:max-h-[50vh] lg:max-h-[500px] overflow-y-auto">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-foreground">
                 Locais ({filteredLocations.length})
@@ -1511,7 +1511,7 @@ export default function RoutePlannerAdvanced() {
         </div>
 
         {/* Map & Route */}
-        <div className="lg:col-span-2 space-y-4 order-1 lg:order-2">
+        <div className="lg:col-span-2 space-y-3 lg:space-y-4 order-1 lg:order-2">
           {/* Actions */}
           <div className="bg-card rounded-xl shadow-sm p-4">
             <div className="flex flex-wrap gap-2">
