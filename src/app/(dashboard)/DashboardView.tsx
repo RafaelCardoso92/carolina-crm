@@ -125,7 +125,7 @@ export default function DashboardView() {
   return (
     <div>
       {/* Header with Period Selectors */}
-      <div className="mb-6 md:mb-8">
+      <div className="mb-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-foreground">Dashboard</h1>
@@ -338,12 +338,12 @@ export default function DashboardView() {
       )}
 
       {/* Quick Stats Row */}
-      <div className="mb-8">
+      <div className="mb-4">
         <QuickStatsWidget />
       </div>
 
       {/* Main Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <StatCard
           title="Clientes Ativos"
           value={data.clientesAtivos.toString()}
@@ -375,22 +375,22 @@ export default function DashboardView() {
       </div>
 
       {/* NEW: Notifications, Forecast, and Health Widgets */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
         <NotificationsWidget />
         <ForecastWidget />
         <HealthScoresWidget />
       </div>
 
       {/* Tasks and Follow-up Widgets */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         <TarefasWidget />
         <FollowUpWidget />
       </div>
 
       {/* Upcoming Payments */}
       {data.proximasParcelas.length > 0 && (
-        <div className="bg-card rounded-xl shadow-sm p-6 mb-8 border-l-4 border-primary">
-          <h3 className="text-lg font-medium tracking-wide text-foreground mb-4 flex items-center gap-2">
+        <div className="bg-card rounded-xl shadow-sm p-4 mb-4 border-l-4 border-primary">
+          <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
             <div className="p-2 bg-primary/10 rounded-lg">
               <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -448,8 +448,8 @@ export default function DashboardView() {
       )}
 
       {/* Annual Stats */}
-      <div className="bg-card rounded-xl shadow-sm p-6 mb-8 border-l-4 border-primary">
-        <h3 className="text-lg font-medium tracking-wide text-foreground mb-4 flex items-center gap-2">
+      <div className="bg-card rounded-xl shadow-sm p-4 mb-4 border-l-4 border-primary">
+        <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
           <div className="p-2 bg-primary/10 rounded-lg">
             <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -458,21 +458,21 @@ export default function DashboardView() {
           Resumo Anual {data.currentYear}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-secondary rounded-lg p-4 text-center">
-            <p className="text-xs font-medium tracking-wide text-muted-foreground mb-1 uppercase">Total Vendas (sem IVA)</p>
-            <p className="text-xl font-bold text-foreground">{formatCurrency(ivaAno.semIVA)} €</p>
+          <div className="bg-secondary rounded-lg p-2 text-center">
+            <p className="text-[10px] font-medium text-muted-foreground uppercase">Sem IVA</p>
+            <p className="text-base font-bold text-foreground">{formatCurrency(ivaAno.semIVA)} €</p>
           </div>
-          <div className="bg-primary/5 rounded-lg p-4 text-center">
-            <p className="text-xs font-medium tracking-wide text-primary mb-1 uppercase">Total c/IVA</p>
-            <p className="text-xl font-bold text-primary">{formatCurrency(ivaAno.comIVA)} €</p>
+          <div className="bg-primary/5 rounded-lg p-2 text-center">
+            <p className="text-[10px] font-medium text-primary uppercase">c/IVA</p>
+            <p className="text-base font-bold text-primary">{formatCurrency(ivaAno.comIVA)} €</p>
           </div>
-          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
-            <p className="text-xs font-medium tracking-wide text-blue-600 dark:text-blue-400 mb-1 uppercase">IVA (23%)</p>
-            <p className="text-xl font-bold text-blue-700 dark:text-blue-300">{formatCurrency(ivaAno.iva)} €</p>
+          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-center">
+            <p className="text-[10px] font-medium text-blue-600 dark:text-blue-400 uppercase">IVA</p>
+            <p className="text-base font-bold text-blue-700 dark:text-blue-300">{formatCurrency(ivaAno.iva)} €</p>
           </div>
-          <div className="bg-primary/5 rounded-lg p-4 text-center border border-primary/30">
-            <p className="text-xs font-medium tracking-wide text-primary mb-1 uppercase">Objetivo Anual</p>
-            <p className="text-xl font-bold text-primary">{data.objetivoAnual > 0 ? `${formatCurrency(data.objetivoAnual)} €` : "N/D"}</p>
+          <div className="bg-primary/5 rounded-lg p-2 text-center border border-primary/30">
+            <p className="text-[10px] font-medium text-primary uppercase">Objetivo</p>
+            <p className="text-base font-bold text-primary">{data.objetivoAnual > 0 ? `${formatCurrency(data.objetivoAnual)} €` : "N/D"}</p>
           </div>
         </div>
         {data.objetivoAnual > 0 && (
@@ -492,61 +492,61 @@ export default function DashboardView() {
       </div>
 
       {/* VAT Summary Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {/* Monthly VAT */}
-        <div className="bg-card rounded-xl shadow-sm p-6">
-          <h3 className="text-lg font-medium tracking-wide text-foreground mb-4 flex items-center gap-2">
-            <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-card rounded-xl shadow-sm p-4">
+          <h3 className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+            <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
             </svg>
             IVA Mensal - {meses[data.currentMonth]}
           </h3>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-2">
             <div className="bg-secondary rounded-lg p-4 text-center">
               <p className="text-xs font-medium tracking-wide text-muted-foreground mb-1 uppercase">Sem IVA</p>
-              <p className="text-xl font-bold text-foreground">{formatCurrency(ivaMes.semIVA)} €</p>
+              <p className="text-base font-bold text-foreground">{formatCurrency(ivaMes.semIVA)} €</p>
             </div>
             <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
               <p className="text-xs font-medium tracking-wide text-blue-600 dark:text-blue-400 mb-1 uppercase">IVA (23%)</p>
-              <p className="text-xl font-bold text-blue-700 dark:text-blue-300">{formatCurrency(ivaMes.iva)} €</p>
+              <p className="text-base font-bold text-blue-700 dark:text-blue-300">{formatCurrency(ivaMes.iva)} €</p>
             </div>
             <div className="bg-success/10 rounded-lg p-4 text-center">
               <p className="text-xs font-medium tracking-wide text-success mb-1 uppercase">Total c/IVA</p>
-              <p className="text-xl font-bold text-success">{formatCurrency(ivaMes.comIVA)} €</p>
+              <p className="text-base font-bold text-success">{formatCurrency(ivaMes.comIVA)} €</p>
             </div>
           </div>
         </div>
 
         {/* Quarterly VAT */}
-        <div className="bg-card rounded-xl shadow-sm p-6">
-          <h3 className="text-lg font-medium tracking-wide text-foreground mb-4 flex items-center gap-2">
-            <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-card rounded-xl shadow-sm p-4">
+          <h3 className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+            <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
             </svg>
             IVA Trimestral - {data.currentTrimestre}º Trimestre
           </h3>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-2">
             <div className="bg-secondary rounded-lg p-4 text-center">
               <p className="text-xs font-medium tracking-wide text-muted-foreground mb-1 uppercase">Sem IVA</p>
-              <p className="text-xl font-bold text-foreground">{formatCurrency(ivaTrimestre.semIVA)} €</p>
+              <p className="text-base font-bold text-foreground">{formatCurrency(ivaTrimestre.semIVA)} €</p>
             </div>
             <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
               <p className="text-xs font-medium tracking-wide text-blue-600 dark:text-blue-400 mb-1 uppercase">IVA (23%)</p>
-              <p className="text-xl font-bold text-blue-700 dark:text-blue-300">{formatCurrency(ivaTrimestre.iva)} €</p>
+              <p className="text-base font-bold text-blue-700 dark:text-blue-300">{formatCurrency(ivaTrimestre.iva)} €</p>
             </div>
             <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center border border-blue-200 dark:border-blue-700">
               <p className="text-xs font-medium tracking-wide text-blue-600 dark:text-blue-400 mb-1 uppercase">Total c/IVA</p>
-              <p className="text-xl font-bold text-blue-700 dark:text-blue-300">{formatCurrency(ivaTrimestre.comIVA)} €</p>
+              <p className="text-base font-bold text-blue-700 dark:text-blue-300">{formatCurrency(ivaTrimestre.comIVA)} €</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Prize Progress Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {/* Monthly Prize */}
-        <div className="bg-card rounded-xl shadow-sm p-6 border-l-4 border-primary">
-          <h3 className="text-lg font-medium tracking-wide text-foreground mb-4 flex items-center gap-2">
+        <div className="bg-card rounded-xl shadow-sm p-4 border-l-4 border-primary">
+          <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
             <div className="p-2 bg-primary/10 rounded-lg">
               <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -582,7 +582,7 @@ export default function DashboardView() {
                   <p className="text-xs text-primary/70">Objetivo: {formatCurrency(data.proximoPremioMensal.minimo)} €</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xl font-bold text-primary">{formatCurrency(data.proximoPremioMensal.premio)} €</p>
+                  <p className="text-base font-bold text-primary">{formatCurrency(data.proximoPremioMensal.premio)} €</p>
                 </div>
               </div>
               <div className="w-full bg-primary/20 rounded-full h-3 mb-2">
@@ -603,8 +603,8 @@ export default function DashboardView() {
         </div>
 
         {/* Quarterly Prize */}
-        <div className="bg-card rounded-xl shadow-sm p-6 border-l-4 border-accent">
-          <h3 className="text-lg font-medium tracking-wide text-foreground mb-4 flex items-center gap-2">
+        <div className="bg-card rounded-xl shadow-sm p-4 border-l-4 border-accent">
+          <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
             <div className="p-2 bg-accent/10 rounded-lg">
               <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -640,7 +640,7 @@ export default function DashboardView() {
                   <p className="text-xs text-accent/70">Objetivo: {formatCurrency(data.proximoPremioTrimestral.minimo)} €</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xl font-bold text-accent">{formatCurrency(data.proximoPremioTrimestral.premio)} €</p>
+                  <p className="text-base font-bold text-accent">{formatCurrency(data.proximoPremioTrimestral.premio)} €</p>
                 </div>
               </div>
               <div className="w-full bg-accent/20 rounded-full h-3 mb-2">
@@ -663,7 +663,7 @@ export default function DashboardView() {
 
       {/* Progress Cards */}
       {(data.objetivoMensal > 0 || data.objetivoTrimestral > 0) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           {data.objetivoMensal > 0 && (
             <ProgressCard
               title="Progresso Mensal"
@@ -684,7 +684,7 @@ export default function DashboardView() {
       )}
 
       {/* Sales Charts Section */}
-      <div className="mt-8">
+      <div className="mt-4">
         <h2 className="text-2xl font-medium tracking-wide text-foreground mb-6 flex items-center gap-3">
           <div className="p-2 bg-primary/10 rounded-lg">
             <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -716,7 +716,7 @@ function StatCard({ title, value, subtitle, color, icon }: {
   const c = colors[color]
 
   return (
-    <div className={`bg-card rounded-xl shadow-sm border-l-4 ${c.border} p-6`}>
+    <div className={`bg-card rounded-xl shadow-sm border-l-4 ${c.border} p-4`}>
       <div className="flex items-center gap-3 mb-3">
         <div className={`p-2 ${c.iconBg} rounded-lg`}>
           <svg className={`w-5 h-5 ${c.iconText}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -725,7 +725,7 @@ function StatCard({ title, value, subtitle, color, icon }: {
         </div>
         <h3 className="text-sm font-medium tracking-wide text-foreground uppercase">{title}</h3>
       </div>
-      <p className="text-2xl font-bold text-foreground">{value}</p>
+      <p className="text-base font-bold text-foreground">{value}</p>
       <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
     </div>
   )
@@ -741,8 +741,8 @@ function ProgressCard({ title, current, target, percentage }: {
   const isComplete = percentage >= 100
 
   return (
-    <div className="bg-card rounded-xl shadow-sm p-6">
-      <h3 className="text-lg font-medium tracking-wide text-foreground mb-4 flex items-center gap-2">
+    <div className="bg-card rounded-xl shadow-sm p-4">
+      <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
         <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
