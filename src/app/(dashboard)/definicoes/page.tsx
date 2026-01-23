@@ -32,6 +32,17 @@ type ObjetivoMensal = {
   objetivo: number
 }
 
+
+type Campanha = {
+  id: string
+  titulo: string
+  descricao: string | null
+  mes: number
+  ano: number
+  ativo: boolean
+  totalVendido: number
+  totalVendas: number
+}
 type Produto = {
   id: string
   nome: string
@@ -62,14 +73,20 @@ export default function DefinicoesPage() {
   const router = useRouter()
   const [data, setData] = useState<SettingsData | null>(null)
   const [produtos, setProdutos] = useState<Produto[]>([])
+  const [campanhas, setCampanhas] = useState<Campanha[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<"config" | "objetivos" | "premios" | "produtos">("config")
+  const [activeTab, setActiveTab] = useState<"config" | "objetivos" | "premios" | "produtos" | "campanhas">("config")
 
   // Form states
   const [iva, setIva] = useState("")
   const [comissao, setComissao] = useState("")
   const [selectedAno, setSelectedAno] = useState(new Date().getFullYear())
+  
+  // Campanhas form state
+  const [campanhaForm, setCampanhaForm] = useState({ titulo: "", descricao: "", mes: new Date().getMonth() + 1, ano: new Date().getFullYear() })
+  const [editingCampanha, setEditingCampanha] = useState<string | null>(null)
+  const [showCampanhaForm, setShowCampanhaForm] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -77,14 +94,17 @@ export default function DefinicoesPage() {
 
   async function fetchData() {
     try {
-      const [defRes, prodRes] = await Promise.all([
+      const [defRes, prodRes, campRes] = await Promise.all([
         fetch("/api/definicoes"),
-        fetch("/api/produtos")
+        fetch("/api/produtos"),
+        fetch("/api/campanhas")
       ])
       const json = await defRes.json()
       const produtosData = await prodRes.json()
+      const campanhasData = await campRes.json()
       setData(json)
       setProdutos(produtosData)
+      setCampanhas(campanhasData)
       setIva(json.configuracoes.IVA_PERCENTAGEM || "23")
       setComissao(json.configuracoes.COMISSAO_PERCENTAGEM || "3.5")
     } catch (error) {
@@ -211,7 +231,8 @@ export default function DefinicoesPage() {
           { id: "config", label: "Configurações", shortLabel: "Config", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" },
           { id: "objetivos", label: "Objetivos", shortLabel: "Obj.", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
           { id: "premios", label: "Tabela Prémios", shortLabel: "Prémios", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
-          { id: "produtos", label: "Produtos", shortLabel: "Prod.", icon: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" }
+          { id: "produtos", label: "Produtos", shortLabel: "Prod.", icon: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" },
+          { id: "campanhas", label: "Campanhas", shortLabel: "Camp.", icon: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" }
         ].map((tab) => (
           <button
             key={tab.id}
@@ -469,6 +490,212 @@ export default function DefinicoesPage() {
           />
         </div>
       )}
+
+      {/* Campanhas Tab */}
+      {activeTab === "campanhas" && (
+        <div className="space-y-6">
+          {/* Header with Add Button */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-bold text-foreground">Campanhas</h2>
+              <p className="text-sm text-muted-foreground">Gerir campanhas mensais</p>
+            </div>
+            <button
+              onClick={() => {
+                setCampanhaForm({ titulo: "", descricao: "", mes: new Date().getMonth() + 1, ano: new Date().getFullYear() })
+                setEditingCampanha(null)
+                setShowCampanhaForm(true)
+              }}
+              className="px-4 py-2 bg-primary text-white rounded-lg font-semibold hover:bg-primary-hover transition flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Nova Campanha
+            </button>
+          </div>
+
+          {/* Campanha Form */}
+          {showCampanhaForm && (
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200">
+              <h3 className="text-lg font-bold mb-4">{editingCampanha ? "Editar Campanha" : "Nova Campanha"}</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-foreground mb-1">Titulo *</label>
+                  <input
+                    type="text"
+                    value={campanhaForm.titulo}
+                    onChange={(e) => setCampanhaForm({...campanhaForm, titulo: e.target.value})}
+                    className="w-full px-4 py-2 border-2 border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                    placeholder="Nome da campanha"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-foreground mb-1">Descricao</label>
+                  <textarea
+                    value={campanhaForm.descricao}
+                    onChange={(e) => setCampanhaForm({...campanhaForm, descricao: e.target.value})}
+                    className="w-full px-4 py-2 border-2 border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                    placeholder="Descricao da campanha"
+                    rows={3}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-1">Mes *</label>
+                  <select
+                    value={campanhaForm.mes}
+                    onChange={(e) => setCampanhaForm({...campanhaForm, mes: parseInt(e.target.value)})}
+                    className="w-full px-4 py-2 border-2 border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                  >
+                    {meses.slice(1).map((m, i) => (
+                      <option key={i+1} value={i+1}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-1">Ano *</label>
+                  <select
+                    value={campanhaForm.ano}
+                    onChange={(e) => setCampanhaForm({...campanhaForm, ano: parseInt(e.target.value)})}
+                    className="w-full px-4 py-2 border-2 border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                  >
+                    {[2024, 2025, 2026, 2027].map(a => (
+                      <option key={a} value={a}>{a}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={async () => {
+                    if (!campanhaForm.titulo) {
+                      Swal.fire({ icon: "error", title: "Erro", text: "Titulo e obrigatorio" })
+                      return
+                    }
+                    setSaving(true)
+                    try {
+                      const url = editingCampanha ? `/api/campanhas/${editingCampanha}` : "/api/campanhas"
+                      const method = editingCampanha ? "PUT" : "POST"
+                      const res = await fetch(url, {
+                        method,
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(campanhaForm)
+                      })
+                      if (res.ok) {
+                        setShowCampanhaForm(false)
+                        setEditingCampanha(null)
+                        fetchData()
+                        Swal.fire({ icon: "success", title: editingCampanha ? "Campanha atualizada" : "Campanha criada", timer: 1500, showConfirmButton: false })
+                      }
+                    } catch (err) {
+                      console.error(err)
+                    } finally {
+                      setSaving(false)
+                    }
+                  }}
+                  disabled={saving}
+                  className="px-6 py-2 bg-primary text-white rounded-lg font-semibold hover:bg-primary-hover transition disabled:opacity-50"
+                >
+                  {saving ? "A guardar..." : "Guardar"}
+                </button>
+                <button
+                  onClick={() => { setShowCampanhaForm(false); setEditingCampanha(null) }}
+                  className="px-6 py-2 border-2 border-border rounded-lg font-semibold hover:bg-secondary transition"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Campanhas List */}
+          <div className="bg-card rounded-xl shadow-sm overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gradient-to-r from-purple-100 to-pink-100">
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-bold text-foreground">Campanha</th>
+                  <th className="px-4 py-3 text-center text-sm font-bold text-foreground">Mes/Ano</th>
+                  <th className="px-4 py-3 text-center text-sm font-bold text-foreground">Vendidos</th>
+                  <th className="px-4 py-3 text-center text-sm font-bold text-foreground">Vendas</th>
+                  <th className="px-4 py-3 text-center text-sm font-bold text-foreground">Estado</th>
+                  <th className="px-4 py-3 text-right text-sm font-bold text-foreground">Acoes</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {campanhas.map((c) => (
+                  <tr key={c.id} className="hover:bg-purple-50/50 transition">
+                    <td className="px-4 py-3">
+                      <div className="font-semibold text-foreground">{c.titulo}</div>
+                      {c.descricao && <div className="text-sm text-muted-foreground truncate max-w-xs">{c.descricao}</div>}
+                    </td>
+                    <td className="px-4 py-3 text-center text-sm">{meses[c.mes]} {c.ano}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full font-bold">{c.totalVendido}</span>
+                    </td>
+                    <td className="px-4 py-3 text-center text-sm text-muted-foreground">{c.totalVendas} vendas</td>
+                    <td className="px-4 py-3 text-center">
+                      {c.ativo ? (
+                        <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-semibold">Ativo</span>
+                      ) : (
+                        <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-semibold">Inativo</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-1 justify-end">
+                        <button
+                          onClick={() => {
+                            setCampanhaForm({ titulo: c.titulo, descricao: c.descricao || "", mes: c.mes, ano: c.ano })
+                            setEditingCampanha(c.id)
+                            setShowCampanhaForm(true)
+                          }}
+                          className="p-2 text-blue-500 hover:bg-blue-500/10 rounded-lg transition"
+                          title="Editar"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={async () => {
+                            const result = await Swal.fire({
+                              title: "Eliminar campanha?",
+                              text: "Esta acao nao pode ser revertida",
+                              icon: "warning",
+                              showCancelButton: true,
+                              confirmButtonColor: "#dc2626",
+                              cancelButtonColor: "#6b7280",
+                              confirmButtonText: "Sim, eliminar",
+                              cancelButtonText: "Cancelar"
+                            })
+                            if (result.isConfirmed) {
+                              await fetch(`/api/campanhas/${c.id}`, { method: "DELETE" })
+                              fetchData()
+                            }
+                          }}
+                          className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition"
+                          title="Eliminar"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {campanhas.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                      Nenhuma campanha encontrada
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
@@ -935,6 +1162,7 @@ function ProdutosTable({
           </table>
         </div>
       )}
+
     </div>
   )
 }

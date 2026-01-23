@@ -9,7 +9,7 @@ const meses = [
 ]
 
 async function getVendasData(mes: number, ano: number) {
-  const [vendas, clientes, objetivo, produtos] = await Promise.all([
+  const [vendas, clientes, objetivo, produtos, campanhas] = await Promise.all([
     prisma.venda.findMany({
       where: { mes, ano },
       include: {
@@ -43,6 +43,11 @@ async function getVendasData(mes: number, ano: number) {
               orderBy: { numero: "asc" }
             }
           }
+        },
+        campanhas: {
+          include: {
+            campanha: true
+          }
         }
       },
       orderBy: { cliente: { nome: "asc" } }
@@ -66,12 +71,16 @@ async function getVendasData(mes: number, ano: number) {
         ativo: true
       },
       orderBy: { nome: "asc" }
+    }),
+    prisma.campanha.findMany({
+      where: { mes, ano, ativo: true },
+      orderBy: { titulo: "asc" }
     })
   ])
 
   const total = vendas.reduce((sum, v) => sum + Number(v.total), 0)
 
-  return { vendas, clientes, objetivo, total, produtos }
+  return { vendas, clientes, objetivo, total, produtos, campanhas }
 }
 
 export default async function VendasPage({
@@ -118,13 +127,20 @@ export default async function VendasPage({
               ...p,
               valor: String(p.valor)
             }))
-          } : null
+          } : null,
+          campanhas: v.campanhas?.map(cv => ({
+            id: cv.id,
+            campanhaId: cv.campanhaId,
+            quantidade: cv.quantidade,
+            campanha: cv.campanha
+          })) || []
         }))}
         clientes={data.clientes}
         produtos={data.produtos.map(p => ({
           ...p,
           preco: p.preco ? String(p.preco) : null
         }))}
+        campanhas={data.campanhas}
         objetivo={data.objetivo ? Number(data.objetivo.objetivo) : null}
         total={data.total}
         mes={mes}

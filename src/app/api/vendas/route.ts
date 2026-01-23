@@ -41,6 +41,11 @@ export async function GET(request: Request) {
               orderBy: { numero: "asc" }
             }
           }
+        },
+        campanhas: {
+          include: {
+            campanha: true
+          }
         }
       },
       orderBy: [{ ano: "desc" }, { mes: "desc" }]
@@ -57,6 +62,11 @@ type ItemInput = {
   produtoId: string
   quantidade: number
   precoUnit: number
+}
+
+type CampanhaInput = {
+  campanhaId: string
+  quantidade: number
 }
 
 export async function POST(request: Request) {
@@ -174,6 +184,18 @@ export async function POST(request: Request) {
         })
       }
 
+      // Create campanha links if provided
+      const campanhasInput: CampanhaInput[] = data.campanhas || []
+      if (campanhasInput.length > 0) {
+        await tx.campanhaVenda.createMany({
+          data: campanhasInput.map((c: CampanhaInput) => ({
+            vendaId: newVenda.id,
+            campanhaId: c.campanhaId,
+            quantidade: c.quantidade
+          }))
+        })
+      }
+
       // Return venda with all relations
       return tx.venda.findUnique({
         where: { id: newVenda.id },
@@ -200,6 +222,9 @@ export async function POST(request: Request) {
             include: {
               parcelas: { orderBy: { numero: "asc" } }
             }
+          },
+          campanhas: {
+            include: { campanha: true }
           }
         }
       })

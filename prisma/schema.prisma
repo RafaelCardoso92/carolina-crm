@@ -65,6 +65,7 @@ model Venda {
   devolucoes  Devolucao[]
   itensReconciliacao ItemReconciliacao[]
   cobranca    Cobranca?
+  campanhas   CampanhaVenda[]
 
   @@index([clienteId])
   @@index([mes, ano])
@@ -854,4 +855,40 @@ model RotaSalva {
   
   @@index([data])
   @@index([concluida])
+}
+
+// ==========================================
+// CAMPANHAS (MONTHLY CAMPAIGNS)
+// ==========================================
+
+model Campanha {
+  id          String   @id @default(cuid())
+  titulo      String
+  descricao   String?  @db.Text
+  mes         Int      // 1-12
+  ano         Int
+  ativo       Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  vendas      CampanhaVenda[]
+  
+  @@index([mes, ano])
+  @@index([ativo])
+}
+
+model CampanhaVenda {
+  id          String   @id @default(cuid())
+  campanhaId  String
+  campanha    Campanha @relation(fields: [campanhaId], references: [id], onDelete: Cascade)
+  vendaId     String
+  venda       Venda    @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  quantidade  Int      @default(1)
+  
+  createdAt   DateTime @default(now())
+  
+  @@unique([campanhaId, vendaId])
+  @@index([campanhaId])
+  @@index([vendaId])
 }

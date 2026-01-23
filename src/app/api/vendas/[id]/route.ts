@@ -7,6 +7,11 @@ type ItemInput = {
   precoUnit: number
 }
 
+type CampanhaInput = {
+  campanhaId: string
+  quantidade: number
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -25,6 +30,9 @@ export async function GET(
           include: {
             parcelas: { orderBy: { numero: "asc" } }
           }
+        },
+        campanhas: {
+          include: { campanha: true }
         }
       }
     })
@@ -239,6 +247,25 @@ export async function PUT(
         }
       }
 
+      // Handle campanhas update
+      const campanhasInput: CampanhaInput[] = data.campanhas || []
+      
+      // Delete existing campanha links
+      await tx.campanhaVenda.deleteMany({
+        where: { vendaId: id }
+      })
+      
+      // Create new campanha links
+      if (campanhasInput.length > 0) {
+        await tx.campanhaVenda.createMany({
+          data: campanhasInput.map((c: CampanhaInput) => ({
+            vendaId: id,
+            campanhaId: c.campanhaId,
+            quantidade: c.quantidade
+          }))
+        })
+      }
+
       // Return venda with items and client
       return tx.venda.findUnique({
         where: { id },
@@ -252,6 +279,9 @@ export async function PUT(
             include: {
               parcelas: { orderBy: { numero: "asc" } }
             }
+          },
+          campanhas: {
+            include: { campanha: true }
           }
         }
       })

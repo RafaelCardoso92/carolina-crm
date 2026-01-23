@@ -47,6 +47,7 @@ type Venda = {
   itens?: ItemVenda[]
   devolucoes?: DevolucaoWithRelations[]
   cobranca?: Cobranca | null
+  campanhas?: CampanhaVenda[]
 }
 
 
@@ -71,6 +72,23 @@ type Cobranca = {
   numeroParcelas: number
   dataInicioVencimento: Date | string | null
   parcelas: Parcela[]
+}
+
+
+type Campanha = {
+  id: string
+  titulo: string
+  descricao: string | null
+  mes: number
+  ano: number
+  ativo: boolean
+}
+
+type CampanhaVenda = {
+  id: string
+  campanhaId: string
+  quantidade: number
+  campanha: Campanha
 }
 
 type Cliente = {
@@ -104,6 +122,7 @@ type Props = {
   mes: number
   ano: number
   meses: string[]
+  campanhas: Campanha[]
 }
 
 // VAT rate in Portugal
@@ -127,7 +146,7 @@ function calcularTotalLiquido(venda: Venda): number {
   return vendaTotal - totalDevolvido + totalSubstituido
 }
 
-export default function VendasView({ vendas, clientes, produtos, objetivo, total, mes, ano, meses }: Props) {
+export default function VendasView({ vendas, clientes, produtos, objetivo, total, mes, ano, meses, campanhas }: Props) {
   const router = useRouter()
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -141,6 +160,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
   const [fatura, setFatura] = useState("")
   const [numeroParcelas, setNumeroParcelas] = useState("1")
   const [dataInicioVencimento, setDataInicioVencimento] = useState("")
+  const [selectedCampanhas, setSelectedCampanhas] = useState<{campanhaId: string, quantidade: number}[]>([])
   // Removed: useItems state - now both modes work together
 
   // Filter clients based on search
@@ -241,6 +261,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
       setFatura("")
       setNumeroParcelas("1")
       setDataInicioVencimento("")
+      setSelectedCampanhas([])
       // Removed: setUseItems(false)
     }
   }, [showForm])
@@ -276,6 +297,15 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
           setFatura("")
           setNumeroParcelas("1")
           setDataInicioVencimento("")
+        }
+        // Initialize campanhas from venda
+        if (venda.campanhas && venda.campanhas.length > 0) {
+          setSelectedCampanhas(venda.campanhas.map(cv => ({
+            campanhaId: cv.campanhaId,
+            quantidade: cv.quantidade
+          })))
+        } else {
+          setSelectedCampanhas([])
         }
       }
     }
@@ -352,7 +382,8 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
       ano,
       fatura: fatura || null,
       numeroParcelas: parseInt(numeroParcelas) || 1,
-      dataInicioVencimento: dataInicioVencimento || null
+      dataInicioVencimento: dataInicioVencimento || null,
+      campanhas: selectedCampanhas.filter(c => c.quantidade > 0)
     }
 
     try {
@@ -947,6 +978,73 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                   </div>
                 </div>
               </div>
+
+              {/* Campanhas Section */}
+              {campanhas.length > 0 && (
+                <div className="md:col-span-2 bg-gradient-to-r from-purple-50 to-violet-50 rounded-xl p-4 border border-purple-200">
+                  <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+                    </svg>
+                    Campanhas ({meses[mes]})
+                  </h4>
+                  <div className="space-y-2">
+                    {campanhas.map((camp) => {
+                      const selected = selectedCampanhas.find(sc => sc.campanhaId === camp.id)
+                      const qty = selected?.quantidade || 0
+                      return (
+                        <div key={camp.id} className="flex items-center justify-between bg-white rounded-lg p-3 border border-purple-100">
+                          <div className="flex-1 min-w-0">
+                            <span className="font-medium text-foreground">{camp.titulo}</span>
+                            {camp.descricao && (
+                              <p className="text-xs text-muted-foreground truncate">{camp.descricao}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 ml-3">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (qty > 0) {
+                                  if (qty === 1) {
+                                    setSelectedCampanhas(prev => prev.filter(sc => sc.campanhaId !== camp.id))
+                                  } else {
+                                    setSelectedCampanhas(prev => prev.map(sc => 
+                                      sc.campanhaId === camp.id ? { ...sc, quantidade: sc.quantidade - 1 } : sc
+                                    ))
+                                  }
+                                }
+                              }}
+                              className="w-8 h-8 rounded-full bg-purple-100 text-purple-700 font-bold hover:bg-purple-200 transition flex items-center justify-center disabled:opacity-50"
+                              disabled={qty === 0}
+                            >
+                              -
+                            </button>
+                            <span className={`w-8 text-center font-bold ${qty > 0 ? "text-purple-700" : "text-muted-foreground"}`}>
+                              {qty}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (selected) {
+                                  setSelectedCampanhas(prev => prev.map(sc =>
+                                    sc.campanhaId === camp.id ? { ...sc, quantidade: sc.quantidade + 1 } : sc
+                                  ))
+                                } else {
+                                  setSelectedCampanhas(prev => [...prev, { campanhaId: camp.id, quantidade: 1 }])
+                                }
+                              }}
+                              className="w-8 h-8 rounded-full bg-purple-100 text-purple-700 font-bold hover:bg-purple-200 transition flex items-center justify-center"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div className="md:col-span-2">
                 <label className="block text-sm font-bold text-foreground mb-2">
