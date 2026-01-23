@@ -967,7 +967,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                      Vencimento
+                      Data Emissão
                     </label>
                     <input
                       type="date"
