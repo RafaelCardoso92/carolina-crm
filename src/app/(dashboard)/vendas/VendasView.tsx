@@ -161,6 +161,11 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
   const [numeroParcelas, setNumeroParcelas] = useState("1")
   const [dataInicioVencimento, setDataInicioVencimento] = useState("")
   const [selectedCampanhas, setSelectedCampanhas] = useState<{campanhaId: string, quantidade: number}[]>([])
+  
+  // Search and Sort state
+  const [searchQuery, setSearchQuery] = useState("")
+  const [sortBy, setSortBy] = useState<"nome" | "total" | "data">("nome")
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc")
   // Removed: useItems state - now both modes work together
 
   // Filter clients based on search
@@ -188,6 +193,39 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
   const totalLiquido = useMemo(() => {
     return vendas.reduce((sum, v) => sum + calcularTotalLiquido(v), 0)
   }, [vendas])
+
+  // Filter and sort vendas
+  const filteredAndSortedVendas = useMemo(() => {
+    let result = [...vendas]
+    
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      result = result.filter(v => 
+        v.cliente.nome.toLowerCase().includes(query) ||
+        (v.cliente.codigo && v.cliente.codigo.toLowerCase().includes(query)) ||
+        (v.notas && v.notas.toLowerCase().includes(query)) ||
+        (v.cobranca?.fatura && v.cobranca.fatura.toLowerCase().includes(query))
+      )
+    }
+    
+    // Sort
+    result.sort((a, b) => {
+      let comparison = 0
+      if (sortBy === "nome") {
+        comparison = a.cliente.nome.localeCompare(b.cliente.nome)
+      } else if (sortBy === "total") {
+        comparison = Number(a.total) - Number(b.total)
+      } else if (sortBy === "data") {
+        const dateA = a.cobranca?.dataEmissao ? new Date(a.cobranca.dataEmissao).getTime() : 0
+        const dateB = b.cobranca?.dataEmissao ? new Date(b.cobranca.dataEmissao).getTime() : 0
+        comparison = dateA - dateB
+      }
+      return sortOrder === "asc" ? comparison : -comparison
+    })
+    
+    return result
+  }, [vendas, searchQuery, sortBy, sortOrder])
 
   const progresso = objetivo ? (totalLiquido / objetivo) * 100 : 0
   const falta = objetivo ? objetivo - totalLiquido : 0
@@ -683,34 +721,97 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
         )}
       </div>
 
-      {/* Add Sale Button */}
-      <div className="flex justify-end mb-4 md:mb-6">
-        <button
-          onClick={() => { setShowForm(true); setEditingId(null); }}
-          className="bg-gradient-to-r from-emerald-400 to-teal-400 text-white px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold hover:from-emerald-500 hover:to-teal-500 transition flex items-center gap-2 shadow-lg shadow-primary/20 text-sm md:text-base"
-        >
-          <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          <span className="hidden sm:inline">Adicionar Venda</span>
-          <span className="sm:hidden">Nova</span>
-        </button>
+      {/* Search, Sort and Add Sale */}
+      <div className="bg-card rounded-xl shadow-sm p-4 mb-4 md:mb-6">
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+          {/* Search */}
+          <div className="relative flex-1 max-w-md w-full sm:w-auto">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Pesquisar por cliente, fatura..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-secondary border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+            />
+          </div>
+          
+          {/* Sort Controls */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground hidden sm:inline">Ordenar:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as "nome" | "total" | "data")}
+              className="px-3 py-2 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="nome">Nome</option>
+              <option value="total">Valor</option>
+              <option value="data">Data</option>
+            </select>
+            <button
+              onClick={() => setSortOrder(prev => prev === "asc" ? "desc" : "asc")}
+              className="p-2 bg-secondary border border-border rounded-lg hover:bg-secondary/80 transition"
+              title={sortOrder === "asc" ? "Crescente" : "Decrescente"}
+            >
+              {sortOrder === "asc" ? (
+                <svg className="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
+                </svg>
+              )}
+            </button>
+          </div>
+          
+          {/* Add Button */}
+          <button
+            onClick={() => { setShowForm(true); setEditingId(null); }}
+            className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-5 py-2.5 rounded-xl font-semibold hover:from-emerald-600 hover:to-teal-600 transition flex items-center gap-2 shadow-lg text-sm whitespace-nowrap"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            <span className="hidden sm:inline">Nova Venda</span>
+            <span className="sm:hidden">Nova</span>
+          </button>
+        </div>
+        
+        {/* Results count */}
+        {searchQuery && (
+          <p className="text-xs text-muted-foreground mt-2">
+            {filteredAndSortedVendas.length} resultado{filteredAndSortedVendas.length !== 1 ? "s" : ""} encontrado{filteredAndSortedVendas.length !== 1 ? "s" : ""}
+          </p>
+        )}
       </div>
 
       {/* Add/Edit Form */}
       {showForm && (
-        <div className="bg-gradient-to-br from-rose-50 to-pink-50 rounded-xl shadow-sm p-4 md:p-6 mb-4 md:mb-6 border-2 border-rose-200">
-          <h3 className="text-lg md:text-xl font-bold text-foreground mb-4 md:mb-6 flex items-center gap-2">
-            <svg className="w-5 h-5 md:w-6 md:h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            {editingId ? "Editar Venda" : "Nova Venda"}
-          </h3>
-          <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
+        <div className="bg-card rounded-2xl shadow-lg border border-border overflow-hidden mb-4 md:mb-6">
+          {/* Form Header */}
+          <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-4">
+            <h3 className="text-lg md:text-xl font-bold text-white flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={editingId ? "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" : "M12 4v16m8-8H4"} />
+                </svg>
+              </div>
+              {editingId ? "Editar Venda" : "Registar Nova Venda"}
+            </h3>
+          </div>
+          {/* Form Body */}
+          <div className="p-5 md:p-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <label className="block text-sm font-bold text-foreground mb-2">
-                  Cliente *
+                <label className="block text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  Cliente <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <input type="hidden" name="clienteId" value={selectedClienteId} required />
@@ -766,8 +867,8 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
               {true && (
                 <>
                   <div>
-                    <label className="block text-sm font-bold text-foreground mb-2">
-                      Valor 1 (sem IVA)
+                    <label className="block text-sm font-semibold text-foreground mb-2">
+                      Valor 1 <span className="text-xs text-muted-foreground font-normal">(sem IVA)</span>
                     </label>
                     <div className="relative">
                       <input
@@ -783,8 +884,8 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-foreground mb-2">
-                      Valor 2 (sem IVA)
+                    <label className="block text-sm font-semibold text-foreground mb-2">
+                      Valor 2 <span className="text-xs text-muted-foreground font-normal">(sem IVA)</span>
                     </label>
                     <div className="relative">
                       <input
@@ -806,13 +907,16 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
               {true && (
                 <div className="md:col-span-2 space-y-4">
                   <div className="flex items-center justify-between">
-                    <label className="block text-sm font-bold text-foreground">
-                      Itens da Venda
+                    <label className="block text-sm font-semibold text-foreground flex items-center gap-2">
+                      <svg className="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                      </svg>
+                      Produtos
                     </label>
                     <button
                       type="button"
                       onClick={addItem}
-                      className="px-3 py-1.5 bg-rose-100 text-primary rounded-lg text-sm font-semibold hover:bg-primary/20 transition flex items-center gap-1"
+                      className="px-4 py-2 bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-lg text-sm font-semibold hover:from-violet-600 hover:to-purple-600 transition-all shadow-sm flex items-center gap-2"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -822,7 +926,13 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                   </div>
 
                   {formItems.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">Clique em &quot;Adicionar&quot; para adicionar produtos</p>
+                    <div className="text-center py-8 bg-secondary/30 rounded-xl border-2 border-dashed border-border">
+                      <svg className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                      </svg>
+                      <p className="text-sm text-muted-foreground">Nenhum produto adicionado</p>
+                      <p className="text-xs text-muted-foreground/70 mt-1">Clique em &quot;Adicionar&quot; acima</p>
+                    </div>
                   ) : (
                     <div className="space-y-3">
                       {/* Header */}
@@ -888,10 +998,10 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                       })}
 
                       {/* Total */}
-                      <div className="flex justify-end pt-2 border-t border-border">
-                        <div className="text-right">
-                          <span className="text-sm text-muted-foreground">Total: </span>
-                          <span className="text-lg font-bold text-primary">{formatCurrency(combinedTotal)} €</span>
+                      <div className="flex justify-end pt-4 mt-2 border-t border-border">
+                        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 px-5 py-3 rounded-xl border border-emerald-200">
+                          <span className="text-sm text-emerald-700 font-medium">Total da Venda: </span>
+                          <span className="text-xl font-bold text-emerald-600">{formatCurrency(combinedTotal)} €</span>
                         </div>
                       </div>
                     </div>
@@ -1047,7 +1157,10 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
               )}
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-bold text-foreground mb-2">
+                <label className="block text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
                   Notas
                 </label>
                 <input
@@ -1063,7 +1176,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 bg-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-primary-hover transition disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-6 py-3.5 rounded-xl font-bold hover:from-emerald-600 hover:to-teal-600 transition-all shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
@@ -1094,6 +1207,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
               </button>
             </div>
           </form>
+          </div>
         </div>
       )}
 
@@ -1113,7 +1227,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {vendas.map((venda) => {
+              {filteredAndSortedVendas.map((venda) => {
                 const vendaTotal = Number(venda.total)
                 const netTotal = calcularTotalLiquido(venda)
                 const { semIVA, comIVA, iva } = calcularIVA(netTotal)
@@ -1310,7 +1424,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
 
       {/* Sales Cards - Mobile */}
       <div className="md:hidden space-y-3">
-        {vendas.map((venda) => {
+        {filteredAndSortedVendas.map((venda) => {
           const vendaTotal = Number(venda.total)
           const netTotal = calcularTotalLiquido(venda)
           const hasItems = venda.itens && venda.itens.length > 0

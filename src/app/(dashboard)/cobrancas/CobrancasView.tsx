@@ -71,6 +71,11 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState<"all" | "pending" | "paid" | "overdue">("pending")
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  
+  // Search and Sort state
+  const [searchQuery, setSearchQuery] = useState("")
+  const [sortBy, setSortBy] = useState<"nome" | "data" | "valor">("data")
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
 
   // Form state for installments
   const [tipoParcelado, setTipoParcelado] = useState(false)
@@ -79,7 +84,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
   const [valorTotal, setValorTotal] = useState("")
 
   const filtered = useMemo(() => {
-    return cobrancas.filter(c => {
+    let result = cobrancas.filter(c => {
       if (filter === "pending") return !c.pago
       if (filter === "paid") return c.pago
       if (filter === "overdue") {
@@ -88,7 +93,35 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       }
       return true
     })
-  }, [cobrancas, filter])
+    
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      result = result.filter(c => 
+        c.cliente.nome.toLowerCase().includes(query) ||
+        (c.cliente.codigo && c.cliente.codigo.toLowerCase().includes(query)) ||
+        (c.fatura && c.fatura.toLowerCase().includes(query)) ||
+        (c.notas && c.notas.toLowerCase().includes(query))
+      )
+    }
+    
+    // Apply sorting
+    result.sort((a, b) => {
+      let comparison = 0
+      if (sortBy === "nome") {
+        comparison = a.cliente.nome.localeCompare(b.cliente.nome)
+      } else if (sortBy === "valor") {
+        comparison = Number(a.valor) - Number(b.valor)
+      } else if (sortBy === "data") {
+        const dateA = a.dataEmissao ? new Date(a.dataEmissao).getTime() : 0
+        const dateB = b.dataEmissao ? new Date(b.dataEmissao).getTime() : 0
+        comparison = dateA - dateB
+      }
+      return sortOrder === "asc" ? comparison : -comparison
+    })
+    
+    return result
+  }, [cobrancas, filter, searchQuery, sortBy, sortOrder])
 
   // Count overdue parcelas (memoized)
   const totalAtrasadas = useMemo(() => {
@@ -379,6 +412,61 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
             <p className="text-xl md:text-3xl font-bold text-red-600">{totalAtrasadas}</p>
             <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden md:block">Parcelas atrasadas</p>
           </div>
+        )}
+      </div>
+
+      {/* Search, Sort and Filter Controls */}
+      <div className="bg-card rounded-xl shadow-sm p-4 mb-4 md:mb-6">
+        <div className="flex flex-col lg:flex-row gap-4">
+          {/* Search */}
+          <div className="relative flex-1 max-w-md">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Pesquisar por cliente, fatura..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-secondary border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+            />
+          </div>
+          
+          {/* Sort Controls */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground hidden sm:inline">Ordenar:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as "nome" | "data" | "valor")}
+              className="px-3 py-2 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="data">Data</option>
+              <option value="nome">Nome</option>
+              <option value="valor">Valor</option>
+            </select>
+            <button
+              onClick={() => setSortOrder(prev => prev === "asc" ? "desc" : "asc")}
+              className="p-2 bg-secondary border border-border rounded-lg hover:bg-secondary/80 transition"
+              title={sortOrder === "asc" ? "Crescente" : "Decrescente"}
+            >
+              {sortOrder === "asc" ? (
+                <svg className="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
+                </svg>
+              )}
+            </button>
+          </div>
+        </div>
+        
+        {/* Results count when searching */}
+        {searchQuery && (
+          <p className="text-xs text-muted-foreground mt-2">
+            {filtered.length} resultado{filtered.length !== 1 ? "s" : ""} encontrado{filtered.length !== 1 ? "s" : ""}
+          </p>
         )}
       </div>
 
