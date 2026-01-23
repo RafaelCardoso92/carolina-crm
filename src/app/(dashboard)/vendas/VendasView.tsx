@@ -631,9 +631,9 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
   return (
     <div>
       {/* Navigation and Summary */}
-      <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 rounded-xl shadow-sm p-4 md:p-6 mb-6 border border-indigo-100">
+      <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 rounded-xl shadow-sm p-3 md:p-4 mb-4 border border-indigo-100">
         {/* Year and Month Selectors */}
-        <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3 mb-4 md:mb-6">
+        <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3 mb-3 md:mb-4">
           <div className="flex items-center gap-2">
             <label className="text-xs md:text-sm font-semibold text-foreground">Ano:</label>
             <select
@@ -661,7 +661,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
         </div>
 
         {/* Month Navigation with Arrows */}
-        <div className="flex items-center justify-between mb-4 md:mb-6">
+        <div className="flex items-center justify-between mb-3 md:mb-4">
           <button
             onClick={() => navigateMonth(-1)}
             className="flex items-center gap-1 md:gap-2 px-3 md:px-4 py-2 bg-secondary hover:bg-violet-100 rounded-xl transition text-foreground font-medium text-sm md:text-base"
@@ -686,7 +686,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
         </div>
 
         {/* VAT Summary Cards */}
-        <div className="grid grid-cols-3 gap-2 md:gap-4 mb-4 md:mb-6">
+        <div className="grid grid-cols-3 gap-2 md:gap-3 mb-3 md:mb-4">
           <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 md:p-4 text-center">
             <p className="text-xs md:text-sm font-medium text-muted-foreground mb-1">Sem IVA</p>
             <p className="text-base md:text-2xl font-bold text-foreground">{formatCurrency(totalSemIVA)} €</p>
@@ -722,7 +722,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
       </div>
 
       {/* Search, Sort and Add Sale */}
-      <div className="bg-card rounded-xl shadow-sm p-4 mb-4 md:mb-6">
+      <div className="bg-card rounded-xl shadow-sm p-4 mb-3 md:mb-4">
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
           {/* Search */}
           <div className="relative flex-1 max-w-md w-full sm:w-auto">
@@ -790,7 +790,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
 
       {/* Add/Edit Form */}
       {showForm && (
-        <div className="bg-card rounded-2xl shadow-lg border border-border overflow-hidden mb-4 md:mb-6">
+        <div className="bg-card rounded-2xl shadow-lg border border-border overflow-hidden mb-3 md:mb-4">
           {/* Form Header */}
           <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-4">
             <h3 className="text-lg md:text-xl font-bold text-white flex items-center gap-3">
@@ -804,7 +804,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
           </div>
           {/* Form Body */}
           <div className="p-5 md:p-6">
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-sm font-semibold text-foreground mb-2 flex items-center gap-2">

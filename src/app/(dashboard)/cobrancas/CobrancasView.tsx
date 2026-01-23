@@ -348,7 +348,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
   return (
     <div>
       {/* Year Selector */}
-      <div className="bg-card rounded-xl shadow-sm p-3 md:p-4 mb-4 md:mb-6">
+      <div className="bg-card rounded-xl shadow-sm p-3 mb-3">
         <div className="flex flex-wrap items-center justify-center gap-2 md:gap-4">
           <div className="flex items-center gap-2">
             <label className="text-xs md:text-sm font-semibold text-foreground">Ano:</label>
@@ -374,8 +374,8 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 mb-4 md:mb-6">
-        <div className="bg-card rounded-xl shadow-sm p-4 md:p-6 border-l-4 border-orange-500">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4 mb-3">
+        <div className="bg-card rounded-xl shadow-sm p-3 md:p-4 border-l-4 border-orange-500">
           <div className="flex items-center gap-2 md:gap-3 mb-2">
             <div className="p-1.5 md:p-2 bg-orange-500/10 rounded-lg">
               <svg className="w-5 h-5 md:w-6 md:h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -384,10 +384,10 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
             </div>
             <h3 className="text-xs md:text-sm font-bold text-foreground">Pendente</h3>
           </div>
-          <p className="text-xl md:text-3xl font-bold text-orange-600">{formatCurrency(totalPendente)} €</p>
+          <p className="text-lg md:text-2xl font-bold text-orange-600">{formatCurrency(totalPendente)} €</p>
           <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden md:block">Por receber {ano ? `(${ano})` : ""}</p>
         </div>
-        <div className="bg-card rounded-xl shadow-sm p-4 md:p-6 border-l-4 border-primary">
+        <div className="bg-card rounded-xl shadow-sm p-3 md:p-4 border-l-4 border-primary">
           <div className="flex items-center gap-2 md:gap-3 mb-2">
             <div className="p-1.5 md:p-2 bg-primary/10 rounded-lg">
               <svg className="w-5 h-5 md:w-6 md:h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -396,11 +396,11 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
             </div>
             <h3 className="text-xs md:text-sm font-bold text-foreground">Comissao</h3>
           </div>
-          <p className="text-xl md:text-3xl font-bold text-primary">{formatCurrency(totalComissao)} €</p>
+          <p className="text-lg md:text-2xl font-bold text-primary">{formatCurrency(totalComissao)} €</p>
           <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden md:block">3.5% pendentes</p>
         </div>
         {totalAtrasadas > 0 && (
-          <div className="bg-card rounded-xl shadow-sm p-4 md:p-6 border-l-4 border-red-500 col-span-2 md:col-span-1">
+          <div className="bg-card rounded-xl shadow-sm p-3 md:p-4 border-l-4 border-red-500 col-span-2 md:col-span-1">
             <div className="flex items-center gap-2 md:gap-3 mb-2">
               <div className="p-1.5 md:p-2 bg-red-500/10 rounded-lg">
                 <svg className="w-5 h-5 md:w-6 md:h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -409,14 +409,14 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
               </div>
               <h3 className="text-xs md:text-sm font-bold text-foreground">Em Atraso</h3>
             </div>
-            <p className="text-xl md:text-3xl font-bold text-red-600">{totalAtrasadas}</p>
+            <p className="text-lg md:text-2xl font-bold text-red-600">{totalAtrasadas}</p>
             <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden md:block">Parcelas atrasadas</p>
           </div>
         )}
       </div>
 
       {/* Search, Sort and Filter Controls */}
-      <div className="bg-card rounded-xl shadow-sm p-4 mb-4 md:mb-6">
+      <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Search */}
           <div className="relative flex-1 max-w-md">
@@ -471,7 +471,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       </div>
 
       {/* Filter and Add Button */}
-      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 md:gap-4 mb-4 md:mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2 md:gap-3 mb-3">
         <div className="flex gap-1.5 md:gap-2 flex-wrap">
           {[
             { value: "pending", label: "Pendentes", shortLabel: "Pend.", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
@@ -519,14 +519,14 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
 
       {/* Add/Edit Form */}
       {showForm && (
-        <div className="bg-card rounded-xl shadow-sm p-4 md:p-6 mb-4 md:mb-6 border-2 border-primary/20">
-          <h3 className="text-lg md:text-xl font-bold text-foreground mb-4 md:mb-6 flex items-center gap-2">
+        <div className="bg-card rounded-xl shadow-sm p-3 md:p-4 mb-3 border-2 border-primary/20">
+          <h3 className="text-lg md:text-xl font-bold text-foreground mb-3 flex items-center gap-2">
             <svg className="w-5 h-5 md:w-6 md:h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             {editingId ? "Editar Cobranca" : "Nova Cobranca"}
           </h3>
-          <form key={editingId || "new"} onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
+          <form key={editingId || "new"} onSubmit={handleSubmit} className="space-y-2 md:space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-sm font-bold text-foreground mb-2">Cliente *</label>
