@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { GoogleMap, useJsApiLoader, Marker, DirectionsRenderer, InfoWindow } from "@react-google-maps/api"
+import Swal from "sweetalert2"
 
 interface RouteLocation {
   id: string
@@ -280,6 +281,7 @@ export default function RoutePlannerAdvanced() {
   // Inline edit state
   const [editingLocation, setEditingLocation] = useState<string | null>(null)
   const [editAddress, setEditAddress] = useState({ morada: "", cidade: "", codigoPostal: "" })
+  const [pinpointingLocation, setPinpointingLocation] = useState<{ id: string; tipo: "cliente" | "prospecto" } | null>(null)
   const [geocodingInline, setGeocodingInline] = useState(false)
 
   // Nearby places state
@@ -459,11 +461,21 @@ export default function RoutePlannerAdvanced() {
           longitude: data.longitude
         }))
       } else {
-        alert("Morada não encontrada")
+        Swal.fire({
+          icon: "warning",
+          title: "Morada não encontrada",
+          text: "Verifique a morada e tente novamente",
+          confirmButtonColor: "#10b981"
+        })
       }
     } catch (error) {
       console.error("Geocode error:", error)
-      alert("Erro ao geocodificar morada")
+      Swal.fire({
+        icon: "error",
+        title: "Erro",
+        text: "Erro ao geocodificar morada",
+        confirmButtonColor: "#10b981"
+      })
     }
   }
 
@@ -506,7 +518,26 @@ export default function RoutePlannerAdvanced() {
       const geocodeData = await geocodeResponse.json()
 
       if (!geocodeData.latitude || !geocodeData.longitude) {
-        alert("Morada não encontrada")
+        Swal.fire({
+          icon: "warning",
+          title: "Morada não encontrada",
+          text: "Deseja marcar a localização no mapa?",
+          showCancelButton: true,
+          confirmButtonText: "Sim, marcar no mapa",
+          cancelButtonText: "Cancelar",
+          confirmButtonColor: "#10b981"
+        }).then((result) => {
+          if (result.isConfirmed) {
+            setPinpointingLocation({ id: locationId, tipo })
+            Swal.fire({
+              icon: "info",
+              title: "Clique no mapa",
+              text: "Clique no mapa para definir a localização exacta",
+              timer: 3000,
+              showConfirmButton: false
+            })
+          }
+        })
         return
       }
 
@@ -533,11 +564,66 @@ export default function RoutePlannerAdvanced() {
       setEditAddress({ morada: "", cidade: "", codigoPostal: "" })
     } catch (error) {
       console.error("Inline geocode error:", error)
-      alert("Erro ao geocodificar morada")
+      Swal.fire({
+          icon: "error",
+          title: "Erro",
+          text: "Erro ao geocodificar morada",
+          confirmButtonColor: "#10b981"
+        })
     } finally {
       setGeocodingInline(false)
     }
   }
+
+  // Handle map click for pinpointing location
+  const handleMapClick = useCallback(async (e: google.maps.MapMouseEvent) => {
+    if (!pinpointingLocation || !e.latLng) return
+
+    const lat = e.latLng.lat()
+    const lng = e.latLng.lng()
+
+    try {
+      const endpoint = pinpointingLocation.tipo === "cliente" 
+        ? `/api/clientes/${pinpointingLocation.id}` 
+        : `/api/prospectos/${pinpointingLocation.id}`
+      
+      await fetch(endpoint, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          latitude: lat,
+          longitude: lng
+        })
+      })
+
+      // Update local state
+      setLocations(prev => prev.map(loc =>
+        loc.id === pinpointingLocation.id
+          ? { ...loc, latitude: lat, longitude: lng }
+          : loc
+      ))
+
+      Swal.fire({
+        icon: "success",
+        title: "Localização definida",
+        text: "A localização foi guardada com sucesso",
+        timer: 2000,
+        showConfirmButton: false
+      })
+    } catch (error) {
+      console.error("Error saving pinpointed location:", error)
+      Swal.fire({
+        icon: "error",
+        title: "Erro",
+        text: "Erro ao guardar localização",
+        confirmButtonColor: "#10b981"
+      })
+    } finally {
+      setPinpointingLocation(null)
+      setEditingLocation(null)
+      setEditAddress({ morada: "", cidade: "", codigoPostal: "" })
+    }
+  }, [pinpointingLocation])
 
   // Filtered locations
   const filteredLocations = useMemo(() => {
@@ -1221,8 +1307,28 @@ export default function RoutePlannerAdvanced() {
           {/* Calcular Rota Button */}
           <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl shadow-sm p-3 border border-emerald-200 dark:border-emerald-800">
             <button
-              onClick={calculateRoute}
-              disabled={calculatingRoute || selectedLocations.length === 0 || (!startingPoint.latitude && !startingPoint.longitude)}
+              onClick={() => {
+                if (!startingPoint.latitude && !startingPoint.longitude) {
+                  Swal.fire({
+                    icon: "warning",
+                    title: "Ponto de partida não definido",
+                    text: "Defina o ponto de partida antes de calcular a rota",
+                    confirmButtonColor: "#10b981"
+                  })
+                  return
+                }
+                if (selectedLocations.length === 0) {
+                  Swal.fire({
+                    icon: "info",
+                    title: "Nenhum local selecionado",
+                    text: "Selecione pelo menos um local para calcular a rota",
+                    confirmButtonColor: "#10b981"
+                  })
+                  return
+                }
+                calculateRoute()
+              }}
+              disabled={calculatingRoute}
               className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
             >
               {calculatingRoute ? (
@@ -1237,14 +1343,6 @@ export default function RoutePlannerAdvanced() {
               )}
               Calcular Rota
             </button>
-            {(!startingPoint.latitude && !startingPoint.longitude) && selectedLocations.length > 0 && (
-              <p className="text-xs text-amber-600 dark:text-amber-400 text-center mt-2 flex items-center justify-center gap-1">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                Defina o ponto de partida primeiro
-              </p>
-            )}
           </div>
 
           {/* Location List - Grouped by District */}
@@ -1366,13 +1464,28 @@ export default function RoutePlannerAdvanced() {
                                     className="w-24 px-2 py-1.5 bg-card border border-border rounded text-sm"
                                   />
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex flex-wrap gap-2">
                                   <button
                                     onClick={() => geocodeInlineAddress(loc.id, loc.tipo)}
                                     disabled={geocodingInline || (!editAddress.morada && !editAddress.cidade)}
                                     className="flex-1 px-3 py-1.5 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700 disabled:opacity-50"
                                   >
-                                    {geocodingInline ? "A localizar..." : "Localizar e Guardar"}
+                                    {geocodingInline ? "A localizar..." : "Localizar"}
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setPinpointingLocation({ id: loc.id, tipo: loc.tipo })
+                                      Swal.fire({
+                                        icon: "info",
+                                        title: "Marcar no mapa",
+                                        text: "Clique no mapa para definir a localização exacta",
+                                        confirmButtonColor: "#10b981",
+                                        timer: 3000
+                                      })
+                                    }}
+                                    className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700"
+                                  >
+                                    Marcar no mapa
                                   </button>
                                   <button
                                     onClick={() => {
@@ -1659,6 +1772,27 @@ export default function RoutePlannerAdvanced() {
             </div>
           )}
 
+          {/* Pinpointing Mode Indicator */}
+          {pinpointingLocation && (
+            <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded-xl p-3 mb-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-blue-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                  Clique no mapa para marcar a localização
+                </span>
+              </div>
+              <button
+                onClick={() => setPinpointingLocation(null)}
+                className="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700"
+              >
+                Cancelar
+              </button>
+            </div>
+          )}
+
           {/* Map */}
           <div className="bg-card rounded-xl shadow-sm overflow-hidden h-[400px] sm:h-[500px] lg:h-[550px]">
             {isLoaded ? (
@@ -1666,11 +1800,13 @@ export default function RoutePlannerAdvanced() {
                 mapContainerStyle={mapContainerStyle}
                 center={mapCenter}
                 zoom={10}
+                onClick={handleMapClick}
                 options={{
                   fullscreenControl: true,
                   zoomControl: true,
                   streetViewControl: false,
                   mapTypeControl: false,
+                  draggableCursor: pinpointingLocation ? "crosshair" : undefined,
                 }}
               >
                 {startingPoint.latitude && startingPoint.longitude && (
