@@ -1205,145 +1205,109 @@ export default function RoutePlannerAdvanced() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Filters & Location List */}
-        <div className="lg:col-span-1 space-y-3 lg:space-y-4 order-2 lg:order-1">
-          {/* Filters */}
-          <div className="bg-card rounded-xl shadow-sm p-4">
-            <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-2 sm:mb-3">Filtros</h3>
-
-            <div className="mb-3">
-              <label className="text-xs text-muted-foreground mb-1 block">Tipo</label>
-              <div className="flex gap-1">
-                {[
-                  { value: "all", label: "Todos" },
-                  { value: "cliente", label: "Clientes" },
-                  { value: "prospecto", label: "Prospectos" }
-                ].map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setFilterType(opt.value as typeof filterType)}
-                    className={`px-2 py-1 rounded text-xs font-medium transition ${
-                      filterType === opt.value
-                        ? "bg-primary text-white"
-                        : "bg-secondary text-foreground hover:bg-secondary/80"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* District Filter - based on postal code */}
-            <div className="mb-3">
-              <label className="text-xs text-muted-foreground mb-1.5 block">Distrito</label>
-              <div className="flex flex-wrap gap-1.5">
+            {/* Filters - Full Width */}
+      <div className="bg-card rounded-xl shadow-sm p-3 sm:p-4 mb-4">
+        <div className="flex flex-wrap items-start gap-3 lg:gap-6">
+          {/* Type Filter */}
+          <div>
+            <label className="text-xs text-muted-foreground mb-1.5 block">Tipo</label>
+            <div className="flex gap-1">
+              {[
+                { value: "all", label: "Todos" },
+                { value: "cliente", label: "Clientes" },
+                { value: "prospecto", label: "Prospectos" }
+              ].map(opt => (
                 <button
-                  onClick={() => setFilterDistrict("")}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition ${
-                    filterDistrict === ""
+                  key={opt.value}
+                  onClick={() => setFilterType(opt.value as typeof filterType)}
+                  className={`px-2 py-1 rounded text-xs font-medium transition ${
+                    filterType === opt.value
                       ? "bg-primary text-white"
                       : "bg-secondary text-foreground hover:bg-secondary/80"
                   }`}
                 >
-                  Todos
+                  {opt.label}
                 </button>
-                {availableDistricts.map(district => (
+              ))}
+            </div>
+          </div>
+
+          {/* District Filter */}
+          <div className="flex-1 min-w-0">
+            <label className="text-xs text-muted-foreground mb-1.5 block">Distrito</label>
+            <div className="flex flex-wrap gap-1">
+              <button
+                onClick={() => setFilterDistrict("")}
+                className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
+                  filterDistrict === ""
+                    ? "bg-primary text-white"
+                    : "bg-secondary text-foreground hover:bg-secondary/80"
+                }`}
+              >
+                Todos
+              </button>
+              {availableDistricts.map(district => (
+                <button
+                  key={district}
+                  onClick={() => setFilterDistrict(filterDistrict === district ? "" : district)}
+                  className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
+                    filterDistrict === district
+                      ? "bg-primary text-white"
+                      : "bg-secondary text-foreground hover:bg-secondary/80"
+                  }`}
+                >
+                  {district}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Pipeline State Filter */}
+          {filterType !== "cliente" && (
+            <div>
+              <label className="text-xs text-muted-foreground mb-1.5 block">Estado</label>
+              <div className="flex flex-wrap gap-1">
+                {PIPELINE_STATES.map(state => (
                   <button
-                    key={district}
-                    onClick={() => setFilterDistrict(filterDistrict === district ? "" : district)}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition ${
-                      filterDistrict === district
-                        ? "bg-primary text-white"
-                        : "bg-secondary text-foreground hover:bg-secondary/80"
+                    key={state.value}
+                    onClick={() => {
+                      setFilterStates(prev =>
+                        prev.includes(state.value)
+                          ? prev.filter(s => s !== state.value)
+                          : [...prev, state.value]
+                      )
+                    }}
+                    className={`px-2 py-0.5 rounded text-xs font-medium transition ${
+                      filterStates.includes(state.value)
+                        ? state.color + " ring-2 ring-offset-1 ring-gray-400"
+                        : "bg-secondary text-muted-foreground hover:bg-secondary/80"
                     }`}
                   >
-                    {district}
+                    {state.label}
                   </button>
                 ))}
               </div>
             </div>
+          )}
 
-            {filterType !== "cliente" && (
-              <div className="mb-3">
-                <label className="text-xs text-muted-foreground mb-1 block">Estado Pipeline</label>
-                <div className="flex flex-wrap gap-1">
-                  {PIPELINE_STATES.map(state => (
-                    <button
-                      key={state.value}
-                      onClick={() => {
-                        setFilterStates(prev =>
-                          prev.includes(state.value)
-                            ? prev.filter(s => s !== state.value)
-                            : [...prev, state.value]
-                        )
-                      }}
-                      className={`px-2 py-0.5 rounded text-xs font-medium transition ${
-                        filterStates.includes(state.value)
-                          ? state.color + " ring-2 ring-offset-1 ring-gray-400"
-                          : "bg-secondary text-muted-foreground hover:bg-secondary/80"
-                      }`}
-                    >
-                      {state.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Pesquisar</label>
-              <input
-                type="text"
-                placeholder="Nome, morada..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-2 py-1.5 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
+          {/* Search */}
+          <div className="w-full sm:w-auto sm:min-w-[180px]">
+            <label className="text-xs text-muted-foreground mb-1.5 block">Pesquisar</label>
+            <input
+              type="text"
+              placeholder="Nome, morada..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-2 py-1.5 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
           </div>
+        </div>
+      </div>
 
-          {/* Calcular Rota Button */}
-          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl shadow-sm p-2 sm:p-3 border border-emerald-200 dark:border-emerald-800">
-            <button
-              onClick={() => {
-                if (!startingPoint.latitude && !startingPoint.longitude) {
-                  Swal.fire({
-                    icon: "warning",
-                    title: "Ponto de partida não definido",
-                    text: "Defina o ponto de partida antes de calcular a rota",
-                    confirmButtonColor: "#10b981"
-                  })
-                  return
-                }
-                if (selectedLocations.length === 0) {
-                  Swal.fire({
-                    icon: "info",
-                    title: "Nenhum local selecionado",
-                    text: "Selecione pelo menos um local para calcular a rota",
-                    confirmButtonColor: "#10b981"
-                  })
-                  return
-                }
-                calculateRoute()
-              }}
-              disabled={calculatingRoute}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-            >
-              {calculatingRoute ? (
-                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                </svg>
-              )}
-              Calcular Rota
-            </button>
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Filters & Location List */}
+        <div className="lg:col-span-1 space-y-3 lg:space-y-4 order-2 lg:order-1">
+          
 
           {/* Location List - Grouped by District */}
           <div className="bg-card rounded-xl shadow-sm p-4 max-h-[40vh] sm:max-h-[50vh] lg:max-h-[500px] overflow-y-auto">
