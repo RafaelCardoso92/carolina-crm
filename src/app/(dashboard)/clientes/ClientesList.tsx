@@ -106,7 +106,7 @@ export default function ClientesList({ clientes }: { clientes: Cliente[] }) {
   return (
     <div>
       {/* Search and Filter */}
-      <div className="bg-card rounded-xl shadow-sm p-3 md:p-4 mb-4 md:mb-6 flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center">
+      <div className="bg-card rounded-xl shadow-sm p-3 mb-3 flex flex-col sm:flex-row gap-2 sm:gap-3 sm:items-center">
         <div className="flex-1">
           <input
             type="text"
@@ -132,18 +132,18 @@ export default function ClientesList({ clientes }: { clientes: Cliente[] }) {
         <table className="w-full">
           <thead className="bg-secondary">
             <tr>
-              <th className="px-4 lg:px-6 py-4 text-left text-sm font-medium text-muted-foreground">Nome</th>
-              <th className="px-4 py-4 text-left text-sm font-medium text-muted-foreground hidden lg:table-cell">Código</th>
-              <th className="px-4 py-4 text-left text-sm font-medium text-muted-foreground hidden xl:table-cell">Contacto</th>
-              <th className="px-4 py-4 text-center text-sm font-medium text-muted-foreground">Vendas</th>
-              <th className="px-4 py-4 text-center text-sm font-medium text-muted-foreground">Estado</th>
-              <th className="px-4 py-4 text-right text-sm font-medium text-muted-foreground">Ações</th>
+              <th className="px-3 lg:px-4 py-3 text-left text-sm font-medium text-muted-foreground">Nome</th>
+              <th className="px-3 py-3 text-left text-sm font-medium text-muted-foreground hidden lg:table-cell">Código</th>
+              <th className="px-3 py-3 text-left text-sm font-medium text-muted-foreground hidden xl:table-cell">Contacto</th>
+              <th className="px-3 py-3 text-center text-sm font-medium text-muted-foreground">Vendas</th>
+              <th className="px-3 py-3 text-center text-sm font-medium text-muted-foreground">Estado</th>
+              <th className="px-3 py-3 text-right text-sm font-medium text-muted-foreground">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {paginatedClientes.map((cliente) => (
               <tr key={cliente.id} className={!cliente.ativo ? "bg-secondary opacity-60" : "hover:bg-table-row-hover"}>
-                <td className="px-4 lg:px-6 py-4">
+                <td className="px-3 lg:px-4 py-3">
                   <Link href={`/clientes/${cliente.id}`} className="font-medium text-foreground hover:text-primary">
                     {cliente.nome}
                   </Link>
@@ -151,12 +151,12 @@ export default function ClientesList({ clientes }: { clientes: Cliente[] }) {
                     {cliente.codigo && `(${cliente.codigo})`}
                   </span>
                 </td>
-                <td className="px-4 py-4 text-muted-foreground hidden lg:table-cell">{cliente.codigo || "-"}</td>
-                <td className="px-4 py-4 text-muted-foreground hidden xl:table-cell">
+                <td className="px-3 py-3 text-muted-foreground hidden lg:table-cell">{cliente.codigo || "-"}</td>
+                <td className="px-3 py-3 text-muted-foreground hidden xl:table-cell">
                   {cliente.telefone || cliente.email || "-"}
                 </td>
-                <td className="px-4 py-4 text-center text-muted-foreground">{cliente._count.vendas}</td>
-                <td className="px-4 py-4 text-center">
+                <td className="px-3 py-3 text-center text-muted-foreground">{cliente._count.vendas}</td>
+                <td className="px-3 py-3 text-center">
                   <button
                     onClick={() => handleToggleActive(cliente.id, cliente.ativo)}
                     className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -168,7 +168,7 @@ export default function ClientesList({ clientes }: { clientes: Cliente[] }) {
                     {cliente.ativo ? "Ativo" : "Inativo"}
                   </button>
                 </td>
-                <td className="px-4 py-4 text-right">
+                <td className="px-3 py-3 text-right">
                   <div className="flex justify-end gap-1">
                     <Link
                       href={`/clientes/${cliente.id}`}
@@ -213,9 +213,9 @@ export default function ClientesList({ clientes }: { clientes: Cliente[] }) {
       </div>
 
       {/* Mobile Cards */}
-      <div className="md:hidden space-y-3">
+      <div className="md:hidden space-y-2">
         {paginatedClientes.map((cliente) => (
-          <div key={cliente.id} className={`bg-card rounded-xl shadow-sm p-4 border border-border ${!cliente.ativo ? "opacity-60" : ""}`}>
+          <div key={cliente.id} className={`bg-card rounded-lg shadow-sm p-3 border border-border ${!cliente.ativo ? "opacity-60" : ""}`}>
             <div className="flex justify-between items-start mb-2">
               <div className="flex-1 min-w-0">
                 <Link href={`/clientes/${cliente.id}`} className="font-semibold text-foreground hover:text-primary block truncate">
@@ -281,7 +281,7 @@ export default function ClientesList({ clientes }: { clientes: Cliente[] }) {
 
       {/* Pagination Controls */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-6 px-2">
+        <div className="flex items-center justify-between mt-4 px-2">
           <p className="text-sm text-muted-foreground">
             A mostrar {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filtered.length)} de {filtered.length} clientes
           </p>

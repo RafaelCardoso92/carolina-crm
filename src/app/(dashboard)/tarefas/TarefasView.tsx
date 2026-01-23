@@ -100,8 +100,8 @@ export default function TarefasView() {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-foreground">Tarefas</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <h1 className="text-xl md:text-2xl font-bold text-foreground">Tarefas</h1>
         <button
           onClick={() => setShowForm(true)}
           className="bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-hover transition"
@@ -111,7 +111,7 @@ export default function TarefasView() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex gap-2 mb-6 flex-wrap">
+      <div className="flex gap-2 mb-4 flex-wrap">
         {[
           { key: "pendentes", label: "Pendentes" },
           { key: "hoje", label: "Hoje" },
@@ -218,11 +218,11 @@ export default function TarefasView() {
           Nenhuma tarefa encontrada
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {tarefas.map(tarefa => {
             const isOverdue = tarefa.dataVencimento && new Date(tarefa.dataVencimento) < new Date() && tarefa.estado !== "CONCLUIDA"
             return (
-              <div key={tarefa.id} className={`bg-card rounded-xl p-4 border ${isOverdue ? "border-red-300 dark:border-red-700" : "border-border"}`}>
+              <div key={tarefa.id} className={`bg-card rounded-lg p-3 border ${isOverdue ? "border-red-300 dark:border-red-700" : "border-border"}`}>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
