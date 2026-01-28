@@ -221,6 +221,7 @@ model Produto {
 
   itensVenda      ItemVenda[]
   substituicoes   ItemDevolucao[] @relation("Substituicao")
+  campanhasProduto CampanhaProduto[]
 }
 
 model ItemVenda {
@@ -873,6 +874,7 @@ model Campanha {
   updatedAt   DateTime @updatedAt
   
   vendas      CampanhaVenda[]
+  produtos    CampanhaProduto[]
   
   @@index([mes, ano])
   @@index([ativo])
@@ -891,4 +893,22 @@ model CampanhaVenda {
   @@unique([campanhaId, vendaId])
   @@index([campanhaId])
   @@index([vendaId])
+}
+
+model CampanhaProduto {
+  id          String   @id @default(cuid())
+  campanhaId  String
+  campanha    Campanha @relation(fields: [campanhaId], references: [id], onDelete: Cascade)
+  
+  produtoId   String?
+  produto     Produto? @relation(fields: [produtoId], references: [id])
+  
+  nome        String
+  precoUnit   Decimal  @db.Decimal(10, 2)
+  quantidade  Int      @default(1)
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([campanhaId])
+  @@index([produtoId])
 }

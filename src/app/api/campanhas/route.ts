@@ -22,16 +22,19 @@ export async function GET(request: Request) {
               include: { cliente: true }
             }
           }
+        },
+        produtos: {
+          include: { produto: true }
         }
       },
       orderBy: [{ ano: "desc" }, { mes: "desc" }, { titulo: "asc" }]
     })
 
-    // Calculate totals sold for each campanha
     const campanhasComTotais = campanhas.map(c => ({
       ...c,
       totalVendido: c.vendas.reduce((sum, v) => sum + v.quantidade, 0),
-      totalVendas: c.vendas.length
+      totalVendas: c.vendas.length,
+      totalSemIva: c.produtos.reduce((sum, p) => sum + Number(p.precoUnit) * p.quantidade, 0)
     }))
 
     return NextResponse.json(campanhasComTotais)
@@ -39,6 +42,13 @@ export async function GET(request: Request) {
     console.error("Error fetching campanhas:", error)
     return NextResponse.json({ error: "Erro ao buscar campanhas" }, { status: 500 })
   }
+}
+
+type ProdutoInput = {
+  produtoId?: string | null
+  nome: string
+  precoUnit: number
+  quantidade: number
 }
 
 export async function POST(request: Request) {
@@ -49,13 +59,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Titulo, mes e ano sao obrigatorios" }, { status: 400 })
     }
 
+    const produtosData: ProdutoInput[] = data.produtos || []
+
     const campanha = await prisma.campanha.create({
       data: {
         titulo: data.titulo,
         descricao: data.descricao || null,
         mes: parseInt(data.mes),
         ano: parseInt(data.ano),
-        ativo: true
+        ativo: true,
+        produtos: produtosData.length > 0 ? {
+          create: produtosData.map(p => ({
+            produtoId: p.produtoId || null,
+            nome: p.nome,
+            precoUnit: p.precoUnit,
+            quantidade: p.quantidade || 1
+          }))
+        } : undefined
+      },
+      include: {
+        produtos: {
+          include: { produto: true }
+        }
       }
     })
 

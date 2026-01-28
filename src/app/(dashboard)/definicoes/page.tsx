@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Swal from "sweetalert2"
 import { formatCurrency } from "@/lib/utils"
+import ProductPicker from "@/components/ProductPicker"
 
 type Premio = {
   id: string
@@ -33,6 +34,22 @@ type ObjetivoMensal = {
 }
 
 
+type CampanhaProdutoItem = {
+  id: string
+  produtoId: string | null
+  nome: string
+  precoUnit: number
+  quantidade: number
+  produto: Produto | null
+}
+
+type CampanhaProdutoForm = {
+  produtoId: string
+  nome: string
+  precoUnit: string
+  quantidade: string
+}
+
 type Campanha = {
   id: string
   titulo: string
@@ -42,6 +59,8 @@ type Campanha = {
   ativo: boolean
   totalVendido: number
   totalVendas: number
+  totalSemIva: number
+  produtos: CampanhaProdutoItem[]
 }
 type Produto = {
   id: string
@@ -49,6 +68,7 @@ type Produto = {
   codigo: string | null
   categoria: string | null
   descricao: string | null
+  tipo: string | null
   preco: number | null
   ativo: boolean
   _count?: { itensVenda: number }
@@ -87,6 +107,7 @@ export default function DefinicoesPage() {
   const [campanhaForm, setCampanhaForm] = useState({ titulo: "", descricao: "", mes: new Date().getMonth() + 1, ano: new Date().getFullYear() })
   const [editingCampanha, setEditingCampanha] = useState<string | null>(null)
   const [showCampanhaForm, setShowCampanhaForm] = useState(false)
+  const [campanhaProdutos, setCampanhaProdutos] = useState<CampanhaProdutoForm[]>([])
 
   useEffect(() => {
     fetchData()
@@ -209,6 +230,36 @@ export default function DefinicoesPage() {
       setSaving(false)
     }
   }
+
+  function addCampanhaProduto() {
+    setCampanhaProdutos([...campanhaProdutos, { produtoId: "", nome: "", precoUnit: "", quantidade: "1" }])
+  }
+
+  function removeCampanhaProduto(index: number) {
+    setCampanhaProdutos(campanhaProdutos.filter((_, i) => i !== index))
+  }
+
+  function updateCampanhaProduto(index: number, field: keyof CampanhaProdutoForm, value: string) {
+    const updated = [...campanhaProdutos]
+    updated[index] = { ...updated[index], [field]: value }
+
+    if (field === "produtoId" && value && value !== "PICKER_MODE") {
+      const produto = produtos.find(p => p.id === value)
+      if (produto) {
+        updated[index].nome = produto.nome
+        if (produto.preco && !updated[index].precoUnit) {
+          const precoSemIva = Number(produto.preco) / 1.23
+          updated[index].precoUnit = precoSemIva.toFixed(2)
+        }
+      }
+    }
+
+    setCampanhaProdutos(updated)
+  }
+
+  const campanhaTotalSemIva = campanhaProdutos.reduce((sum, p) => {
+    return sum + (parseFloat(p.precoUnit) || 0) * (parseInt(p.quantidade) || 0)
+  }, 0)
 
   if (loading) {
     return (
@@ -504,6 +555,7 @@ export default function DefinicoesPage() {
               onClick={() => {
                 setCampanhaForm({ titulo: "", descricao: "", mes: new Date().getMonth() + 1, ano: new Date().getFullYear() })
                 setEditingCampanha(null)
+                setCampanhaProdutos([])
                 setShowCampanhaForm(true)
               }}
               className="px-4 py-2 bg-primary text-white rounded-lg font-semibold hover:bg-primary-hover transition flex items-center gap-2"
@@ -565,6 +617,139 @@ export default function DefinicoesPage() {
                   </select>
                 </div>
               </div>
+
+              {/* Products Section */}
+              <div className="mt-6 pt-6 border-t border-purple-200">
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <h4 className="text-base font-bold text-foreground">Produtos da Campanha</h4>
+                    <p className="text-xs text-muted-foreground">Adicione produtos da lista ou manualmente (precos sem IVA)</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addCampanhaProduto}
+                    className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 transition flex items-center gap-1.5"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Adicionar Produto
+                  </button>
+                </div>
+
+                {campanhaProdutos.length === 0 ? (
+                  <div className="text-center py-6 bg-white/50 rounded-xl border-2 border-dashed border-purple-200">
+                    <svg className="w-10 h-10 text-purple-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                    <p className="text-sm text-muted-foreground">Nenhum produto adicionado</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="hidden md:grid grid-cols-12 gap-2 text-xs font-bold text-muted-foreground px-1">
+                      <div className="col-span-5">Produto</div>
+                      <div className="col-span-2 text-center">Qtd</div>
+                      <div className="col-span-2 text-center">Preco s/IVA</div>
+                      <div className="col-span-2 text-right">Subtotal</div>
+                      <div className="col-span-1"></div>
+                    </div>
+
+                    {campanhaProdutos.map((item, index) => {
+                      const subtotal = (parseFloat(item.precoUnit) || 0) * (parseInt(item.quantidade) || 0)
+                      return (
+                        <div key={index} className="grid grid-cols-12 gap-2 items-center bg-white/60 rounded-lg p-2">
+                          <div className="col-span-12 md:col-span-5">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = [...campanhaProdutos]
+                                  if (updated[index].produtoId) {
+                                    updated[index] = { ...updated[index], produtoId: "", nome: "", precoUnit: "" }
+                                  } else {
+                                    updated[index] = { ...updated[index], produtoId: "PICKER_MODE" }
+                                  }
+                                  setCampanhaProdutos(updated)
+                                }}
+                                className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium hover:bg-purple-200 transition"
+                              >
+                                {item.produtoId ? "Manual" : "Da lista"}
+                              </button>
+                            </div>
+                            {item.produtoId ? (
+                              <ProductPicker
+                                products={produtos.filter(p => p.ativo).map(p => ({
+                                  id: p.id,
+                                  nome: p.nome,
+                                  codigo: p.codigo,
+                                  categoria: p.categoria,
+                                  tipo: p.tipo || null,
+                                  preco: p.preco ? String(p.preco) : null
+                                }))}
+                                selectedProductId={item.produtoId === "PICKER_MODE" ? "" : item.produtoId}
+                                onSelect={(productId, price) => updateCampanhaProduto(index, "produtoId", productId || "PICKER_MODE")}
+                                placeholder="Procurar produto..."
+                              />
+                            ) : (
+                              <input
+                                type="text"
+                                value={item.nome}
+                                onChange={(e) => updateCampanhaProduto(index, "nome", e.target.value)}
+                                className="w-full px-3 py-2 border-2 border-border rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                                placeholder="Nome do produto"
+                              />
+                            )}
+                          </div>
+                          <div className="col-span-4 md:col-span-2">
+                            <input
+                              type="number"
+                              step="1"
+                              min="1"
+                              value={item.quantidade}
+                              onChange={(e) => updateCampanhaProduto(index, "quantidade", e.target.value)}
+                              className="w-full px-3 py-2 border-2 border-border rounded-lg text-sm text-center focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                              placeholder="1"
+                            />
+                          </div>
+                          <div className="col-span-4 md:col-span-2">
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={item.precoUnit}
+                              onChange={(e) => updateCampanhaProduto(index, "precoUnit", e.target.value)}
+                              className="w-full px-3 py-2 border-2 border-border rounded-lg text-sm text-center focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                              placeholder="0.00"
+                            />
+                          </div>
+                          <div className="col-span-3 md:col-span-2 text-right text-sm font-semibold text-foreground">
+                            {formatCurrency(subtotal)} &euro;
+                          </div>
+                          <div className="col-span-1 flex justify-center">
+                            <button
+                              type="button"
+                              onClick={() => removeCampanhaProduto(index)}
+                              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+
+                    <div className="flex justify-end pt-4 mt-2 border-t border-purple-200">
+                      <div className="bg-gradient-to-r from-purple-50 to-pink-50 px-5 py-3 rounded-xl border border-purple-200">
+                        <span className="text-sm text-purple-700 font-medium">Total s/IVA: </span>
+                        <span className="text-xl font-bold text-purple-600">{formatCurrency(campanhaTotalSemIva)} &euro;</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="flex gap-3 mt-4">
                 <button
                   onClick={async () => {
@@ -574,16 +759,26 @@ export default function DefinicoesPage() {
                     }
                     setSaving(true)
                     try {
+                      const produtosToSave = campanhaProdutos
+                        .filter(p => p.nome && p.precoUnit && p.quantidade)
+                        .map(p => ({
+                          produtoId: (p.produtoId && p.produtoId !== "PICKER_MODE") ? p.produtoId : null,
+                          nome: p.nome,
+                          precoUnit: parseFloat(p.precoUnit),
+                          quantidade: parseInt(p.quantidade) || 1
+                        }))
+
                       const url = editingCampanha ? `/api/campanhas/${editingCampanha}` : "/api/campanhas"
                       const method = editingCampanha ? "PUT" : "POST"
                       const res = await fetch(url, {
                         method,
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(campanhaForm)
+                        body: JSON.stringify({ ...campanhaForm, produtos: produtosToSave })
                       })
                       if (res.ok) {
                         setShowCampanhaForm(false)
                         setEditingCampanha(null)
+                        setCampanhaProdutos([])
                         fetchData()
                         Swal.fire({ icon: "success", title: editingCampanha ? "Campanha atualizada" : "Campanha criada", timer: 1500, showConfirmButton: false })
                       }
@@ -599,7 +794,7 @@ export default function DefinicoesPage() {
                   {saving ? "A guardar..." : "Guardar"}
                 </button>
                 <button
-                  onClick={() => { setShowCampanhaForm(false); setEditingCampanha(null) }}
+                  onClick={() => { setShowCampanhaForm(false); setEditingCampanha(null); setCampanhaProdutos([]) }}
                   className="px-6 py-2 border-2 border-border rounded-lg font-semibold hover:bg-secondary transition"
                 >
                   Cancelar
@@ -618,6 +813,7 @@ export default function DefinicoesPage() {
                   <th className="px-4 py-3 text-center text-sm font-bold text-foreground">Vendidos</th>
                   <th className="px-4 py-3 text-center text-sm font-bold text-foreground">Vendas</th>
                   <th className="px-4 py-3 text-center text-sm font-bold text-foreground">Estado</th>
+                  <th className="px-4 py-3 text-center text-sm font-bold text-foreground">Total s/IVA</th>
                   <th className="px-4 py-3 text-right text-sm font-bold text-foreground">Acoes</th>
                 </tr>
               </thead>
@@ -640,12 +836,28 @@ export default function DefinicoesPage() {
                         <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-semibold">Inativo</span>
                       )}
                     </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="font-semibold text-purple-600">
+                        {formatCurrency(c.totalSemIva || 0)} &euro;
+                      </span>
+                      {c.produtos && c.produtos.length > 0 && (
+                        <div className="text-xs text-muted-foreground">{c.produtos.length} produto{c.produtos.length !== 1 ? "s" : ""}</div>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1 justify-end">
                         <button
                           onClick={() => {
                             setCampanhaForm({ titulo: c.titulo, descricao: c.descricao || "", mes: c.mes, ano: c.ano })
                             setEditingCampanha(c.id)
+                            setCampanhaProdutos(
+                              (c.produtos || []).map(p => ({
+                                produtoId: p.produtoId || "",
+                                nome: p.nome,
+                                precoUnit: String(p.precoUnit),
+                                quantidade: String(p.quantidade)
+                              }))
+                            )
                             setShowCampanhaForm(true)
                           }}
                           className="p-2 text-blue-500 hover:bg-blue-500/10 rounded-lg transition"
@@ -685,7 +897,7 @@ export default function DefinicoesPage() {
                 ))}
                 {campanhas.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                    <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                       Nenhuma campanha encontrada
                     </td>
                   </tr>

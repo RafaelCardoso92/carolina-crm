@@ -1,6 +1,13 @@
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 
+type ProdutoInput = {
+  produtoId?: string | null
+  nome: string
+  precoUnit: number
+  quantidade: number
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -16,6 +23,9 @@ export async function GET(
               include: { cliente: true }
             }
           }
+        },
+        produtos: {
+          include: { produto: true }
         }
       }
     })
@@ -27,7 +37,8 @@ export async function GET(
     return NextResponse.json({
       ...campanha,
       totalVendido: campanha.vendas.reduce((sum, v) => sum + v.quantidade, 0),
-      totalVendas: campanha.vendas.length
+      totalVendas: campanha.vendas.length,
+      totalSemIva: campanha.produtos.reduce((sum, p) => sum + Number(p.precoUnit) * p.quantidade, 0)
     })
   } catch (error) {
     console.error("Error fetching campanha:", error)
@@ -43,15 +54,37 @@ export async function PUT(
     const { id } = await params
     const data = await request.json()
 
-    const campanha = await prisma.campanha.update({
-      where: { id },
-      data: {
-        titulo: data.titulo,
-        descricao: data.descricao,
-        mes: data.mes ? parseInt(data.mes) : undefined,
-        ano: data.ano ? parseInt(data.ano) : undefined,
-        ativo: data.ativo
-      }
+    const produtosData: ProdutoInput[] = data.produtos || []
+
+    const campanha = await prisma.$transaction(async (tx) => {
+      // Delete existing products and recreate
+      await tx.campanhaProduto.deleteMany({
+        where: { campanhaId: id }
+      })
+
+      return tx.campanha.update({
+        where: { id },
+        data: {
+          titulo: data.titulo,
+          descricao: data.descricao,
+          mes: data.mes ? parseInt(data.mes) : undefined,
+          ano: data.ano ? parseInt(data.ano) : undefined,
+          ativo: data.ativo,
+          produtos: produtosData.length > 0 ? {
+            create: produtosData.map(p => ({
+              produtoId: p.produtoId || null,
+              nome: p.nome,
+              precoUnit: p.precoUnit,
+              quantidade: p.quantidade || 1
+            }))
+          } : undefined
+        },
+        include: {
+          produtos: {
+            include: { produto: true }
+          }
+        }
+      })
     })
 
     return NextResponse.json(campanha)
