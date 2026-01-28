@@ -16,7 +16,7 @@ async function main() {
   console.log("Starting seed...")
 
   // Create default user (Carolina)
-  const hashedPassword = await bcrypt.hash("carolina456", 10)
+  const hashedPassword = await bcrypt.hash("carolina123", 10)
 
   const user = await prisma.user.upsert({
     where: { email: "carolina" },
