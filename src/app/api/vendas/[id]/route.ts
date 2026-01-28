@@ -158,7 +158,7 @@ export async function PUT(
             
             for (let i = 0; i < numeroParcelas; i++) {
               const dataVenc = new Date(dataInicioVencimento)
-              dataVenc.setMonth(dataVenc.getMonth() + i)
+              dataVenc.setMonth(dataVenc.getMonth() + i + 1)
               
               parcelas.push({
                 cobrancaId: existingCobranca.id,
@@ -176,7 +176,7 @@ export async function PUT(
                 cobrancaId: existingCobranca.id,
                 numero: 1,
                 valor: valorComIva,
-                dataVencimento: dataInicioVencimento,
+                dataVencimento: new Date(new Date(dataInicioVencimento).setMonth(new Date(dataInicioVencimento).getMonth() + 1)),
                 pago: false
               }
             })
@@ -221,7 +221,7 @@ export async function PUT(
             
             for (let i = 0; i < numParcelas; i++) {
               const dataVenc = new Date(dataInicioVencimento)
-              dataVenc.setMonth(dataVenc.getMonth() + i)
+              dataVenc.setMonth(dataVenc.getMonth() + i + 1)
               
               parcelas.push({
                 cobrancaId: cobranca.id,
@@ -239,7 +239,7 @@ export async function PUT(
                 cobrancaId: cobranca.id,
                 numero: 1,
                 valor: valorComIva,
-                dataVencimento: dataInicioVencimento,
+                dataVencimento: new Date(new Date(dataInicioVencimento).setMonth(new Date(dataInicioVencimento).getMonth() + 1)),
                 pago: false
               }
             })

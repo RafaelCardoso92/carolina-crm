@@ -63,7 +63,7 @@ export async function POST(request: Request) {
 
         for (let i = 0; i < numeroParcelas; i++) {
           const dataVencimento = new Date(dataInicioVencimento)
-          dataVencimento.setMonth(dataVencimento.getMonth() + i)
+          dataVencimento.setMonth(dataVencimento.getMonth() + i + 1)
 
           parcelas.push({
             cobrancaId: newCobranca.id,

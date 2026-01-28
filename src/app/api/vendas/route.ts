@@ -159,7 +159,7 @@ export async function POST(request: Request) {
         
         for (let i = 0; i < numeroParcelas; i++) {
           const dataVencimento = new Date(dataInicioVencimento)
-          dataVencimento.setMonth(dataVencimento.getMonth() + i)
+          dataVencimento.setMonth(dataVencimento.getMonth() + i + 1)
           
           parcelas.push({
             cobrancaId: cobranca.id,
@@ -178,7 +178,7 @@ export async function POST(request: Request) {
             cobrancaId: cobranca.id,
             numero: 1,
             valor: valorComIva,
-            dataVencimento: dataInicioVencimento,
+            dataVencimento: new Date(new Date(dataInicioVencimento).setMonth(new Date(dataInicioVencimento).getMonth() + 1)),
             pago: false
           }
         })
