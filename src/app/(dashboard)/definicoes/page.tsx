@@ -1317,7 +1317,7 @@ function ProdutosTable({
               />
             </div>
             <div>
-              <label className="block text-sm font-bold text-foreground mb-1">Preço (c/IVA)</label>
+              <label className="block text-sm font-bold text-foreground mb-1">Preco (s/IVA)</label>
               <div className="relative">
                 <input
                   type="number"
@@ -1688,7 +1688,7 @@ function VariosTable({
               />
             </div>
             <div>
-              <label className="block text-sm font-bold text-foreground mb-1">Preço (c/IVA)</label>
+              <label className="block text-sm font-bold text-foreground mb-1">Preco (s/IVA)</label>
               <div className="relative">
                 <input
                   type="number"
