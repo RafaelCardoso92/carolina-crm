@@ -30,6 +30,10 @@ model Cliente {
   telefone  String?
   email     String?
   morada    String?
+  cidade    String?
+  codigoPostal String?
+  latitude  Float?
+  longitude Float?
   notas     String?
   ativo     Boolean   @default(true)
   createdAt DateTime  @default(now())
@@ -203,6 +207,7 @@ model Produto {
   nome        String
   codigo      String?  @unique
   categoria   String?
+  tipo        String?
   descricao   String?
   ativo       Boolean  @default(true)
   preco       Decimal? @db.Decimal(10, 2)  // Default price (with VAT)
