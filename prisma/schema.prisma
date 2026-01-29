@@ -22,6 +22,7 @@ model Cliente {
   amostras      Amostra[]
   orcamentos    Orcamento[]
   ultimoContacto DateTime?  // Last contact date for follow-up tracking
+  acordoParceria AcordoParceria?
 
   id        String    @id @default(cuid())
   nome      String
@@ -29,10 +30,6 @@ model Cliente {
   telefone  String?
   email     String?
   morada    String?
-  cidade        String?
-  codigoPostal  String?
-  latitude      Float?
-  longitude     Float?
   notas     String?
   ativo     Boolean   @default(true)
   createdAt DateTime  @default(now())
@@ -64,8 +61,6 @@ model Venda {
   itens       ItemVenda[]
   devolucoes  Devolucao[]
   itensReconciliacao ItemReconciliacao[]
-  cobranca    Cobranca?
-  campanhas   CampanhaVenda[]
 
   @@index([clienteId])
   @@index([mes, ano])
@@ -75,9 +70,6 @@ model Cobranca {
   id          String    @id @default(cuid())
   clienteId   String
   cliente     Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-
-  vendaId     String?   @unique
-  venda       Venda?    @relation(fields: [vendaId], references: [id], onDelete: Cascade)
 
   fatura      String?   // FA number
   valor       Decimal   @db.Decimal(10, 2)
@@ -212,7 +204,6 @@ model Produto {
   codigo      String?  @unique
   categoria   String?
   descricao   String?
-  tipo        String?  // Venda Público, Profissional, Material Promocional
   ativo       Boolean  @default(true)
   preco       Decimal? @db.Decimal(10, 2)  // Default price (with VAT)
 
@@ -221,7 +212,6 @@ model Produto {
 
   itensVenda      ItemVenda[]
   substituicoes   ItemDevolucao[] @relation("Substituicao")
-  campanhasProduto CampanhaProduto[]
 }
 
 model ItemVenda {
@@ -796,128 +786,43 @@ model PrevisaoVendas {
   id              String    @id @default(cuid())
   mes             Int
   ano             Int
-  
+
   // Forecasted values
   previsaoBase    Decimal   @db.Decimal(10, 2)  // Based on historical average
   previsaoPipeline Decimal  @db.Decimal(10, 2)  // Based on pipeline
   previsaoTotal   Decimal   @db.Decimal(10, 2)  // Combined forecast
-  
+
   // Confidence
   confianca       Int       @default(70)  // 0-100%
-  
+
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
-  
+
   @@unique([mes, ano])
 }
 
 // ==========================================
-// SAVED ROUTES
+// PARTNERSHIP AGREEMENTS (ACORDOS DE PARCERIA)
 // ==========================================
 
-model RotaSalva {
+model AcordoParceria {
   id              String    @id @default(cuid())
-  nome            String?   // Optional name for the route
-  data            DateTime  // Date the route is planned for
-  
-  // Starting point
-  origemLatitude  Float
-  origemLongitude Float
-  origemEndereco  String?
-  
-  // Route data (JSON array of location IDs and order)
-  locais          Json      // Array of { id, tipo, ordem }
-  
-  // Parking stops (JSON array)
-  paragens        Json?     // Array of { lat, lng, nome, endereco, custoEstimado }
-  
-  // Calculated route info
-  distanciaTotal  String?   // e.g., "45.2 km"
-  duracaoTotal    String?   // e.g., "1h 30min"
-  
-  // Cost estimates
-  custoPortagens      Decimal?  @db.Decimal(10, 2)  // Toll costs
-  numPortagens        Int?      // Number of tolls
-  custoCombuistivel   Decimal?  @db.Decimal(10, 2)  // Fuel costs
-  consumoMedio        Decimal?  @db.Decimal(4, 1)   // L/100km (default ~7.0 for GPL)
-  precoLitro          Decimal?  @db.Decimal(4, 3)   // Price per liter
-  custoEstacionamento Decimal?  @db.Decimal(10, 2)  // Parking costs
-  custoTotal          Decimal?  @db.Decimal(10, 2)  // Total estimated cost
-  
-  // Actual costs (after completing route)
-  custoReal           Decimal?  @db.Decimal(10, 2)  // Actual total cost
-  notasCustos         String?   // Notes about costs
-  
-  // Status
-  concluida       Boolean   @default(false)
-  
+  clienteId       String    @unique
+  cliente         Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  valorAnual      Decimal   @db.Decimal(10, 2)  // Annual commitment
+  ano             Int                           // Agreement year (e.g., 2026)
+
+  dataInicio      DateTime  @default(now())
+  dataFim         DateTime?
+  ativo           Boolean   @default(true)
+
+  notas           String?   @db.Text
+
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
-  
-  @@index([data])
-  @@index([concluida])
-}
 
-// ==========================================
-// CAMPANHAS (MONTHLY CAMPAIGNS)
-// ==========================================
-
-model Campanha {
-  id          String   @id @default(cuid())
-  titulo      String
-  descricao   String?  @db.Text
-  mes         Int      // 1-12
-  ano         Int
-  ativo       Boolean  @default(true)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  vendas      CampanhaVenda[]
-  produtos    CampanhaProduto[]
-  
-  @@index([mes, ano])
+  @@index([clienteId])
+  @@index([ano])
   @@index([ativo])
-}
-
-model CampanhaVenda {
-  id          String   @id @default(cuid())
-  campanhaId  String
-  campanha    Campanha @relation(fields: [campanhaId], references: [id], onDelete: Cascade)
-  vendaId     String
-  venda       Venda    @relation(fields: [vendaId], references: [id], onDelete: Cascade)
-  quantidade  Int      @default(1)
-  
-  createdAt   DateTime @default(now())
-  
-  @@unique([campanhaId, vendaId])
-  @@index([campanhaId])
-  @@index([vendaId])
-}
-
-model CampanhaProduto {
-  id          String   @id @default(cuid())
-  campanhaId  String
-  campanha    Campanha @relation(fields: [campanhaId], references: [id], onDelete: Cascade)
-  
-  produtoId   String?
-  produto     Produto? @relation(fields: [produtoId], references: [id])
-  
-  nome        String
-  precoUnit   Decimal  @db.Decimal(10, 2)
-  quantidade  Int      @default(1)
-  
-  createdAt   DateTime @default(now())
-  
-  @@index([campanhaId])
-  @@index([produtoId])
-}
-
-model MoodEntry {
-  id        String   @id @default(cuid())
-  date      String   @unique // YYYY-MM-DD format, one entry per day
-  rating    Int      // 1-5 emoji scale
-  createdAt DateTime @default(now())
-
-  @@index([date])
 }

@@ -9,6 +9,7 @@ import ClienteAIInsights from "@/components/ClienteAIInsights"
 import CommunicationLog from "@/components/CommunicationLog"
 import SampleTracking from "@/components/SampleTracking"
 import CustomerSegmentation from "@/components/CustomerSegmentation"
+import AcordoParceria from "@/components/AcordoParceria"
 import WhatsAppButton from "@/components/WhatsAppButton"
 import QuickReorder from "./QuickReorder"
 
@@ -22,9 +23,6 @@ async function getCliente(id: string) {
         include: {
           itens: {
             include: { produto: true }
-          },
-          campanhas: {
-            include: { campanha: true }
           }
         }
       },
@@ -34,52 +32,6 @@ async function getCliente(id: string) {
       }
     }
   })
-}
-
-async function getClienteStats(id: string) {
-  // Get all vendas for this client with items and campanhas
-  const vendas = await prisma.venda.findMany({
-    where: { clienteId: id },
-    include: {
-      itens: {
-        include: { produto: true }
-      },
-      campanhas: {
-        include: { campanha: true }
-      }
-    }
-  })
-
-  // Count varios items (products with tipo = "Varios")
-  let variosCount = 0
-  let variosTotal = 0
-
-  // Count campanhas
-  let campanhasCount = 0
-  const campanhasSet = new Set<string>()
-
-  for (const venda of vendas) {
-    // Count varios
-    for (const item of venda.itens) {
-      if (item.produto.tipo === "Varios") {
-        variosCount += Number(item.quantidade)
-        variosTotal += Number(item.subtotal)
-      }
-    }
-
-    // Count campanhas
-    for (const cv of venda.campanhas) {
-      campanhasCount += cv.quantidade
-      campanhasSet.add(cv.campanhaId)
-    }
-  }
-
-  return {
-    variosCount,
-    variosTotal,
-    campanhasCount,
-    campanhasUnique: campanhasSet.size
-  }
 }
 
 async function getProdutos() {
@@ -96,10 +48,9 @@ const meses = [
 
 export default async function ClienteDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const [cliente, produtos, stats] = await Promise.all([
+  const [cliente, produtos] = await Promise.all([
     getCliente(id),
-    getProdutos(),
-    getClienteStats(id)
+    getProdutos()
   ])
 
   if (!cliente) {
@@ -125,7 +76,7 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
               <h1 className="text-3xl font-bold text-foreground">{cliente.nome}</h1>
               <WhatsAppButton telefone={cliente.telefone} nome={cliente.nome} size="lg" />
             </div>
-            {cliente.codigo && <p className="text-muted-foreground">Código: {cliente.codigo}</p>}
+            {cliente.codigo && <p className="text-muted-foreground">Codigo: {cliente.codigo}</p>}
           </div>
           <div className="flex gap-2">
             <Link
@@ -139,32 +90,18 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6 mb-8">
-        <div className="bg-card rounded-xl shadow-sm p-4 md:p-6">
-          <h3 className="text-xs md:text-sm font-medium text-muted-foreground">Total Vendas</h3>
-          <p className="text-lg md:text-2xl font-bold text-foreground mt-1 md:mt-2">{formatCurrency(totalVendas)} EUR</p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-card rounded-xl shadow-sm p-6">
+          <h3 className="text-sm font-medium text-muted-foreground">Total Vendas</h3>
+          <p className="text-2xl font-bold text-foreground mt-2">{formatCurrency(totalVendas)} EUR</p>
         </div>
-        <div className="bg-card rounded-xl shadow-sm p-4 md:p-6">
-          <h3 className="text-xs md:text-sm font-medium text-muted-foreground">Total Faturado</h3>
-          <p className="text-lg md:text-2xl font-bold text-foreground mt-1 md:mt-2">{formatCurrency(totalCobrancas)} EUR</p>
+        <div className="bg-card rounded-xl shadow-sm p-6">
+          <h3 className="text-sm font-medium text-muted-foreground">Total Faturado</h3>
+          <p className="text-2xl font-bold text-foreground mt-2">{formatCurrency(totalCobrancas)} EUR</p>
         </div>
-        <div className="bg-card rounded-xl shadow-sm p-4 md:p-6">
-          <h3 className="text-xs md:text-sm font-medium text-muted-foreground">Por Receber</h3>
-          <p className="text-lg md:text-2xl font-bold text-orange-600 mt-1 md:mt-2">{formatCurrency(pendentes)} EUR</p>
-        </div>
-        <div className="bg-card rounded-xl shadow-sm p-4 md:p-6">
-          <h3 className="text-xs md:text-sm font-medium text-muted-foreground">Varios Vendidos</h3>
-          <p className="text-lg md:text-2xl font-bold text-purple-600 mt-1 md:mt-2">{stats.variosCount}</p>
-          {stats.variosTotal > 0 && (
-            <p className="text-xs text-muted-foreground mt-1">{formatCurrency(stats.variosTotal)} EUR</p>
-          )}
-        </div>
-        <div className="bg-card rounded-xl shadow-sm p-4 md:p-6">
-          <h3 className="text-xs md:text-sm font-medium text-muted-foreground">Campanhas</h3>
-          <p className="text-lg md:text-2xl font-bold text-blue-600 mt-1 md:mt-2">{stats.campanhasCount}</p>
-          {stats.campanhasUnique > 0 && (
-            <p className="text-xs text-muted-foreground mt-1">{stats.campanhasUnique} campanha{stats.campanhasUnique !== 1 ? 's' : ''}</p>
-          )}
+        <div className="bg-card rounded-xl shadow-sm p-6">
+          <h3 className="text-sm font-medium text-muted-foreground">Por Receber</h3>
+          <p className="text-2xl font-bold text-orange-600 mt-2">{formatCurrency(pendentes)} EUR</p>
         </div>
       </div>
 
@@ -241,6 +178,11 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
+      {/* Partnership Agreement */}
+      <div className="mb-8">
+        <AcordoParceria clienteId={id} />
+      </div>
+
       {/* Communication Log and Samples */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <CommunicationLog clienteId={id} />
@@ -261,21 +203,8 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
                 {venda.itens && venda.itens.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
                     {venda.itens.map((item, idx) => (
-                      <span key={idx} className={`text-xs px-2 py-0.5 rounded-full ${
-                        item.produto.tipo === "Varios"
-                          ? "bg-purple-500/10 text-purple-600 dark:text-purple-400"
-                          : "bg-primary/10 text-primary"
-                      }`}>
+                      <span key={idx} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
                         {item.produto.nome} ({Number(item.quantidade)})
-                      </span>
-                    ))}
-                  </div>
-                )}
-                {venda.campanhas && venda.campanhas.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {venda.campanhas.map((cv, idx) => (
-                      <span key={idx} className="text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full">
-                        {cv.campanha.titulo} ({cv.quantidade})
                       </span>
                     ))}
                   </div>
@@ -303,64 +232,34 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
       <div className="bg-card rounded-xl shadow-sm p-6">
         <h3 className="text-lg font-semibold text-foreground mb-4">Cobrancas</h3>
         {cliente.cobrancas.length > 0 ? (
-          <>
-            {/* Mobile Cards */}
-            <div className="md:hidden space-y-3">
-              {cliente.cobrancas.map((cobranca) => (
-                <div key={cobranca.id} className={`bg-secondary/30 rounded-lg p-3 border-l-4 ${
-                  cobranca.pago ? "border-green-500" : "border-orange-500"
-                }`}>
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="font-medium text-foreground">{cobranca.fatura || "Sem fatura"}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      cobranca.pago ? "bg-green-500/20 text-green-600 dark:text-green-400" : "bg-orange-500/20 text-orange-600 dark:text-orange-400"
-                    }`}>
-                      {cobranca.pago ? "Pago" : "Pendente"}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Valor: </span>
-                      <span className="font-semibold text-foreground">{formatCurrency(Number(cobranca.valor))} EUR</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Comissao: </span>
-                      <span className="text-foreground">{cobranca.comissao ? `${formatCurrency(Number(cobranca.comissao))} EUR` : "-"}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {/* Desktop Table */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="py-2 text-left text-sm font-medium text-muted-foreground">Fatura</th>
-                    <th className="py-2 text-left text-sm font-medium text-muted-foreground">Valor</th>
-                    <th className="py-2 text-left text-sm font-medium text-muted-foreground">Comissao</th>
-                    <th className="py-2 text-center text-sm font-medium text-muted-foreground">Estado</th>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="py-2 text-left text-sm font-medium text-muted-foreground">Fatura</th>
+                  <th className="py-2 text-left text-sm font-medium text-muted-foreground">Valor</th>
+                  <th className="py-2 text-left text-sm font-medium text-muted-foreground">Comissao</th>
+                  <th className="py-2 text-center text-sm font-medium text-muted-foreground">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cliente.cobrancas.map((cobranca) => (
+                  <tr key={cobranca.id} className="border-b border-border last:border-0">
+                    <td className="py-3 text-foreground">{cobranca.fatura || "-"}</td>
+                    <td className="py-3 text-foreground">{formatCurrency(Number(cobranca.valor))} EUR</td>
+                    <td className="py-3 text-muted-foreground">{cobranca.comissao ? `${formatCurrency(Number(cobranca.comissao))} EUR` : "-"}</td>
+                    <td className="py-3 text-center">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        cobranca.pago ? "bg-green-500/20 text-green-600 dark:text-green-400" : "bg-orange-500/20 text-orange-600 dark:text-orange-400"
+                      }`}>
+                        {cobranca.pago ? "Pago" : "Pendente"}
+                      </span>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {cliente.cobrancas.map((cobranca) => (
-                    <tr key={cobranca.id} className="border-b border-border last:border-0">
-                      <td className="py-3 text-foreground">{cobranca.fatura || "-"}</td>
-                      <td className="py-3 text-foreground">{formatCurrency(Number(cobranca.valor))} EUR</td>
-                      <td className="py-3 text-muted-foreground">{cobranca.comissao ? `${formatCurrency(Number(cobranca.comissao))} EUR` : "-"}</td>
-                      <td className="py-3 text-center">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          cobranca.pago ? "bg-green-500/20 text-green-600 dark:text-green-400" : "bg-orange-500/20 text-orange-600 dark:text-orange-400"
-                        }`}>
-                          {cobranca.pago ? "Pago" : "Pendente"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <p className="text-muted-foreground text-sm">Sem cobrancas registadas</p>
         )}

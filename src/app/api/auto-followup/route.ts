@@ -130,6 +130,83 @@ export async function POST() {
       })
     }
 
+    // Check clients with partnership agreements falling behind
+    const acordosAtivos = await prisma.acordoParceria.findMany({
+      where: { ativo: true },
+      include: {
+        cliente: {
+          include: {
+            tarefas: {
+              where: {
+                estado: { in: ["PENDENTE", "EM_PROGRESSO"] }
+              }
+            },
+            segmento: true
+          }
+        }
+      }
+    })
+
+    const currentMonth = now.getMonth() + 1
+    const currentQuarter = Math.ceil(currentMonth / 3)
+
+    for (const acordo of acordosAtivos) {
+      // Calculate YTD progress
+      const vendas = await prisma.venda.findMany({
+        where: {
+          clienteId: acordo.clienteId,
+          ano: acordo.ano,
+          mes: { lte: currentMonth }
+        },
+        select: { total: true }
+      })
+
+      const yearToDateActual = vendas.reduce((sum, v) => sum + Number(v.total), 0)
+      const quarterlyTarget = Number(acordo.valorAnual) / 4
+      const completedQuarters = currentQuarter - 1
+      const currentQuarterMonths = [1, 2, 3].map(m => (currentQuarter - 1) * 3 + m)
+      const monthsPassedInQuarter = currentMonth - currentQuarterMonths[0] + 1
+      const quarterProgress = monthsPassedInQuarter / 3
+      const yearToDateTarget = (quarterlyTarget * completedQuarters) + (quarterlyTarget * quarterProgress)
+      const progressPercent = yearToDateTarget > 0 ? (yearToDateActual / yearToDateTarget) * 100 : 0
+
+      // Only create task if behind (< 90%)
+      if (progressPercent >= 90) continue
+
+      // Check if already has an acordo-related task
+      const hasAcordoTask = acordo.cliente.tarefas.some(t =>
+        t.titulo.toLowerCase().includes("acordo") ||
+        t.titulo.toLowerCase().includes("parceria")
+      )
+      if (hasAcordoTask) continue
+
+      const deficit = yearToDateTarget - yearToDateActual
+
+      // Priority based on how far behind and segment
+      let prioridade: "BAIXA" | "MEDIA" | "ALTA" | "URGENTE" = "MEDIA"
+      if (progressPercent < 75) prioridade = "ALTA"
+      if (progressPercent < 50) prioridade = "URGENTE"
+      if (acordo.cliente.segmento?.segmento === "A" && prioridade === "MEDIA") prioridade = "ALTA"
+
+      const task = await prisma.tarefa.create({
+        data: {
+          titulo: `Acordo de Parceria: ${acordo.cliente.nome} atrasado`,
+          descricao: `Auto-criada: Cliente esta a ${progressPercent.toFixed(0)}% do objetivo trimestral (faltam ${deficit.toFixed(2)} EUR para atingir meta YTD).`,
+          tipo: "Telefonema",
+          prioridade,
+          dataVencimento: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000), // 3 days
+          clienteId: acordo.clienteId
+        }
+      })
+
+      tasksCreated.push({
+        taskId: task.id,
+        clientId: acordo.clienteId,
+        clientName: acordo.cliente.nome,
+        reason: `Acordo de parceria a ${progressPercent.toFixed(0)}%`
+      })
+    }
+
     return NextResponse.json({
       success: true,
       tasksCreated: tasksCreated.length,

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import SalesCharts from "./SalesCharts"
 import { TarefasWidget, FollowUpWidget } from "@/components/DashboardWidgets"
-import { NotificationsWidget, ForecastWidget, HealthScoresWidget, QuickStatsWidget } from "@/components/EnhancedDashboardWidgets"
+import { NotificationsWidget, ForecastWidget, HealthScoresWidget, QuickStatsWidget, AcordosWidget } from "@/components/EnhancedDashboardWidgets"
 import { formatCurrency } from "@/lib/utils"
 import HelpTooltip from "@/components/HelpTooltip"
 
@@ -14,10 +14,10 @@ const meses = [
 
 const IVA_RATE = 0.23
 
-function calcularIVA(totalSemIVA: number) {
-  const comIVA = totalSemIVA * (1 + IVA_RATE)
-  const iva = comIVA - totalSemIVA
-  return { semIVA: totalSemIVA, comIVA, iva }
+function calcularIVA(totalComIVA: number) {
+  const semIVA = totalComIVA / (1 + IVA_RATE)
+  const iva = totalComIVA - semIVA
+  return { semIVA, iva }
 }
 
 interface ProximaParcela {
@@ -125,10 +125,10 @@ export default function DashboardView() {
   return (
     <div>
       {/* Header with Period Selectors */}
-      <div className="mb-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+      <div className="mb-6 md:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
           <div>
-            <h1 className="text-xl md:text-lg font-bold text-foreground">Dashboard</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Dashboard</h1>
             <p className="text-muted-foreground">{meses[data.currentMonth]} {data.currentYear}</p>
           </div>
 
@@ -137,7 +137,7 @@ export default function DashboardView() {
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
               disabled={exporting}
-              className="bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl px-4 py-3 flex items-center gap-2 shadow-sm transition disabled:opacity-50"
+              className="bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl px-4 py-3 flex items-center gap-2 shadow-sm transition disabled:opacity-50"
             >
               {exporting ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
@@ -165,7 +165,7 @@ export default function DashboardView() {
                   onClick={() => exportToExcel("detalhado")}
                   className="w-full px-4 py-2 text-left text-foreground hover:bg-secondary flex items-center gap-2"
                 >
-                  <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                   <span>Vendas Detalhadas</span>
@@ -235,7 +235,7 @@ export default function DashboardView() {
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
               disabled={exporting}
-              className="bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl px-4 py-3 flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-50 w-full"
+              className="bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl px-4 py-3 flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-50 w-full"
             >
               {exporting ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
@@ -262,7 +262,7 @@ export default function DashboardView() {
                   onClick={() => exportToExcel("detalhado")}
                   className="w-full px-4 py-3 text-left text-foreground hover:bg-secondary flex items-center gap-2"
                 >
-                  <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                   <span>Vendas Detalhadas</span>
@@ -291,59 +291,13 @@ export default function DashboardView() {
         </div>
       </div>
 
-      {/* Late Payments Alert - Top Banner */}
-      {data.parcelasAtrasadas > 0 && (
-        <a
-          href="/cobrancas"
-          className="flex items-center justify-between gap-4 bg-red-600 hover:bg-red-700 text-white rounded-xl px-4 py-3 mb-4 transition group"
-        >
-          <div className="flex items-center gap-3">
-            <svg
-              className="w-5 h-5 flex-shrink-0"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
-            <span className="font-medium">
-              <span className="font-bold">{data.parcelasAtrasadas}</span> pagamento{data.parcelasAtrasadas !== 1 ? "s" : ""} em atraso
-              <span className="hidden sm:inline"> — Total: </span>
-              <span className="sm:hidden"> · </span>
-              <span className="font-bold">{formatCurrency(data.valorAtrasado)} €</span>
-            </span>
-          </div>
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <span className="hidden sm:inline">Ver Cobranças</span>
-            <svg
-              className="w-4 h-4 group-hover:translate-x-1 transition-transform"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-          </div>
-        </a>
-      )}
-
-      {/* Quick Stats Row */}
-      <div className="mb-4">
+      {/* Quick Stats Row - NEW */}
+      <div className="mb-8">
         <QuickStatsWidget />
       </div>
 
       {/* Main Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard
           title="Clientes Ativos"
           value={data.clientesAtivos.toString()}
@@ -353,14 +307,14 @@ export default function DashboardView() {
         />
         <StatCard
           title={`Vendas ${meses[data.currentMonth]}`}
-          value={`${formatCurrency(ivaMes.semIVA)} €`}
+          value={`${formatCurrency(data.vendasMes)} €`}
           subtitle={data.objetivoMensal > 0 ? `Objetivo: ${formatCurrency(data.objetivoMensal)} €` : "Sem objetivo definido"}
           color="green"
           icon="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
         />
         <StatCard
           title={`Vendas ${data.currentTrimestre}º Trimestre`}
-          value={`${formatCurrency(ivaTrimestre.semIVA)} €`}
+          value={`${formatCurrency(data.vendasTrimestre)} €`}
           subtitle={data.objetivoTrimestral > 0 ? `Objetivo: ${formatCurrency(data.objetivoTrimestral)} €` : "Sem objetivo definido"}
           color="blue"
           icon="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
@@ -374,25 +328,55 @@ export default function DashboardView() {
         />
       </div>
 
-      {/* NEW: Notifications, Forecast, and Health Widgets */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-3">
+      {/* NEW: Notifications, Forecast, Health, and Acordos Widgets */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <NotificationsWidget />
         <ForecastWidget />
         <HealthScoresWidget />
+        <AcordosWidget />
       </div>
 
       {/* Tasks and Follow-up Widgets */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <TarefasWidget />
         <FollowUpWidget />
       </div>
 
+      {/* Late Payments Alert */}
+      {data.parcelasAtrasadas > 0 && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6 mb-8">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-red-100 dark:bg-red-800/30 rounded-xl">
+              <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-red-700 dark:text-red-400 mb-1">Pagamentos em Atraso</h3>
+              <p className="text-red-600 dark:text-red-300 mb-3">
+                Tens <span className="font-bold">{data.parcelasAtrasadas} parcela{data.parcelasAtrasadas !== 1 ? "s" : ""}</span> em atraso no valor total de <span className="font-bold">{formatCurrency(data.valorAtrasado)} €</span>
+              </p>
+              <a
+                href="/cobrancas"
+                className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg transition"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                Ver Cobrancas
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Upcoming Payments */}
       {data.proximasParcelas.length > 0 && (
-        <div className="bg-card rounded-xl shadow-sm p-3 mb-3 border-l-4 border-primary">
-          <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+        <div className="bg-card rounded-xl shadow-sm p-6 mb-8 border-l-4 border-primary">
+          <h3 className="text-lg font-medium tracking-wide text-foreground mb-4 flex items-center gap-2">
             <div className="p-2 bg-primary/10 rounded-lg">
-              <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
@@ -448,31 +432,31 @@ export default function DashboardView() {
       )}
 
       {/* Annual Stats */}
-      <div className="bg-card rounded-xl shadow-sm p-3 mb-3 border-l-4 border-primary">
-        <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+      <div className="bg-card rounded-xl shadow-sm p-6 mb-8 border-l-4 border-primary">
+        <h3 className="text-lg font-medium tracking-wide text-foreground mb-4 flex items-center gap-2">
           <div className="p-2 bg-primary/10 rounded-lg">
-            <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           </div>
           Resumo Anual {data.currentYear}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-secondary rounded-lg p-2 text-center">
-            <p className="text-[10px] font-medium text-muted-foreground uppercase">Sem IVA</p>
-            <p className="text-sm font-bold text-foreground">{formatCurrency(ivaAno.semIVA)} €</p>
+          <div className="bg-secondary rounded-lg p-4 text-center">
+            <p className="text-xs font-medium tracking-wide text-muted-foreground mb-1 uppercase">Total Vendas</p>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(data.vendasAno)} €</p>
           </div>
-          <div className="bg-primary/5 rounded-lg p-2 text-center">
-            <p className="text-[10px] font-medium text-primary uppercase">c/IVA</p>
-            <p className="text-sm font-bold text-primary">{formatCurrency(ivaAno.comIVA)} €</p>
+          <div className="bg-primary/5 rounded-lg p-4 text-center">
+            <p className="text-xs font-medium tracking-wide text-primary mb-1 uppercase">Sem IVA</p>
+            <p className="text-xl font-bold text-primary">{formatCurrency(ivaAno.semIVA)} €</p>
           </div>
-          <div className="bg-violet-50 dark:bg-violet-900/20 rounded-lg p-2 text-center">
-            <p className="text-[10px] font-medium text-violet-600 dark:text-violet-400 uppercase">IVA</p>
-            <p className="text-sm font-bold text-violet-700 dark:text-violet-300">{formatCurrency(ivaAno.iva)} €</p>
+          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
+            <p className="text-xs font-medium tracking-wide text-blue-600 dark:text-blue-400 mb-1 uppercase">IVA (23%)</p>
+            <p className="text-xl font-bold text-blue-700 dark:text-blue-300">{formatCurrency(ivaAno.iva)} €</p>
           </div>
-          <div className="bg-primary/5 rounded-lg p-2 text-center border border-primary/30">
-            <p className="text-[10px] font-medium text-primary uppercase">Objetivo</p>
-            <p className="text-sm font-bold text-primary">{data.objetivoAnual > 0 ? `${formatCurrency(data.objetivoAnual)} €` : "N/D"}</p>
+          <div className="bg-primary/5 rounded-lg p-4 text-center border border-primary/30">
+            <p className="text-xs font-medium tracking-wide text-primary mb-1 uppercase">Objetivo Anual</p>
+            <p className="text-xl font-bold text-primary">{data.objetivoAnual > 0 ? `${formatCurrency(data.objetivoAnual)} €` : "N/D"}</p>
           </div>
         </div>
         {data.objetivoAnual > 0 && (
@@ -492,63 +476,63 @@ export default function DashboardView() {
       </div>
 
       {/* VAT Summary Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Monthly VAT */}
-        <div className="bg-card rounded-xl shadow-sm p-4">
-          <h3 className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
-            <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-card rounded-xl shadow-sm p-6">
+          <h3 className="text-lg font-medium tracking-wide text-foreground mb-4 flex items-center gap-2">
+            <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
             </svg>
             IVA Mensal - {meses[data.currentMonth]}
           </h3>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-4">
             <div className="bg-secondary rounded-lg p-4 text-center">
               <p className="text-xs font-medium tracking-wide text-muted-foreground mb-1 uppercase">Sem IVA</p>
-              <p className="text-sm font-bold text-foreground">{formatCurrency(ivaMes.semIVA)} €</p>
+              <p className="text-xl font-bold text-foreground">{formatCurrency(ivaMes.semIVA)} €</p>
             </div>
-            <div className="bg-violet-50 dark:bg-violet-900/20 rounded-lg p-4 text-center">
-              <p className="text-xs font-medium tracking-wide text-violet-600 dark:text-violet-400 mb-1 uppercase">IVA (23%)</p>
-              <p className="text-sm font-bold text-violet-700 dark:text-violet-300">{formatCurrency(ivaMes.iva)} €</p>
+            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
+              <p className="text-xs font-medium tracking-wide text-blue-600 dark:text-blue-400 mb-1 uppercase">IVA (23%)</p>
+              <p className="text-xl font-bold text-blue-700 dark:text-blue-300">{formatCurrency(ivaMes.iva)} €</p>
             </div>
             <div className="bg-success/10 rounded-lg p-4 text-center">
               <p className="text-xs font-medium tracking-wide text-success mb-1 uppercase">Total c/IVA</p>
-              <p className="text-sm font-bold text-success">{formatCurrency(ivaMes.comIVA)} €</p>
+              <p className="text-xl font-bold text-success">{formatCurrency(data.vendasMes)} €</p>
             </div>
           </div>
         </div>
 
         {/* Quarterly VAT */}
-        <div className="bg-card rounded-xl shadow-sm p-4">
-          <h3 className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
-            <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-card rounded-xl shadow-sm p-6">
+          <h3 className="text-lg font-medium tracking-wide text-foreground mb-4 flex items-center gap-2">
+            <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
             </svg>
             IVA Trimestral - {data.currentTrimestre}º Trimestre
           </h3>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-4">
             <div className="bg-secondary rounded-lg p-4 text-center">
               <p className="text-xs font-medium tracking-wide text-muted-foreground mb-1 uppercase">Sem IVA</p>
-              <p className="text-sm font-bold text-foreground">{formatCurrency(ivaTrimestre.semIVA)} €</p>
+              <p className="text-xl font-bold text-foreground">{formatCurrency(ivaTrimestre.semIVA)} €</p>
             </div>
-            <div className="bg-violet-50 dark:bg-violet-900/20 rounded-lg p-4 text-center">
-              <p className="text-xs font-medium tracking-wide text-violet-600 dark:text-violet-400 mb-1 uppercase">IVA (23%)</p>
-              <p className="text-sm font-bold text-violet-700 dark:text-violet-300">{formatCurrency(ivaTrimestre.iva)} €</p>
+            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
+              <p className="text-xs font-medium tracking-wide text-blue-600 dark:text-blue-400 mb-1 uppercase">IVA (23%)</p>
+              <p className="text-xl font-bold text-blue-700 dark:text-blue-300">{formatCurrency(ivaTrimestre.iva)} €</p>
             </div>
-            <div className="bg-violet-50 dark:bg-violet-900/20 rounded-lg p-4 text-center border border-violet-200 dark:border-violet-700">
-              <p className="text-xs font-medium tracking-wide text-violet-600 dark:text-violet-400 mb-1 uppercase">Total c/IVA</p>
-              <p className="text-sm font-bold text-violet-700 dark:text-violet-300">{formatCurrency(ivaTrimestre.comIVA)} €</p>
+            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center border border-blue-200 dark:border-blue-700">
+              <p className="text-xs font-medium tracking-wide text-blue-600 dark:text-blue-400 mb-1 uppercase">Total c/IVA</p>
+              <p className="text-xl font-bold text-blue-700 dark:text-blue-300">{formatCurrency(data.vendasTrimestre)} €</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Prize Progress Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Monthly Prize */}
-        <div className="bg-card rounded-xl shadow-sm p-4 border-l-4 border-primary">
-          <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+        <div className="bg-card rounded-xl shadow-sm p-6 border-l-4 border-primary">
+          <h3 className="text-lg font-medium tracking-wide text-foreground mb-4 flex items-center gap-2">
             <div className="p-2 bg-primary/10 rounded-lg">
-              <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
@@ -556,21 +540,21 @@ export default function DashboardView() {
           </h3>
 
           {data.premioMensalAtual ? (
-            <div className="bg-green-50 rounded-xl p-3 mb-3 border border-green-200">
+            <div className="bg-green-50 rounded-xl p-4 mb-4 border border-green-200">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-semibold text-green-700">Premio Garantido!</p>
                   <p className="text-xs text-green-600">Vendas: {formatCurrency(data.vendasMes)} € (min: {formatCurrency(data.premioMensalAtual.minimo)} €)</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-bold text-green-700">{formatCurrency(data.premioMensalAtual.premio)} €</p>
+                  <p className="text-2xl font-bold text-green-700">{formatCurrency(data.premioMensalAtual.premio)} €</p>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="bg-secondary rounded-xl p-3 mb-3 border border-border">
+            <div className="bg-secondary rounded-xl p-4 mb-4 border border-border">
               <p className="text-sm text-muted-foreground">Ainda sem premio este mes</p>
-              <p className="text-xs text-muted-foreground">Vendas: {formatCurrency(ivaMes.comIVA)} €</p>
+              <p className="text-xs text-muted-foreground">Vendas: {formatCurrency(data.vendasMes)} €</p>
             </div>
           )}
 
@@ -582,7 +566,7 @@ export default function DashboardView() {
                   <p className="text-xs text-primary/70">Objetivo: {formatCurrency(data.proximoPremioMensal.minimo)} €</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold text-primary">{formatCurrency(data.proximoPremioMensal.premio)} €</p>
+                  <p className="text-xl font-bold text-primary">{formatCurrency(data.proximoPremioMensal.premio)} €</p>
                 </div>
               </div>
               <div className="w-full bg-primary/20 rounded-full h-3 mb-2">
@@ -603,8 +587,8 @@ export default function DashboardView() {
         </div>
 
         {/* Quarterly Prize */}
-        <div className="bg-card rounded-xl shadow-sm p-4 border-l-4 border-accent">
-          <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+        <div className="bg-card rounded-xl shadow-sm p-6 border-l-4 border-accent">
+          <h3 className="text-lg font-medium tracking-wide text-foreground mb-4 flex items-center gap-2">
             <div className="p-2 bg-accent/10 rounded-lg">
               <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -614,21 +598,21 @@ export default function DashboardView() {
           </h3>
 
           {data.premioTrimestralAtual ? (
-            <div className="bg-green-50 rounded-xl p-3 mb-3 border border-green-200">
+            <div className="bg-green-50 rounded-xl p-4 mb-4 border border-green-200">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-semibold text-green-700">Premio Garantido!</p>
                   <p className="text-xs text-green-600">Vendas: {formatCurrency(data.vendasTrimestre)} € (min: {formatCurrency(data.premioTrimestralAtual.minimo)} €)</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-bold text-green-700">{formatCurrency(data.premioTrimestralAtual.premio)} €</p>
+                  <p className="text-2xl font-bold text-green-700">{formatCurrency(data.premioTrimestralAtual.premio)} €</p>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="bg-secondary rounded-xl p-3 mb-3 border border-border">
+            <div className="bg-secondary rounded-xl p-4 mb-4 border border-border">
               <p className="text-sm text-muted-foreground">Ainda sem premio este trimestre</p>
-              <p className="text-xs text-muted-foreground">Vendas: {formatCurrency(ivaTrimestre.comIVA)} €</p>
+              <p className="text-xs text-muted-foreground">Vendas: {formatCurrency(data.vendasTrimestre)} €</p>
             </div>
           )}
 
@@ -640,7 +624,7 @@ export default function DashboardView() {
                   <p className="text-xs text-accent/70">Objetivo: {formatCurrency(data.proximoPremioTrimestral.minimo)} €</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold text-accent">{formatCurrency(data.proximoPremioTrimestral.premio)} €</p>
+                  <p className="text-xl font-bold text-accent">{formatCurrency(data.proximoPremioTrimestral.premio)} €</p>
                 </div>
               </div>
               <div className="w-full bg-accent/20 rounded-full h-3 mb-2">
@@ -663,7 +647,7 @@ export default function DashboardView() {
 
       {/* Progress Cards */}
       {(data.objetivoMensal > 0 || data.objetivoTrimestral > 0) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           {data.objetivoMensal > 0 && (
             <ProgressCard
               title="Progresso Mensal"
@@ -684,10 +668,10 @@ export default function DashboardView() {
       )}
 
       {/* Sales Charts Section */}
-      <div className="mt-4">
-        <h2 className="text-lg font-medium tracking-wide text-foreground mb-4 flex items-center gap-3">
+      <div className="mt-8">
+        <h2 className="text-2xl font-medium tracking-wide text-foreground mb-6 flex items-center gap-3">
           <div className="p-2 bg-primary/10 rounded-lg">
-            <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </div>
@@ -709,14 +693,14 @@ function StatCard({ title, value, subtitle, color, icon }: {
   const colors = {
     gold: { border: "border-primary", iconBg: "bg-primary/10", iconText: "text-primary" },
     green: { border: "border-success", iconBg: "bg-success/10", iconText: "text-success" },
-    blue: { border: "border-indigo-500", iconBg: "bg-indigo-500/10", iconText: "text-indigo-600" },
+    blue: { border: "border-blue-500", iconBg: "bg-blue-500/10", iconText: "text-blue-600" },
     orange: { border: "border-warning", iconBg: "bg-warning/10", iconText: "text-warning" }
   }
 
   const c = colors[color]
 
   return (
-    <div className={`bg-card rounded-xl shadow-sm border-l-4 ${c.border} p-4`}>
+    <div className={`bg-card rounded-xl shadow-sm border-l-4 ${c.border} p-6`}>
       <div className="flex items-center gap-3 mb-3">
         <div className={`p-2 ${c.iconBg} rounded-lg`}>
           <svg className={`w-5 h-5 ${c.iconText}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -725,7 +709,7 @@ function StatCard({ title, value, subtitle, color, icon }: {
         </div>
         <h3 className="text-sm font-medium tracking-wide text-foreground uppercase">{title}</h3>
       </div>
-      <p className="text-sm font-bold text-foreground">{value}</p>
+      <p className="text-2xl font-bold text-foreground">{value}</p>
       <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
     </div>
   )
@@ -741,9 +725,9 @@ function ProgressCard({ title, current, target, percentage }: {
   const isComplete = percentage >= 100
 
   return (
-    <div className="bg-card rounded-xl shadow-sm p-4">
-      <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-        <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="bg-card rounded-xl shadow-sm p-6">
+      <h3 className="text-lg font-medium tracking-wide text-foreground mb-4 flex items-center gap-2">
+        <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
         {title}
@@ -755,7 +739,7 @@ function ProgressCard({ title, current, target, percentage }: {
         </div>
         <div className="w-full bg-muted rounded-full h-4">
           <div
-            className={`h-3 rounded-full transition-all ${isComplete ? "bg-success" : "bg-primary"}`}
+            className={`h-4 rounded-full transition-all ${isComplete ? "bg-success" : "bg-primary"}`}
             style={{ width: `${Math.min(percentage, 100)}%` }}
           />
         </div>
