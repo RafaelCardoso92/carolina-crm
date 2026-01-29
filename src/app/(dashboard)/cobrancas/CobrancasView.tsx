@@ -716,8 +716,8 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
         </div>
       )}
 
-      {/* Cobrancas Table */}
-      <div className="bg-card rounded-xl shadow-sm overflow-hidden">
+      {/* Cobrancas Table - Desktop */}
+      <div className="hidden md:block bg-card rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-secondary border-b-2 border-border">
@@ -930,7 +930,165 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
           </table>
         </div>
 
-        {filtered.length === 0 && (
+
+      {/* Mobile Cards */}
+      <div className="md:hidden space-y-3">
+        {filtered.map((cobranca) => {
+          const hasOverdue = cobranca.parcelas.some(p => isParcelaAtrasada(p))
+          const isExpanded = expandedRows.has(cobranca.id)
+          
+          return (
+            <div key={cobranca.id} className={`bg-card rounded-xl shadow-sm border-2 overflow-hidden ${
+              cobranca.pago
+                ? "border-green-200"
+                : hasOverdue
+                  ? "border-red-200"
+                  : "border-border"
+            }`}>
+              <div className="p-4">
+                {/* Header with client name and status */}
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1 min-w-0">
+                    <Link href={`/clientes/${cobranca.cliente.id}`} className="font-semibold text-foreground hover:text-primary transition block truncate">
+                      {cobranca.cliente.nome}
+                    </Link>
+                    {cobranca.fatura && (
+                      <span className="text-xs text-muted-foreground">Fatura: {cobranca.fatura}</span>
+                    )}
+                  </div>
+                  <span className={`px-2 py-1 rounded-lg text-xs font-bold ${
+                    cobranca.pago
+                      ? "bg-green-100 text-green-700"
+                      : hasOverdue
+                        ? "bg-red-100 text-red-700"
+                        : "bg-orange-100 text-orange-700"
+                  }`}>
+                    {cobranca.pago ? "Pago" : hasOverdue ? "Atrasado" : "Pendente"}
+                  </span>
+                </div>
+                
+                {/* Values grid */}
+                <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                  <div className="bg-secondary/50 rounded-lg p-2">
+                    <span className="text-muted-foreground text-xs block">Valor c/IVA</span>
+                    <span className="font-bold text-foreground">{formatCurrency(Number(cobranca.valor))} €</span>
+                  </div>
+                  <div className="bg-primary/10 rounded-lg p-2">
+                    <span className="text-primary text-xs block">Comissão</span>
+                    <span className="font-bold text-primary">{cobranca.comissao ? formatCurrency(Number(cobranca.comissao)) : "-"} €</span>
+                  </div>
+                </div>
+                
+                {/* Parcelas info */}
+                {cobranca.parcelas.length > 0 && (
+                  <div className="mb-3">
+                    <button
+                      onClick={() => toggleRowExpanded(cobranca.id)}
+                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition w-full"
+                    >
+                      <svg className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-90" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        hasOverdue
+                          ? "bg-red-100 text-red-700"
+                          : cobranca.pago
+                            ? "bg-green-100 text-green-700"
+                            : "bg-blue-100 text-blue-700"
+                      }`}>
+                        {getParcelasStatus(cobranca)}
+                      </span>
+                    </button>
+                    
+                    {/* Expanded parcelas */}
+                    {isExpanded && (
+                      <div className="mt-2 space-y-2 pl-6">
+                        {cobranca.parcelas.map((parcela) => {
+                          const isAtrasada = isParcelaAtrasada(parcela)
+                          return (
+                            <div key={parcela.id} className={`flex items-center justify-between p-2 rounded-lg ${
+                              parcela.pago
+                                ? "bg-green-50"
+                                : isAtrasada
+                                  ? "bg-red-50"
+                                  : "bg-secondary/30"
+                            }`}>
+                              <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full ${
+                                  parcela.pago
+                                    ? "bg-green-500"
+                                    : isAtrasada
+                                      ? "bg-red-500"
+                                      : "bg-orange-500"
+                                }`}></div>
+                                <span className="text-xs font-medium">P{parcela.numero}</span>
+                                <span className="text-xs text-muted-foreground">{formatDate(parcela.dataVencimento)}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold">{formatCurrency(Number(parcela.valor))} €</span>
+                                <button
+                                  onClick={() => handleToggleParcelaPaid(parcela.id, parcela.pago)}
+                                  className={`p-1 rounded ${
+                                    parcela.pago
+                                      ? "text-green-600 hover:bg-green-100"
+                                      : "text-orange-600 hover:bg-orange-100"
+                                  }`}
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={parcela.pago ? "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" : "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"} />
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* Actions */}
+                <div className="flex justify-between items-center pt-2 border-t border-border">
+                  {cobranca.parcelas.length === 0 && (
+                    <button
+                      onClick={() => handleTogglePaid(cobranca.id, cobranca.pago)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                        cobranca.pago
+                          ? "bg-green-100 text-green-700"
+                          : "bg-orange-100 text-orange-700"
+                      }`}
+                    >
+                      {cobranca.pago ? "Marcar Pendente" : "Marcar Pago"}
+                    </button>
+                  )}
+                  {cobranca.parcelas.length > 0 && <div></div>}
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => startEdit(cobranca)}
+                      className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleDelete(cobranca.id)}
+                      className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Empty state */}
+      {filtered.length === 0 && (
           <div className="text-center py-16">
             <svg className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

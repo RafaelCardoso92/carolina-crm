@@ -811,10 +811,10 @@ export default function DefinicoesPage() {
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-bold text-foreground">Campanha</th>
                   <th className="px-4 py-3 text-center text-sm font-bold text-foreground">Mes/Ano</th>
-                  <th className="px-4 py-3 text-center text-sm font-bold text-foreground">Vendidos</th>
-                  <th className="px-4 py-3 text-center text-sm font-bold text-foreground">Vendas</th>
+                  <th className="px-4 py-3 text-center text-sm font-bold text-foreground hidden md:table-cell">Vendidos</th>
+                  <th className="px-4 py-3 text-center text-sm font-bold text-foreground hidden lg:table-cell">Vendas</th>
                   <th className="px-4 py-3 text-center text-sm font-bold text-foreground">Estado</th>
-                  <th className="px-4 py-3 text-center text-sm font-bold text-foreground">Total s/IVA</th>
+                  <th className="px-4 py-3 text-center text-sm font-bold text-foreground hidden md:table-cell">Total s/IVA</th>
                   <th className="px-4 py-3 text-right text-sm font-bold text-foreground">Acoes</th>
                 </tr>
               </thead>
@@ -1404,15 +1404,15 @@ function ProdutosTable({
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full text-sm md:text-base">
             <thead>
-              <tr className="text-left text-sm text-muted-foreground border-b border-border">
+              <tr className="text-left text-xs md:text-sm text-muted-foreground border-b border-border">
                 <th className="pb-3">Nome</th>
-                <th className="pb-3">Código</th>
-                <th className="pb-3">Categoria</th>
-                <th className="pb-3">Canal</th>
+                <th className="pb-3 hidden md:table-cell">Código</th>
+                <th className="pb-3 hidden sm:table-cell">Categoria</th>
+                <th className="pb-3 hidden lg:table-cell">Canal</th>
                 <th className="pb-3">Preço</th>
-                <th className="pb-3 text-center">Vendas</th>
+                <th className="pb-3 text-center hidden sm:table-cell">Vendas</th>
                 <th className="pb-3 text-center">Estado</th>
                 <th className="pb-3 w-24"></th>
               </tr>
@@ -1431,15 +1431,15 @@ function ProdutosTable({
                     <span className="font-medium text-foreground">{p.nome}</span>
                     {p.descricao && <p className="text-xs text-muted-foreground">{p.descricao}</p>}
                   </td>
-                  <td className="py-3 text-muted-foreground">{p.codigo || "-"}</td>
-                  <td className="py-3">
+                  <td className="py-3 text-muted-foreground hidden md:table-cell">{p.codigo || "-"}</td>
+                  <td className="py-3 hidden sm:table-cell">
                     {p.categoria ? (
                       <span className="px-2 py-1 bg-primary/10 text-primary rounded-lg text-sm font-medium">
                         {p.categoria}
                       </span>
                     ) : "-"}
                   </td>
-                  <td className="py-3">
+                  <td className="py-3 hidden lg:table-cell">
                     {p.tipo ? (
                       <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
                         p.tipo === "Venda Público" ? "bg-blue-100 text-blue-700" :
@@ -1700,9 +1700,9 @@ function VariosTable({
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full text-sm md:text-base">
             <thead>
-              <tr className="text-left text-sm text-muted-foreground border-b border-border">
+              <tr className="text-left text-xs md:text-sm text-muted-foreground border-b border-border">
                 <th className="pb-3">Nome</th>
                 <th className="pb-3">Preço</th>
                 <th className="pb-3 text-center">Estado</th>
