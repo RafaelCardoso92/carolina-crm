@@ -1473,10 +1473,10 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-4 text-right text-muted-foreground font-medium hidden lg:table-cell">
+                      <td className="px-4 py-4 text-right text-muted-foreground font-medium hidden lg:table-cell whitespace-nowrap">
                         {formatCurrency(semIVA)} €
                       </td>
-                      <td className="px-4 py-4 text-right text-blue-600 font-medium hidden lg:table-cell">
+                      <td className="px-4 py-4 text-right text-blue-600 font-medium hidden lg:table-cell whitespace-nowrap">
                         {formatCurrency(iva)} €
                       </td>
                       <td className="px-4 py-4 text-right whitespace-nowrap">
