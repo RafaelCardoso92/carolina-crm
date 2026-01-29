@@ -1075,6 +1075,9 @@ function ProdutosTable({
   const [formData, setFormData] = useState({ nome: "", codigo: "", categoria: "", descricao: "", preco: "", tipo: "" })
   const [search, setSearch] = useState("")
   const [filterTipo, setFilterTipo] = useState<string | null>(null)
+  const [filterCategoria, setFilterCategoria] = useState<string | null>(null)
+
+  const categorias = [...new Set(produtos.map(p => p.categoria).filter(Boolean))].sort() as string[]
 
   function resetForm() {
     setFormData({ nome: "", codigo: "", categoria: "", descricao: "", preco: "", tipo: "" })
@@ -1333,6 +1336,34 @@ function ProdutosTable({
           </button>
         )}
       </div>
+      {categorias.length > 0 && (
+        <div className="flex gap-1.5 flex-wrap mb-6">
+          <span className="text-xs font-semibold text-muted-foreground self-center mr-1">Categoria:</span>
+          <button
+            onClick={() => setFilterCategoria(null)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+              filterCategoria === null
+                ? "bg-primary text-primary-foreground shadow"
+                : "bg-secondary text-foreground hover:bg-secondary/80 border border-border"
+            }`}
+          >
+            Todas
+          </button>
+          {categorias.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setFilterCategoria(cat)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                filterCategoria === cat
+                  ? "bg-primary text-primary-foreground shadow"
+                  : "bg-secondary text-foreground hover:bg-secondary/80 border border-border"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Products Table */}
       {produtos.length === 0 ? (
@@ -1364,7 +1395,8 @@ function ProdutosTable({
                   p.nome.toLowerCase().includes(search.toLowerCase()) ||
                   (p.codigo && p.codigo.toLowerCase().includes(search.toLowerCase()))
                 const matchesTipo = !filterTipo || p.tipo === filterTipo
-                return matchesSearch && matchesTipo
+                const matchesCategoria = !filterCategoria || p.categoria === filterCategoria
+                return matchesSearch && matchesTipo && matchesCategoria
               }).map((p) => (
                 <tr key={p.id} className={`${!p.ativo ? "opacity-50" : ""}`}>
                   <td className="py-3">
