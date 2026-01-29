@@ -55,12 +55,26 @@ const menuItems = [
   },
 ]
 
+interface Quote {
+  text: string
+  author: string
+}
+
 export default function Sidebar() {
   const pathname = usePathname()
   const { theme, setTheme, resolvedTheme } = useTheme()
   const [isOpen, setIsOpen] = useState(false)
+  const [quote, setQuote] = useState<Quote | null>(null)
 
   const isDark = resolvedTheme === "dark"
+
+  // Fetch motivational quote
+  useEffect(() => {
+    fetch("/api/quote")
+      .then(res => res.json())
+      .then(data => setQuote(data))
+      .catch(() => setQuote({ text: "Tu consegues!", author: "" }))
+  }, [])
 
   // Close sidebar when route changes
   useEffect(() => {
@@ -179,6 +193,23 @@ export default function Sidebar() {
           <span className="text-sm">Sair</span>
         </button>
       </div>
+
+      {/* Motivational Quote */}
+      {quote && (
+        <div className="mt-auto p-4 mx-3 mb-4 bg-sidebar-hover/50 rounded-xl">
+          <div className="flex gap-2">
+            <svg className="w-4 h-4 text-sidebar-foreground/40 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/>
+            </svg>
+            <div>
+              <p className="text-xs text-sidebar-foreground/70 italic leading-relaxed">{quote.text}</p>
+              {quote.author && quote.author !== "Desconhecido" && (
+                <p className="text-[10px] text-sidebar-foreground/50 mt-1">— {quote.author}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 
