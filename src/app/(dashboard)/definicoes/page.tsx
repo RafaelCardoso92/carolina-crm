@@ -96,7 +96,7 @@ export default function DefinicoesPage() {
   const [campanhas, setCampanhas] = useState<Campanha[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<"config" | "objetivos" | "premios" | "produtos" | "campanhas">("config")
+  const [activeTab, setActiveTab] = useState<"config" | "objetivos" | "premios" | "produtos" | "campanhas" | "varios">("config")
 
   // Form states
   const [iva, setIva] = useState("")
@@ -283,7 +283,8 @@ export default function DefinicoesPage() {
           { id: "objetivos", label: "Objetivos", shortLabel: "Obj.", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
           { id: "premios", label: "Tabela Prémios", shortLabel: "Prémios", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
           { id: "produtos", label: "Produtos", shortLabel: "Prod.", icon: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" },
-          { id: "campanhas", label: "Campanhas", shortLabel: "Camp.", icon: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" }
+          { id: "campanhas", label: "Campanhas", shortLabel: "Camp.", icon: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" },
+          { id: "varios", label: "Objectivos Varios", shortLabel: "Varios", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" }
         ].map((tab) => (
           <button
             key={tab.id}
@@ -908,6 +909,33 @@ export default function DefinicoesPage() {
         </div>
       )}
 
+      {/* Varios Tab */}
+      {activeTab === "varios" && (
+        <div className="space-y-6">
+          <div className="bg-card rounded-xl shadow-sm p-6 border border-border">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                  <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                  Objectivos Varios
+                </h3>
+                <p className="text-muted-foreground text-sm mt-1">
+                  Itens que podem ser adicionados a vendas mas <strong>não contam</strong> para objetivos, prémios ou comissões.
+                </p>
+              </div>
+            </div>
+            <VariosTable
+              produtos={produtos.filter(p => p.tipo === "Varios")}
+              onRefresh={fetchData}
+              saving={saving}
+              setSaving={setSaving}
+            />
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
@@ -1479,4 +1507,262 @@ function ProdutosTable({
 
     </div>
   )
+
+
 }
+function VariosTable({
+  produtos,
+  onRefresh,
+  saving,
+  setSaving
+}: {
+  produtos: Produto[]
+  onRefresh: () => void
+  saving: boolean
+  setSaving: (s: boolean) => void
+}) {
+  const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [formData, setFormData] = useState({ nome: "", preco: "" })
+
+  function resetForm() {
+    setFormData({ nome: "", preco: "" })
+    setEditingId(null)
+    setShowForm(false)
+  }
+
+  function startEdit(p: Produto) {
+    setFormData({
+      nome: p.nome,
+      preco: p.preco ? String(p.preco) : ""
+    })
+    setEditingId(p.id)
+    setShowForm(true)
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!formData.nome) return
+
+    setSaving(true)
+    try {
+      const url = editingId ? `/api/produtos/${editingId}` : "/api/produtos"
+      const method = editingId ? "PUT" : "POST"
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome: formData.nome,
+          preco: formData.preco || null,
+          tipo: "Varios",
+          categoria: "Varios",
+          ativo: true
+        })
+      })
+
+      if (res.ok) {
+        resetForm()
+        onRefresh()
+        Swal.fire({ icon: "success", title: editingId ? "Item atualizado" : "Item criado", timer: 1500, showConfirmButton: false })
+      } else {
+        const error = await res.json()
+        Swal.fire({ icon: "error", title: "Erro", text: error.error || "Erro ao guardar item" })
+      }
+    } catch (error) {
+      console.error("Error saving varios:", error)
+      Swal.fire({ icon: "error", title: "Erro", text: "Erro ao guardar item" })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete(id: string) {
+    const result = await Swal.fire({
+      title: "Eliminar item?",
+      text: "Tem a certeza que quer eliminar este item?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#c41e3a",
+      cancelButtonColor: "#666666",
+      confirmButtonText: "Sim, eliminar",
+      cancelButtonText: "Cancelar"
+    })
+
+    if (!result.isConfirmed) return
+
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/produtos/${id}`, { method: "DELETE" })
+      if (res.ok) {
+        onRefresh()
+      } else {
+        const error = await res.json()
+        Swal.fire({ icon: "error", title: "Erro", text: error.error || "Erro ao eliminar item" })
+      }
+    } catch (error) {
+      console.error("Error deleting varios:", error)
+      Swal.fire({ icon: "error", title: "Erro", text: "Erro ao eliminar item" })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function toggleAtivo(p: Produto) {
+    setSaving(true)
+    try {
+      await fetch(`/api/produtos/${p.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...p, ativo: !p.ativo })
+      })
+      onRefresh()
+    } catch (error) {
+      console.error("Error toggling varios:", error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div>
+      {/* Add/Edit Form */}
+      {showForm && (
+        <form onSubmit={handleSubmit} className="mb-6 p-4 bg-orange-50 rounded-xl border-2 border-orange-200">
+          <h4 className="font-bold text-foreground mb-4">{editingId ? "Editar Item" : "Novo Item Varios"}</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-bold text-foreground mb-1">Nome *</label>
+              <input
+                type="text"
+                value={formData.nome}
+                onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                required
+                className="w-full px-3 py-2 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                placeholder="Nome do item"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-foreground mb-1">Preço (c/IVA)</label>
+              <div className="relative">
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.preco}
+                  onChange={(e) => setFormData({ ...formData, preco: e.target.value })}
+                  className="w-full px-3 py-2 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none pr-8"
+                  placeholder="0.00"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">€</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={saving || !formData.nome}
+              className="px-4 py-2 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition disabled:opacity-50"
+            >
+              {saving ? "A guardar..." : "Guardar"}
+            </button>
+            <button
+              type="button"
+              onClick={resetForm}
+              className="px-4 py-2 bg-secondary text-secondary-foreground rounded-xl font-bold hover:opacity-80 transition"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Add Button */}
+      {!showForm && (
+        <button
+          onClick={() => setShowForm(true)}
+          className="mb-6 px-4 py-2 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition flex items-center gap-2"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Adicionar Item
+        </button>
+      )}
+
+      {/* Items Table */}
+      {produtos.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground">
+          <svg className="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+          </svg>
+          <p>Nenhum item varios registado</p>
+          <p className="text-sm">Adicione itens que não contam para objetivos</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="text-left text-sm text-muted-foreground border-b border-border">
+                <th className="pb-3">Nome</th>
+                <th className="pb-3">Preço</th>
+                <th className="pb-3 text-center">Estado</th>
+                <th className="pb-3 w-24"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {produtos.map((p) => (
+                <tr key={p.id} className={`${!p.ativo ? "opacity-50" : ""}`}>
+                  <td className="py-3">
+                    <span className="font-medium text-foreground">{p.nome}</span>
+                  </td>
+                  <td className="py-3">
+                    {p.preco ? (
+                      <span className="font-medium text-orange-600">{Number(p.preco).toFixed(2)} €</span>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </td>
+                  <td className="py-3 text-center">
+                    <button
+                      onClick={() => toggleAtivo(p)}
+                      className={`px-2 py-1 rounded-lg text-sm font-medium transition ${
+                        p.ativo
+                          ? "bg-success/10 text-success hover:bg-success/20"
+                          : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                      }`}
+                    >
+                      {p.ativo ? "Ativo" : "Inativo"}
+                    </button>
+                  </td>
+                  <td className="py-3">
+                    <div className="flex gap-1 justify-end">
+                      <button
+                        onClick={() => startEdit(p)}
+                        className="p-2 text-blue-500 hover:bg-blue-500/10 rounded-lg transition"
+                        title="Editar"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleDelete(p.id)}
+                        className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition"
+                        title="Eliminar"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+

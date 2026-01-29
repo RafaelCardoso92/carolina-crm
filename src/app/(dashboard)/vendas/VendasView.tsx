@@ -155,6 +155,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
   const [clienteSearch, setClienteSearch] = useState("")
   const [showClienteDropdown, setShowClienteDropdown] = useState(false)
   const [formItems, setFormItems] = useState<FormItem[]>([])
+  const [variosItems, setVariosItems] = useState<FormItem[]>([])
   const [manualValor1, setManualValor1] = useState("")
   const [manualValor2, setManualValor2] = useState("")
   const [fatura, setFatura] = useState("")
@@ -287,6 +288,16 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
     }))
   }, [produtos, lastPrices])
 
+  // Filter out Varios products from main product picker
+  const regularProducts = useMemo(() => {
+    return produtosWithPrices.filter(p => p.tipo !== "Varios")
+  }, [produtosWithPrices])
+
+  // Varios products only
+  const variosProducts = useMemo(() => {
+    return produtosWithPrices.filter(p => p.tipo === "Varios" && p.ativo)
+  }, [produtosWithPrices])
+
   // Reset form when closing
   useEffect(() => {
     if (!showForm) {
@@ -294,6 +305,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
       setClienteSearch("")
       setShowClienteDropdown(false)
       setFormItems([])
+      setVariosItems([])
       setManualValor1("")
       setManualValor2("")
       setFatura("")
@@ -314,7 +326,21 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
         setManualValor2(venda.valor2 ? String(venda.valor2) : "")
         if (venda.itens && venda.itens.length > 0) {
           // Removed: setUseItems(true)
-          setFormItems(venda.itens.map(item => ({
+          // Separate regular items from varios items
+          const regularItems = venda.itens.filter(item => {
+            const prod = produtos.find(p => p.id === item.produtoId)
+            return prod?.tipo !== "Varios"
+          })
+          const varios = venda.itens.filter(item => {
+            const prod = produtos.find(p => p.id === item.produtoId)
+            return prod?.tipo === "Varios"
+          })
+          setFormItems(regularItems.map(item => ({
+            produtoId: item.produtoId,
+            quantidade: String(Number(item.quantidade)),
+            precoUnit: String(Number(item.precoUnit))
+          })))
+          setVariosItems(varios.map(item => ({
             produtoId: item.produtoId,
             quantidade: String(Number(item.quantidade)),
             precoUnit: String(Number(item.precoUnit))
@@ -401,14 +427,22 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
 
     const formData = new FormData(e.currentTarget)
 
-    // Build items array if using items mode
-    const itens = formItems
+    // Build items array - combine regular items and varios items
+    const regularItens = formItems
       .filter(item => item.produtoId && item.quantidade && item.precoUnit)
       .map(item => ({
         produtoId: item.produtoId,
         quantidade: parseFloat(item.quantidade),
         precoUnit: parseFloat(item.precoUnit)
       }))
+    const variosItens = variosItems
+      .filter(item => item.produtoId && item.quantidade && item.precoUnit)
+      .map(item => ({
+        produtoId: item.produtoId,
+        quantidade: parseFloat(item.quantidade),
+        precoUnit: parseFloat(item.precoUnit)
+      }))
+    const itens = [...regularItens, ...variosItens]
 
     const data = {
       clienteId: formData.get("clienteId") as string,
@@ -951,7 +985,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                           <div key={index} className="grid grid-cols-12 gap-2 items-center">
                             <div className="col-span-5">
                               <ProductPicker
-                                products={produtosWithPrices}
+                                products={regularProducts}
                                 selectedProductId={item.produtoId}
                                 onSelect={(productId, price) => updateItem(index, "produtoId", productId, price)}
                                 placeholder="Procurar produto..."
@@ -1018,7 +1052,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                       </div>
                       <p className="text-xs text-amber-700 mb-2">Este cliente nunca comprou:</p>
                       <div className="flex flex-wrap gap-2">
-                        {clientPurchaseHistory.neverPurchased.slice(0, 6).map((p) => (
+                        {clientPurchaseHistory.neverPurchased.filter(p => p.tipo !== "Varios").slice(0, 6).map((p) => (
                           <button
                             key={p.id}
                             type="button"

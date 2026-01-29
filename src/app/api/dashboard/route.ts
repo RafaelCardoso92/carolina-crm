@@ -30,7 +30,11 @@ export async function GET(request: Request) {
       premiosTrimestrais,
       parcelasAtrasadas,
       parcelasAtrasadasValor,
-      proximasParcelas
+      proximasParcelas,
+      // Varios items to exclude from objectives
+      variosMes,
+      variosTrimestre,
+      variosAno
     ] = await Promise.all([
       prisma.cliente.count(),
       prisma.cliente.count({ where: { ativo: true } }),
@@ -134,6 +138,37 @@ export async function GET(request: Request) {
         },
         orderBy: { dataVencimento: "asc" },
         take: 5
+      }),
+      // Varios items (tipo="Varios") - exclude from objectives calculations
+      // Monthly varios
+      prisma.itemVenda.aggregate({
+        where: {
+          venda: { mes, ano },
+          produto: { tipo: "Varios" }
+        },
+        _sum: { subtotal: true }
+      }),
+      // Quarterly varios
+      prisma.itemVenda.aggregate({
+        where: {
+          venda: {
+            ano,
+            mes: {
+              gte: (trimestre - 1) * 3 + 1,
+              lte: trimestre * 3
+            }
+          },
+          produto: { tipo: "Varios" }
+        },
+        _sum: { subtotal: true }
+      }),
+      // Yearly varios
+      prisma.itemVenda.aggregate({
+        where: {
+          venda: { ano },
+          produto: { tipo: "Varios" }
+        },
+        _sum: { subtotal: true }
       })
     ])
 
@@ -150,10 +185,16 @@ export async function GET(request: Request) {
     const devolvidoAno = Number(devolucoesAno._sum.totalDevolvido) || 0
     const substituidoAno = Number(devolucoesAno._sum.totalSubstituido) || 0
 
-    // Calculate net totals (Original - Returns + Substitutions)
-    const vendasMesTotal = vendasMesBruto - devolvidoMes + substituidoMes
-    const vendasTrimestreTotal = vendasTrimestreBruto - devolvidoTrimestre + substituidoTrimestre
-    const vendasAnoTotal = vendasAnoBruto - devolvidoAno + substituidoAno
+    // Calculate Varios totals to exclude from objectives
+    const variosMesTotal = Number(variosMes._sum.subtotal) || 0
+    const variosTrimestreTotal = Number(variosTrimestre._sum.subtotal) || 0
+    const variosAnoTotal = Number(variosAno._sum.subtotal) || 0
+
+    // Calculate net totals (Original - Returns + Substitutions - Varios)
+    // Varios items are excluded because they don't count towards objectives/prizes
+    const vendasMesTotal = vendasMesBruto - devolvidoMes + substituidoMes - variosMesTotal
+    const vendasTrimestreTotal = vendasTrimestreBruto - devolvidoTrimestre + substituidoTrimestre - variosTrimestreTotal
+    const vendasAnoTotal = vendasAnoBruto - devolvidoAno + substituidoAno - variosAnoTotal
 
     const pendentesTotal = Number(cobrancasPendentes._sum.valor) || 0
     const objMensal = Number(objetivoMensal?.objetivo) || 0
