@@ -137,7 +137,7 @@ export default function DashboardView() {
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
               disabled={exporting}
-              className="bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl px-4 py-3 flex items-center gap-2 shadow-sm transition disabled:opacity-50"
+              className="bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl px-4 py-3 flex items-center gap-2 shadow-sm transition disabled:opacity-50"
             >
               {exporting ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
@@ -165,7 +165,7 @@ export default function DashboardView() {
                   onClick={() => exportToExcel("detalhado")}
                   className="w-full px-4 py-2 text-left text-foreground hover:bg-secondary flex items-center gap-2"
                 >
-                  <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                   <span>Vendas Detalhadas</span>
@@ -235,7 +235,7 @@ export default function DashboardView() {
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
               disabled={exporting}
-              className="bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl px-4 py-3 flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-50 w-full"
+              className="bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl px-4 py-3 flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-50 w-full"
             >
               {exporting ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
@@ -262,7 +262,7 @@ export default function DashboardView() {
                   onClick={() => exportToExcel("detalhado")}
                   className="w-full px-4 py-3 text-left text-foreground hover:bg-secondary flex items-center gap-2"
                 >
-                  <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                   <span>Vendas Detalhadas</span>
@@ -466,9 +466,9 @@ export default function DashboardView() {
             <p className="text-[10px] font-medium text-primary uppercase">c/IVA</p>
             <p className="text-sm font-bold text-primary">{formatCurrency(ivaAno.comIVA)} €</p>
           </div>
-          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-center">
-            <p className="text-[10px] font-medium text-blue-600 dark:text-blue-400 uppercase">IVA</p>
-            <p className="text-sm font-bold text-blue-700 dark:text-blue-300">{formatCurrency(ivaAno.iva)} €</p>
+          <div className="bg-violet-50 dark:bg-violet-900/20 rounded-lg p-2 text-center">
+            <p className="text-[10px] font-medium text-violet-600 dark:text-violet-400 uppercase">IVA</p>
+            <p className="text-sm font-bold text-violet-700 dark:text-violet-300">{formatCurrency(ivaAno.iva)} €</p>
           </div>
           <div className="bg-primary/5 rounded-lg p-2 text-center border border-primary/30">
             <p className="text-[10px] font-medium text-primary uppercase">Objetivo</p>
@@ -506,9 +506,9 @@ export default function DashboardView() {
               <p className="text-xs font-medium tracking-wide text-muted-foreground mb-1 uppercase">Sem IVA</p>
               <p className="text-sm font-bold text-foreground">{formatCurrency(ivaMes.semIVA)} €</p>
             </div>
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
-              <p className="text-xs font-medium tracking-wide text-blue-600 dark:text-blue-400 mb-1 uppercase">IVA (23%)</p>
-              <p className="text-sm font-bold text-blue-700 dark:text-blue-300">{formatCurrency(ivaMes.iva)} €</p>
+            <div className="bg-violet-50 dark:bg-violet-900/20 rounded-lg p-4 text-center">
+              <p className="text-xs font-medium tracking-wide text-violet-600 dark:text-violet-400 mb-1 uppercase">IVA (23%)</p>
+              <p className="text-sm font-bold text-violet-700 dark:text-violet-300">{formatCurrency(ivaMes.iva)} €</p>
             </div>
             <div className="bg-success/10 rounded-lg p-4 text-center">
               <p className="text-xs font-medium tracking-wide text-success mb-1 uppercase">Total c/IVA</p>
@@ -530,13 +530,13 @@ export default function DashboardView() {
               <p className="text-xs font-medium tracking-wide text-muted-foreground mb-1 uppercase">Sem IVA</p>
               <p className="text-sm font-bold text-foreground">{formatCurrency(ivaTrimestre.semIVA)} €</p>
             </div>
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
-              <p className="text-xs font-medium tracking-wide text-blue-600 dark:text-blue-400 mb-1 uppercase">IVA (23%)</p>
-              <p className="text-sm font-bold text-blue-700 dark:text-blue-300">{formatCurrency(ivaTrimestre.iva)} €</p>
+            <div className="bg-violet-50 dark:bg-violet-900/20 rounded-lg p-4 text-center">
+              <p className="text-xs font-medium tracking-wide text-violet-600 dark:text-violet-400 mb-1 uppercase">IVA (23%)</p>
+              <p className="text-sm font-bold text-violet-700 dark:text-violet-300">{formatCurrency(ivaTrimestre.iva)} €</p>
             </div>
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center border border-blue-200 dark:border-blue-700">
-              <p className="text-xs font-medium tracking-wide text-blue-600 dark:text-blue-400 mb-1 uppercase">Total c/IVA</p>
-              <p className="text-sm font-bold text-blue-700 dark:text-blue-300">{formatCurrency(ivaTrimestre.comIVA)} €</p>
+            <div className="bg-violet-50 dark:bg-violet-900/20 rounded-lg p-4 text-center border border-violet-200 dark:border-violet-700">
+              <p className="text-xs font-medium tracking-wide text-violet-600 dark:text-violet-400 mb-1 uppercase">Total c/IVA</p>
+              <p className="text-sm font-bold text-violet-700 dark:text-violet-300">{formatCurrency(ivaTrimestre.comIVA)} €</p>
             </div>
           </div>
         </div>
@@ -709,7 +709,7 @@ function StatCard({ title, value, subtitle, color, icon }: {
   const colors = {
     gold: { border: "border-primary", iconBg: "bg-primary/10", iconText: "text-primary" },
     green: { border: "border-success", iconBg: "bg-success/10", iconText: "text-success" },
-    blue: { border: "border-blue-500", iconBg: "bg-blue-500/10", iconText: "text-blue-600" },
+    blue: { border: "border-indigo-500", iconBg: "bg-indigo-500/10", iconText: "text-indigo-600" },
     orange: { border: "border-warning", iconBg: "bg-warning/10", iconText: "text-warning" }
   }
 

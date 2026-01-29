@@ -1,14 +1,9 @@
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
 import NextAuth from "next-auth"
 import { authConfig } from "@/lib/auth.config"
 
 const { auth } = NextAuth(authConfig)
 
-export async function middleware(request: NextRequest) {
-  // All other routes go through auth
-  return auth(request as any)
-}
+export default auth
 
 export const config = {
   // Exclude PWA files, static files, and auth routes from middleware

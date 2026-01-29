@@ -7,6 +7,7 @@ import { checkRateLimit, recordFailedAttempt, resetRateLimit } from "./rate-limi
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
+  debug: true,
   providers: [
     Credentials({
       name: "credentials",
