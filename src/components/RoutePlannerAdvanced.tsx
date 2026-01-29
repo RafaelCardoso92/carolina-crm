@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { GoogleMap, useJsApiLoader, Marker, DirectionsRenderer, InfoWindow } from "@react-google-maps/api"
+import { GoogleMap, useJsApiLoader, Marker, DirectionsRenderer, InfoWindow, Autocomplete } from "@react-google-maps/api"
 import Swal from "sweetalert2"
 
 interface RouteLocation {
@@ -298,9 +298,15 @@ export default function RoutePlannerAdvanced() {
   // Map state
   const [selectedMarker, setSelectedMarker] = useState<RouteLocation | null>(null)
 
+  // Address search state
+  const [searchAutocomplete, setSearchAutocomplete] = useState<google.maps.places.Autocomplete | null>(null)
+  const [searchMarker, setSearchMarker] = useState<{ lat: number; lng: number; address: string } | null>(null)
+  const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null)
+
   const { isLoaded } = useJsApiLoader({
     id: "google-map-script",
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+    libraries: ["places"]
   })
 
   const calculateFuelCost = useCallback((distanceStr: string, consumo: number, preco: number) => {
@@ -919,6 +925,23 @@ export default function RoutePlannerAdvanced() {
       alert("Erro ao procurar locais próximos")
     } finally {
       setLoadingNearby(false)
+    }
+  }
+
+  // Handle address search result
+  const onPlaceSelected = () => {
+    if (searchAutocomplete) {
+      const place = searchAutocomplete.getPlace()
+      if (place.geometry?.location) {
+        const lat = place.geometry.location.lat()
+        const lng = place.geometry.location.lng()
+        setSearchMarker({
+          lat,
+          lng,
+          address: place.formatted_address || ""
+        })
+        if (mapInstance) { mapInstance.panTo({ lat, lng }); mapInstance.setZoom(15) }
+      }
     }
   }
 
@@ -1777,6 +1800,47 @@ export default function RoutePlannerAdvanced() {
             </div>
           )}
 
+          {/* Address Search Bar */}
+          {isLoaded && (
+            <div className="mb-3">
+              <div className="relative">
+                <Autocomplete
+                  onLoad={(autocomplete) => setSearchAutocomplete(autocomplete)}
+                  onPlaceChanged={onPlaceSelected}
+                  options={{
+                    componentRestrictions: { country: "pt" },
+                    fields: ["formatted_address", "geometry", "name"],
+                  }}
+                >
+                  <input
+                    type="text"
+                    placeholder="Pesquisar endereco no mapa..."
+                    className="w-full pl-10 pr-10 py-2.5 border border-border rounded-xl bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-primary"
+                  />
+                </Autocomplete>
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                {searchMarker && (
+                  <button
+                    onClick={() => setSearchMarker(null)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+                    title="Limpar pesquisa"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              {searchMarker && (
+                <p className="text-xs text-muted-foreground mt-1 ml-1">
+                  {searchMarker.address}
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Map */}
           <div className="bg-card rounded-xl shadow-sm overflow-hidden h-[400px] sm:h-[500px] lg:h-[550px]">
             {isLoaded ? (
@@ -1784,6 +1848,7 @@ export default function RoutePlannerAdvanced() {
                 mapContainerStyle={mapContainerStyle}
                 center={mapCenter}
                 zoom={10}
+                onLoad={(map) => setMapInstance(map)}
                 onClick={handleMapClick}
                 options={{
                   fullscreenControl: true,
@@ -1805,6 +1870,22 @@ export default function RoutePlannerAdvanced() {
                       strokeWeight: 2,
                     }}
                     title="Ponto de partida"
+                  />
+                )}
+
+                {/* Search Result Marker */}
+                {searchMarker && (
+                  <Marker
+                    position={{ lat: searchMarker.lat, lng: searchMarker.lng }}
+                    icon={{
+                      path: google.maps.SymbolPath.CIRCLE,
+                      scale: 12,
+                      fillColor: "#8b5cf6",
+                      fillOpacity: 1,
+                      strokeColor: "#fff",
+                      strokeWeight: 2,
+                    }}
+                    title={searchMarker.address}
                   />
                 )}
 
