@@ -226,34 +226,64 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
       <div className="bg-card rounded-xl shadow-sm p-6">
         <h3 className="text-lg font-semibold text-foreground mb-4">Cobrancas</h3>
         {cliente.cobrancas.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="py-2 text-left text-sm font-medium text-muted-foreground">Fatura</th>
-                  <th className="py-2 text-left text-sm font-medium text-muted-foreground">Valor</th>
-                  <th className="py-2 text-left text-sm font-medium text-muted-foreground">Comissao</th>
-                  <th className="py-2 text-center text-sm font-medium text-muted-foreground">Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cliente.cobrancas.map((cobranca) => (
-                  <tr key={cobranca.id} className="border-b border-border last:border-0">
-                    <td className="py-3 text-foreground">{cobranca.fatura || "-"}</td>
-                    <td className="py-3 text-foreground">{formatCurrency(Number(cobranca.valor))} EUR</td>
-                    <td className="py-3 text-muted-foreground">{cobranca.comissao ? `${formatCurrency(Number(cobranca.comissao))} EUR` : "-"}</td>
-                    <td className="py-3 text-center">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        cobranca.pago ? "bg-green-500/20 text-green-600 dark:text-green-400" : "bg-orange-500/20 text-orange-600 dark:text-orange-400"
-                      }`}>
-                        {cobranca.pago ? "Pago" : "Pendente"}
-                      </span>
-                    </td>
+          <>
+            {/* Mobile Cards */}
+            <div className="md:hidden space-y-3">
+              {cliente.cobrancas.map((cobranca) => (
+                <div key={cobranca.id} className={`bg-secondary/30 rounded-lg p-3 border-l-4 ${
+                  cobranca.pago ? "border-green-500" : "border-orange-500"
+                }`}>
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="font-medium text-foreground">{cobranca.fatura || "Sem fatura"}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                      cobranca.pago ? "bg-green-500/20 text-green-600 dark:text-green-400" : "bg-orange-500/20 text-orange-600 dark:text-orange-400"
+                    }`}>
+                      {cobranca.pago ? "Pago" : "Pendente"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Valor: </span>
+                      <span className="font-semibold text-foreground">{formatCurrency(Number(cobranca.valor))} EUR</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Comissao: </span>
+                      <span className="text-foreground">{cobranca.comissao ? `${formatCurrency(Number(cobranca.comissao))} EUR` : "-"}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="py-2 text-left text-sm font-medium text-muted-foreground">Fatura</th>
+                    <th className="py-2 text-left text-sm font-medium text-muted-foreground">Valor</th>
+                    <th className="py-2 text-left text-sm font-medium text-muted-foreground">Comissao</th>
+                    <th className="py-2 text-center text-sm font-medium text-muted-foreground">Estado</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {cliente.cobrancas.map((cobranca) => (
+                    <tr key={cobranca.id} className="border-b border-border last:border-0">
+                      <td className="py-3 text-foreground">{cobranca.fatura || "-"}</td>
+                      <td className="py-3 text-foreground">{formatCurrency(Number(cobranca.valor))} EUR</td>
+                      <td className="py-3 text-muted-foreground">{cobranca.comissao ? `${formatCurrency(Number(cobranca.comissao))} EUR` : "-"}</td>
+                      <td className="py-3 text-center">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          cobranca.pago ? "bg-green-500/20 text-green-600 dark:text-green-400" : "bg-orange-500/20 text-orange-600 dark:text-orange-400"
+                        }`}>
+                          {cobranca.pago ? "Pago" : "Pendente"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         ) : (
           <p className="text-muted-foreground text-sm">Sem cobrancas registadas</p>
         )}

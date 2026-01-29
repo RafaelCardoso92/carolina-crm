@@ -99,42 +99,85 @@ export default function ClientAnalytics({ clienteId }: { clienteId: string }) {
         </div>
 
         {analytics.historicoCompras.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="py-2 text-left text-sm font-medium text-muted-foreground">Produto</th>
-                  <th className="py-2 text-center text-sm font-medium text-muted-foreground">Compras</th>
-                  <th className="py-2 text-center text-sm font-medium text-muted-foreground">Quantidade</th>
-                  <th className="py-2 text-right text-sm font-medium text-muted-foreground">Total Gasto</th>
-                  <th className="py-2 text-right text-sm font-medium text-muted-foreground">Última Compra</th>
-                </tr>
-              </thead>
-              <tbody>
-                {analytics.historicoCompras.map((product) => (
-                  <tr key={product.produtoId} className="border-b border-border last:border-0">
-                    <td className="py-3">
+          <>
+            {/* Mobile Cards */}
+            <div className="md:hidden space-y-3">
+              {analytics.historicoCompras.map((product) => (
+                <div key={product.produtoId} className="bg-secondary/30 rounded-lg p-3">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
                       <span className="font-medium text-foreground">{product.nome}</span>
                       {product.codigo && (
-                        <span className="text-muted-foreground text-sm ml-2">({product.codigo})</span>
+                        <span className="text-muted-foreground text-xs ml-1">({product.codigo})</span>
                       )}
-                      {product.categoria && (
-                        <span className="text-xs bg-secondary text-muted-foreground px-2 py-0.5 rounded-full ml-2">
-                          {product.categoria}
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3 text-center text-muted-foreground">{product.totalCompras}×</td>
-                    <td className="py-3 text-center text-muted-foreground">{product.totalQuantidade.toFixed(1)}</td>
-                    <td className="py-3 text-right font-semibold text-primary">{formatCurrency(product.totalGasto)} €</td>
-                    <td className="py-3 text-right text-muted-foreground text-sm">
-                      {product.ultimaCompra ? `${meses[product.ultimaCompra.mes]} ${product.ultimaCompra.ano}` : "-"}
-                    </td>
+                    </div>
+                    {product.categoria && (
+                      <span className="text-xs bg-secondary text-muted-foreground px-2 py-0.5 rounded-full">
+                        {product.categoria}
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Compras: </span>
+                      <span className="text-foreground">{product.totalCompras}x</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Qtd: </span>
+                      <span className="text-foreground">{product.totalQuantidade.toFixed(1)}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Total: </span>
+                      <span className="font-semibold text-primary">{formatCurrency(product.totalGasto)} EUR</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Ultima: </span>
+                      <span className="text-foreground">
+                        {product.ultimaCompra ? `${meses[product.ultimaCompra.mes]} ${product.ultimaCompra.ano}` : "-"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="py-2 text-left text-sm font-medium text-muted-foreground">Produto</th>
+                    <th className="py-2 text-center text-sm font-medium text-muted-foreground">Compras</th>
+                    <th className="py-2 text-center text-sm font-medium text-muted-foreground">Quantidade</th>
+                    <th className="py-2 text-right text-sm font-medium text-muted-foreground">Total Gasto</th>
+                    <th className="py-2 text-right text-sm font-medium text-muted-foreground">Ultima Compra</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {analytics.historicoCompras.map((product) => (
+                    <tr key={product.produtoId} className="border-b border-border last:border-0">
+                      <td className="py-3">
+                        <span className="font-medium text-foreground">{product.nome}</span>
+                        {product.codigo && (
+                          <span className="text-muted-foreground text-sm ml-2">({product.codigo})</span>
+                        )}
+                        {product.categoria && (
+                          <span className="text-xs bg-secondary text-muted-foreground px-2 py-0.5 rounded-full ml-2">
+                            {product.categoria}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 text-center text-muted-foreground">{product.totalCompras}x</td>
+                      <td className="py-3 text-center text-muted-foreground">{product.totalQuantidade.toFixed(1)}</td>
+                      <td className="py-3 text-right font-semibold text-primary">{formatCurrency(product.totalGasto)} EUR</td>
+                      <td className="py-3 text-right text-muted-foreground text-sm">
+                        {product.ultimaCompra ? `${meses[product.ultimaCompra.mes]} ${product.ultimaCompra.ano}` : "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         ) : (
           <p className="text-muted-foreground text-sm">Sem histórico de produtos</p>
         )}
