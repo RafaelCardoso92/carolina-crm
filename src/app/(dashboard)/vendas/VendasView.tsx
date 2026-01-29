@@ -1360,7 +1360,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                           {hasDevolucoes && (
                             <button
                               onClick={() => setExpandedDevolucoes(isExpanded ? null : venda.id)}
-                              className={`p-1.5 rounded-lg transition ${isExpanded ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" : "bg-amber-100 text-amber-600 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-400 dark:hover:bg-amber-900/60"}`}
+                              className={`p-2 transition ${isExpanded ? "text-orange-600 dark:text-orange-400" : "text-muted-foreground hover:text-foreground"}`}
                               title="Ver devoluções"
                             >
                               <svg className={`w-5 h-5 transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1372,7 +1372,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                           {hasItemsForReturn && (
                             <button
                               onClick={() => openDevolucaoForm(venda)}
-                              className="p-1.5 bg-amber-100 text-amber-600 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-400 dark:hover:bg-amber-900/60 rounded-lg transition"
+                              className="p-2 text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 transition"
                               title="Registar devolução"
                             >
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1384,7 +1384,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                           {cobrancaId && (
                             <button
                               onClick={() => handleTogglePago(venda.id, cobrancaId, isPago)}
-                              className={`p-1.5 rounded-lg transition ${isPago ? "bg-emerald-100 text-emerald-600 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400" : "bg-amber-100 text-amber-600 hover:bg-amber-200"}`}
+                              className={`p-2 transition ${isPago ? "text-emerald-600 hover:text-emerald-700 dark:text-emerald-400" : "text-amber-600 hover:text-amber-700 dark:text-amber-400"}`}
                               title={isPago ? "Pago - clique para marcar pendente" : "Pendente - clique para marcar pago"}
                             >
                               {isPago ? (
@@ -1400,7 +1400,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                           )}
                           <button
                             onClick={() => startEdit(venda)}
-                            className="p-1.5 bg-indigo-100 text-indigo-600 hover:bg-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-400 dark:hover:bg-indigo-900/60 rounded-lg transition"
+                            className="p-2 text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition"
                             title="Editar" aria-label="Editar"
                           >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1409,7 +1409,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                           </button>
                           <button
                             onClick={() => handleDelete(venda.id)}
-                            className="p-1.5 bg-rose-100 text-rose-600 hover:bg-rose-200 dark:bg-rose-900/40 dark:text-rose-400 dark:hover:bg-rose-900/60 rounded-lg transition"
+                            className="p-2 text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 transition"
                             title="Eliminar" aria-label="Eliminar"
                           >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1503,7 +1503,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                     {hasDevolucoes && (
                       <button
                         onClick={() => setExpandedDevolucoes(isExpanded ? null : venda.id)}
-                        className={`p-1.5 rounded-lg transition ${isExpanded ? "bg-orange-100 text-orange-700" : "bg-amber-100 text-amber-600 hover:bg-amber-200"}`}
+                        className={`p-2 transition ${isExpanded ? "text-orange-600" : "text-muted-foreground hover:text-foreground"}`}
                       >
                         <svg className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
@@ -1513,7 +1513,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                     {hasItemsForReturn && (
                       <button
                         onClick={() => openDevolucaoForm(venda)}
-                        className="p-1.5 bg-amber-100 text-amber-600 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-400 dark:hover:bg-amber-900/60 rounded-lg transition"
+                        className="p-2 text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 transition"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" />
@@ -1522,7 +1522,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                     )}
                     <button
                       onClick={() => startEdit(venda)}
-                      className="p-1.5 bg-indigo-100 text-indigo-600 hover:bg-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-400 dark:hover:bg-indigo-900/60 rounded-lg transition"
+                      className="p-2 text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -1530,7 +1530,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                     </button>
                     <button
                       onClick={() => handleDelete(venda.id)}
-                      className="p-1.5 bg-rose-100 text-rose-600 hover:bg-rose-200 dark:bg-rose-900/40 dark:text-rose-400 dark:hover:bg-rose-900/60 rounded-lg transition"
+                      className="p-2 text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 transition"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
