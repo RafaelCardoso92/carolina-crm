@@ -621,17 +621,17 @@ export default function DefinicoesPage() {
 
               {/* Products Section */}
               <div className="mt-6 pt-6 border-t border-purple-200">
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
                   <div>
                     <h4 className="text-base font-bold text-foreground">Produtos da Campanha</h4>
-                    <p className="text-xs text-muted-foreground">Adicione produtos da lista ou manualmente (precos sem IVA)</p>
+                    <p className="text-xs text-muted-foreground">Precos sem IVA</p>
                   </div>
                   <button
                     type="button"
                     onClick={addCampanhaProduto}
-                    className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 transition flex items-center gap-1.5"
+                    className="w-full sm:w-auto px-4 py-2.5 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700 transition flex items-center justify-center gap-2 shadow-sm"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                     </svg>
                     Adicionar Produto
@@ -639,118 +639,163 @@ export default function DefinicoesPage() {
                 </div>
 
                 {campanhaProdutos.length === 0 ? (
-                  <div className="text-center py-6 bg-white/50 rounded-xl border-2 border-dashed border-purple-200">
-                    <svg className="w-10 h-10 text-purple-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="text-center py-8 bg-white/50 rounded-xl border-2 border-dashed border-purple-200">
+                    <svg className="w-12 h-12 text-purple-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                     </svg>
-                    <p className="text-sm text-muted-foreground">Nenhum produto adicionado</p>
+                    <p className="text-muted-foreground">Nenhum produto adicionado</p>
+                    <p className="text-xs text-muted-foreground mt-1">Clique no botao acima para comecar</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    <div className="hidden md:grid grid-cols-12 gap-2 text-xs font-bold text-muted-foreground px-1">
-                      <div className="col-span-5">Produto</div>
-                      <div className="col-span-2 text-center">Qtd</div>
-                      <div className="col-span-2 text-center">Preco s/IVA</div>
-                      <div className="col-span-2 text-right">Subtotal</div>
-                      <div className="col-span-1"></div>
-                    </div>
-
+                  <div className="space-y-4">
                     {campanhaProdutos.map((item, index) => {
                       const subtotal = (parseFloat(item.precoUnit) || 0) * (parseInt(item.quantidade) || 0)
+                      const isFromList = item.produtoId && item.produtoId !== ""
                       return (
-                        <div key={index} className="grid grid-cols-12 gap-2 items-center bg-white/60 rounded-lg p-2">
-                          <div className="col-span-12 md:col-span-5">
-                            <div className="flex items-center gap-1.5 mb-1">
+                        <div key={index} className="bg-white rounded-xl border border-purple-100 shadow-sm overflow-hidden">
+                          {/* Product Header */}
+                          <div className="flex items-center justify-between bg-purple-50/50 px-4 py-2 border-b border-purple-100">
+                            <span className="text-xs font-semibold text-purple-600">Produto {index + 1}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeCampanhaProduto(index)}
+                              className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition"
+                              title="Remover produto"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                          
+                          <div className="p-4">
+                            {/* Source Toggle */}
+                            <div className="flex gap-2 mb-4">
                               <button
                                 type="button"
                                 onClick={() => {
                                   const updated = [...campanhaProdutos]
-                                  if (updated[index].produtoId) {
-                                    updated[index] = { ...updated[index], produtoId: "", nome: "", precoUnit: "" }
-                                  } else {
-                                    updated[index] = { ...updated[index], produtoId: "PICKER_MODE" }
-                                  }
+                                  updated[index] = { ...updated[index], produtoId: "PICKER_MODE", nome: "", precoUnit: "" }
                                   setCampanhaProdutos(updated)
                                 }}
-                                className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium hover:bg-purple-200 transition"
+                                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition border-2 ${
+                                  isFromList 
+                                    ? "bg-purple-600 text-white border-purple-600" 
+                                    : "bg-white text-gray-600 border-gray-200 hover:border-purple-300"
+                                }`}
                               >
-                                {item.produtoId ? "Manual" : "Da lista"}
+                                <div className="flex items-center justify-center gap-2">
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                                  </svg>
+                                  Da Lista
+                                </div>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = [...campanhaProdutos]
+                                  updated[index] = { ...updated[index], produtoId: "", nome: "", precoUnit: "" }
+                                  setCampanhaProdutos(updated)
+                                }}
+                                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition border-2 ${
+                                  !isFromList 
+                                    ? "bg-purple-600 text-white border-purple-600" 
+                                    : "bg-white text-gray-600 border-gray-200 hover:border-purple-300"
+                                }`}
+                              >
+                                <div className="flex items-center justify-center gap-2">
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                  Manual
+                                </div>
                               </button>
                             </div>
-                            {item.produtoId ? (
-                              <ProductPicker
-                                products={produtos.filter(p => p.ativo).map(p => ({
-                                  id: p.id,
-                                  nome: p.nome,
-                                  codigo: p.codigo,
-                                  categoria: p.categoria,
-                                  tipo: p.tipo || null,
-                                  preco: p.preco ? String(p.preco) : null
-                                }))}
-                                selectedProductId={item.produtoId === "PICKER_MODE" ? "" : item.produtoId}
-                                onSelect={(productId, price) => updateCampanhaProduto(index, "produtoId", productId || "PICKER_MODE")}
-                                placeholder="Procurar produto..."
-                              />
-                            ) : (
-                              <input
-                                type="text"
-                                value={item.nome}
-                                onChange={(e) => updateCampanhaProduto(index, "nome", e.target.value)}
-                                className="w-full px-3 py-2 border-2 border-border rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
-                                placeholder="Nome do produto"
-                              />
-                            )}
-                          </div>
-                          <div className="col-span-4 md:col-span-2">
-                            <input
-                              type="number"
-                              step="1"
-                              min="1"
-                              value={item.quantidade}
-                              onChange={(e) => updateCampanhaProduto(index, "quantidade", e.target.value)}
-                              className="w-full px-3 py-2 border-2 border-border rounded-lg text-sm text-center focus:ring-2 focus:ring-primary focus:border-primary outline-none"
-                              placeholder="1"
-                            />
-                          </div>
-                          <div className="col-span-4 md:col-span-2">
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={item.precoUnit}
-                              onChange={(e) => updateCampanhaProduto(index, "precoUnit", e.target.value)}
-                              className="w-full px-3 py-2 border-2 border-border rounded-lg text-sm text-center focus:ring-2 focus:ring-primary focus:border-primary outline-none"
-                              placeholder="0.00"
-                            />
-                          </div>
-                          <div className="col-span-3 md:col-span-2 text-right text-sm font-semibold text-foreground">
-                            {formatCurrency(subtotal)} &euro;
-                          </div>
-                          <div className="col-span-1 flex justify-center">
-                            <button
-                              type="button"
-                              onClick={() => removeCampanhaProduto(index)}
-                              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
+
+                            {/* Product Selection/Input */}
+                            <div className="mb-4">
+                              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Produto</label>
+                              {isFromList ? (
+                                <ProductPicker
+                                  products={produtos.filter(p => p.ativo).map(p => ({
+                                    id: p.id,
+                                    nome: p.nome,
+                                    codigo: p.codigo,
+                                    categoria: p.categoria,
+                                    tipo: p.tipo || null,
+                                    preco: p.preco ? String(p.preco) : null
+                                  }))}
+                                  selectedProductId={item.produtoId === "PICKER_MODE" ? "" : item.produtoId}
+                                  onSelect={(productId, price) => updateCampanhaProduto(index, "produtoId", productId || "PICKER_MODE")}
+                                  placeholder="Pesquisar produto..."
+                                />
+                              ) : (
+                                <input
+                                  type="text"
+                                  value={item.nome}
+                                  onChange={(e) => updateCampanhaProduto(index, "nome", e.target.value)}
+                                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition"
+                                  placeholder="Escreva o nome do produto"
+                                />
+                              )}
+                            </div>
+
+                            {/* Quantity and Price Row */}
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Quantidade</label>
+                                <div className="relative">
+                                  <input
+                                    type="number"
+                                    step="1"
+                                    min="1"
+                                    value={item.quantidade}
+                                    onChange={(e) => updateCampanhaProduto(index, "quantidade", e.target.value)}
+                                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm text-center focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition"
+                                    placeholder="1"
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Preco Unit. (EUR)</label>
+                                <div className="relative">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={item.precoUnit}
+                                    onChange={(e) => updateCampanhaProduto(index, "precoUnit", e.target.value)}
+                                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm text-center focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition"
+                                    placeholder="0.00"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Subtotal */}
+                            <div className="mt-4 pt-3 border-t border-gray-100 flex justify-between items-center">
+                              <span className="text-sm text-gray-500">Subtotal</span>
+                              <span className="text-lg font-bold text-purple-600">{formatCurrency(subtotal)} EUR</span>
+                            </div>
                           </div>
                         </div>
                       )
                     })}
 
-                    <div className="flex justify-end pt-4 mt-2 border-t border-purple-200">
-                      <div className="bg-gradient-to-r from-purple-50 to-pink-50 px-5 py-3 rounded-xl border border-purple-200">
-                        <span className="text-sm text-purple-700 font-medium">Total s/IVA: </span>
-                        <span className="text-xl font-bold text-purple-600">{formatCurrency(campanhaTotalSemIva)} &euro;</span>
+                    {/* Total */}
+                    <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl p-4 shadow-lg">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-purple-100 text-sm">Total da Campanha (s/IVA)</p>
+                          <p className="text-xs text-purple-200">{campanhaProdutos.length} produto{campanhaProdutos.length !== 1 ? "s" : ""}</p>
+                        </div>
+                        <span className="text-2xl font-bold text-white">{formatCurrency(campanhaTotalSemIva)} EUR</span>
                       </div>
                     </div>
                   </div>
                 )}
               </div>
-
               <div className="flex gap-3 mt-4">
                 <button
                   onClick={async () => {
