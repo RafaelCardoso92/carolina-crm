@@ -1407,7 +1407,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                 <th className="px-4 py-4 text-right text-sm font-bold text-blue-700 hidden lg:table-cell">IVA</th>
                 <th className="px-4 py-4 text-right text-sm font-bold text-primary">Total (sem IVA)</th>
                 <th className="px-4 py-4 text-left text-sm font-bold text-foreground hidden xl:table-cell">Notas</th>
-                <th className="px-4 py-4 text-center text-sm font-bold text-foreground">Ações</th>
+                <th className="px-4 py-4 text-right text-sm font-bold text-foreground">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -1479,7 +1479,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                       <td className="px-4 py-4 text-right text-blue-600 font-medium hidden lg:table-cell">
                         {formatCurrency(iva)} €
                       </td>
-                      <td className="px-4 py-4 text-right">
+                      <td className="px-4 py-4 text-right whitespace-nowrap">
                         {hasDevolucoes ? (
                           <div>
                             <span className="text-sm text-muted-foreground line-through">{formatCurrency(vendaTotal)} €</span>
@@ -1492,7 +1492,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                       </td>
                       <td className="px-4 py-4 text-muted-foreground text-sm hidden xl:table-cell">{venda.notas || "-"}</td>
                       <td className="px-4 py-4">
-                        <div className="flex justify-center gap-1.5">
+                        <div className="flex justify-end gap-1.5">
                           {/* Returns toggle button */}
                           {hasDevolucoes && (
                             <button
