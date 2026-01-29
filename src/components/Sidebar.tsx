@@ -120,7 +120,7 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-4 px-3 overflow-y-auto">
+      <nav className="py-4 px-3">
         <ul className="space-y-0.5">
           {menuItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))
@@ -156,7 +156,7 @@ export default function Sidebar() {
       </nav>
 
       {/* Bottom Actions */}
-      <div className="p-3 border-t border-sidebar-border space-y-1">
+      <div className="px-3 pb-4 space-y-1">
         {/* Theme Toggle */}
         <button
           onClick={cycleTheme}
