@@ -912,3 +912,12 @@ model CampanhaProduto {
   @@index([campanhaId])
   @@index([produtoId])
 }
+
+model MoodEntry {
+  id        String   @id @default(cuid())
+  date      String   @unique // YYYY-MM-DD format, one entry per day
+  rating    Int      // 1-5 emoji scale
+  createdAt DateTime @default(now())
+
+  @@index([date])
+}
