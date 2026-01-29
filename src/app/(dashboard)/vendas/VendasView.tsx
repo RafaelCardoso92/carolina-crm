@@ -701,7 +701,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
             className="flex items-center gap-1 md:gap-2 px-3 md:px-4 py-2 bg-secondary hover:bg-violet-100 rounded-xl transition text-foreground font-medium text-sm md:text-base"
           >
             <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
             </svg>
             <span className="hidden sm:inline">Anterior</span>
           </button>
@@ -714,7 +714,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
           >
             <span className="hidden sm:inline">Seguinte</span>
             <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
             </svg>
           </button>
         </div>
@@ -761,7 +761,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
           {/* Search */}
           <div className="relative flex-1 max-w-md w-full sm:w-auto">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
               type="text"
@@ -791,11 +791,11 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
             >
               {sortOrder === "asc" ? (
                 <svg className="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
                 </svg>
               ) : (
                 <svg className="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
                 </svg>
               )}
             </button>
@@ -807,7 +807,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
             className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-5 py-2.5 rounded-xl font-semibold hover:from-emerald-600 hover:to-teal-600 transition flex items-center gap-2 shadow-lg text-sm whitespace-nowrap"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
             </svg>
             <span className="hidden sm:inline">Nova Venda</span>
             <span className="sm:hidden">Nova</span>
@@ -832,7 +832,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                 <h3 className="text-base md:text-xl font-bold text-white flex items-center gap-2 md:gap-3">
                   <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-white/20 flex items-center justify-center">
                     <svg className="w-4 h-4 md:w-5 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={editingId ? "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" : "M12 4v16m8-8H4"} />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d={editingId ? "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" : "M12 4v16m8-8H4"} />
                     </svg>
                   </div>
                   {editingId ? "Editar Venda" : "Registar Nova Venda"}
@@ -843,7 +843,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                   className="p-2 hover:bg-white/20 rounded-lg transition text-white"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
@@ -855,7 +855,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
               <div className="md:col-span-2">
                 <label className="block text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
                   <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                   Cliente <span className="text-rose-500">*</span>
                 </label>
@@ -880,7 +880,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                       className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card pr-10"
                     />
                     <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                   </div>
                   {showClienteDropdown && (
@@ -897,7 +897,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                               setClienteSearch("")
                               setShowClienteDropdown(false)
                             }}
-                            className={`w-full px-4 py-3 text-left hover:bg-rose-100 transition flex items-center justify-between ${selectedClienteId === c.id ? "bg-rose-100" : ""}`}
+                            className={`w-full px-4 py-3 text-left hover:bg-rose-200 transition flex items-center justify-between ${selectedClienteId === c.id ? "bg-rose-100" : ""}`}
                           >
                             <span className="font-medium text-foreground">{c.nome}</span>
                             {c.codigo && <span className="text-muted-foreground text-sm">({c.codigo})</span>}
@@ -955,7 +955,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                   <div className="flex items-center justify-between">
                     <label className="block text-sm font-semibold text-foreground flex items-center gap-2">
                       <svg className="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                       </svg>
                       Produtos
                     </label>
@@ -965,7 +965,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                       className="px-4 py-2 bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-lg text-sm font-semibold hover:from-violet-600 hover:to-purple-600 transition-all shadow-sm flex items-center gap-2"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
                       </svg>
                       Adicionar
                     </button>
@@ -1035,7 +1035,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                                 className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition"
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                               </button>
                             </div>
@@ -1058,7 +1058,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                     <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                         </svg>
                         <span className="text-sm font-bold text-amber-800">Sugestões de Upsell</span>
                       </div>
@@ -1071,7 +1071,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                             onClick={() => {
                               setFormItems([...formItems, { produtoId: p.id, quantidade: "1", precoUnit: p.preco || "" }])
                             }}
-                            className="px-3 py-1 bg-card border border-amber-300 rounded-full text-xs font-medium text-amber-800 hover:bg-amber-100 transition"
+                            className="px-3 py-1 bg-card border border-amber-300 rounded-full text-xs font-medium text-amber-800 hover:bg-amber-200 transition"
                           >
                             + {p.nome}
                           </button>
@@ -1087,7 +1087,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
               <div className="md:col-span-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
                 <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
                   <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
                   Pagamento
                 </h4>
@@ -1140,8 +1140,8 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                 <div className="md:col-span-2 bg-gradient-to-r from-purple-50 to-violet-50 rounded-xl p-4 border border-purple-200">
                   <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
                     <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
                     </svg>
                     Campanhas ({meses[mes]})
                   </h4>
@@ -1205,7 +1205,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
               <div className="md:col-span-2">
                 <label className="block text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
                   <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
                   Notas
                 </label>
@@ -1235,7 +1235,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                 ) : (
                   <>
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                     </svg>
                     Guardar
                   </>
@@ -1247,7 +1247,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                 className="px-6 py-3 border-2 border-border rounded-xl font-bold text-foreground hover:bg-secondary transition flex items-center gap-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                 </svg>
                 Cancelar
               </button>
@@ -1355,16 +1355,16 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                       </td>
                       <td className="px-4 py-4 text-muted-foreground text-sm hidden xl:table-cell">{venda.notas || "-"}</td>
                       <td className="px-4 py-4">
-                        <div className="flex justify-center gap-1">
+                        <div className="flex justify-center gap-1.5">
                           {/* Returns toggle button */}
                           {hasDevolucoes && (
                             <button
                               onClick={() => setExpandedDevolucoes(isExpanded ? null : venda.id)}
-                              className={`p-2 rounded-lg transition ${isExpanded ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" : "text-amber-500 hover:bg-amber-100 dark:hover:bg-orange-900/30"}`}
+                              className={`p-1.5 rounded-lg transition ${isExpanded ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" : "bg-amber-100 text-amber-600 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-400 dark:hover:bg-amber-900/60"}`}
                               title="Ver devoluções"
                             >
                               <svg className={`w-5 h-5 transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
                               </svg>
                             </button>
                           )}
@@ -1372,11 +1372,11 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                           {hasItemsForReturn && (
                             <button
                               onClick={() => openDevolucaoForm(venda)}
-                              className="p-2 text-amber-500 hover:bg-amber-100 dark:hover:bg-orange-900/30 rounded-lg transition"
+                              className="p-1.5 bg-amber-100 text-amber-600 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-400 dark:hover:bg-amber-900/60 rounded-lg transition"
                               title="Registar devolução"
                             >
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" />
                               </svg>
                             </button>
                           )}
@@ -1384,36 +1384,36 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                           {cobrancaId && (
                             <button
                               onClick={() => handleTogglePago(venda.id, cobrancaId, isPago)}
-                              className={`p-2 rounded-lg transition ${isPago ? "text-green-600 hover:bg-green-100" : "text-amber-500 hover:bg-amber-100"}`}
+                              className={`p-1.5 rounded-lg transition ${isPago ? "bg-emerald-100 text-emerald-600 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400" : "bg-amber-100 text-amber-600 hover:bg-amber-200"}`}
                               title={isPago ? "Pago - clique para marcar pendente" : "Pendente - clique para marcar pago"}
                             >
                               {isPago ? (
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                               ) : (
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                               )}
                             </button>
                           )}
                           <button
                             onClick={() => startEdit(venda)}
-                            className="p-2 text-sky-500 hover:bg-sky-100 dark:hover:bg-blue-900/30 rounded-lg transition"
+                            className="p-1.5 bg-indigo-100 text-indigo-600 hover:bg-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-400 dark:hover:bg-indigo-900/60 rounded-lg transition"
                             title="Editar" aria-label="Editar"
                           >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
                           </button>
                           <button
                             onClick={() => handleDelete(venda.id)}
-                            className="p-2 text-rose-500 hover:bg-rose-100 dark:hover:bg-red-900/30 rounded-lg transition"
+                            className="p-1.5 bg-rose-100 text-rose-600 hover:bg-rose-200 dark:bg-rose-900/40 dark:text-rose-400 dark:hover:bg-rose-900/60 rounded-lg transition"
                             title="Eliminar" aria-label="Eliminar"
                           >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
                           </button>
                         </div>
@@ -1503,37 +1503,37 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
                     {hasDevolucoes && (
                       <button
                         onClick={() => setExpandedDevolucoes(isExpanded ? null : venda.id)}
-                        className={`p-2 rounded-lg transition ${isExpanded ? "bg-orange-100 text-orange-700" : "text-amber-500 hover:bg-amber-100"}`}
+                        className={`p-1.5 rounded-lg transition ${isExpanded ? "bg-orange-100 text-orange-700" : "bg-amber-100 text-amber-600 hover:bg-amber-200"}`}
                       >
                         <svg className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
                         </svg>
                       </button>
                     )}
                     {hasItemsForReturn && (
                       <button
                         onClick={() => openDevolucaoForm(venda)}
-                        className="p-2 text-amber-500 hover:bg-amber-100 dark:hover:bg-orange-900/30 rounded-lg transition"
+                        className="p-1.5 bg-amber-100 text-amber-600 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-400 dark:hover:bg-amber-900/60 rounded-lg transition"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" />
                         </svg>
                       </button>
                     )}
                     <button
                       onClick={() => startEdit(venda)}
-                      className="p-2 text-sky-500 hover:bg-sky-100 dark:hover:bg-blue-900/30 rounded-lg transition"
+                      className="p-1.5 bg-indigo-100 text-indigo-600 hover:bg-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-400 dark:hover:bg-indigo-900/60 rounded-lg transition"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                     </button>
                     <button
                       onClick={() => handleDelete(venda.id)}
-                      className="p-2 text-rose-500 hover:bg-rose-100 dark:hover:bg-red-900/30 rounded-lg transition"
+                      className="p-1.5 bg-rose-100 text-rose-600 hover:bg-rose-200 dark:bg-rose-900/40 dark:text-rose-400 dark:hover:bg-rose-900/60 rounded-lg transition"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
                     </button>
                   </div>
