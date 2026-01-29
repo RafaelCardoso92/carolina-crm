@@ -822,22 +822,34 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
         )}
       </div>
 
-      {/* Add/Edit Form */}
+      {/* Add/Edit Form Modal */}
       {showForm && (
-        <div className="bg-card rounded-2xl shadow-lg border border-border overflow-hidden mb-3 md:mb-4">
-          {/* Form Header */}
-          <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-4">
-            <h3 className="text-lg md:text-xl font-bold text-white flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={editingId ? "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" : "M12 4v16m8-8H4"} />
-                </svg>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-2 md:p-4">
+          <div className="bg-card rounded-2xl shadow-xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col">
+            {/* Form Header */}
+            <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-4 md:px-5 py-3 md:py-4 flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base md:text-xl font-bold text-white flex items-center gap-2 md:gap-3">
+                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <svg className="w-4 h-4 md:w-5 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={editingId ? "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" : "M12 4v16m8-8H4"} />
+                    </svg>
+                  </div>
+                  {editingId ? "Editar Venda" : "Registar Nova Venda"}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => { setShowForm(false); setEditingId(null); }}
+                  className="p-2 hover:bg-white/20 rounded-lg transition text-white"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
-              {editingId ? "Editar Venda" : "Registar Nova Venda"}
-            </h3>
-          </div>
-          {/* Form Body */}
-          <div className="p-5 md:p-6">
+            </div>
+            {/* Form Body */}
+            <div className="p-4 md:p-6 overflow-y-auto flex-1">
           <form onSubmit={handleSubmit} className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
@@ -1241,6 +1253,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
               </button>
             </div>
           </form>
+            </div>
           </div>
         </div>
       )}
@@ -1579,16 +1592,18 @@ export default function VendasView({ vendas, clientes, produtos, objetivo, total
 
       {/* Devolucao Form Modal */}
       {showDevolucaoForm && selectedVendaForDevolucao && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-card rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <DevolucaoForm
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-2 md:p-4">
+          <div className="bg-card rounded-xl shadow-xl max-w-2xl w-full max-h-[95vh] overflow-hidden flex flex-col">
+            <div className="overflow-y-auto flex-1 p-4 md:p-6">
+              <DevolucaoForm
               vendaId={selectedVendaForDevolucao.id}
               clienteNome={selectedVendaForDevolucao.cliente.nome}
               itensVenda={prepareItensParaDevolucao(selectedVendaForDevolucao)}
               produtos={produtos}
               onSuccess={handleDevolucaoSuccess}
               onCancel={closeDevolucaoForm}
-            />
+              />
+            </div>
           </div>
         </div>
       )}
