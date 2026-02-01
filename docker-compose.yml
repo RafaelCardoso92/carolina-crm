@@ -34,6 +34,9 @@ services:
       AUTH_URL: "https://carolina.rafaelcardoso.co.uk"
       GOOGLE_MAPS_API_KEY: AIzaSyC74qsElBk6kl0ssmdSsjEcjcb2KzV7ktU
       GEMINI_API_KEY: AIzaSyCtDqjnzpnT11Yu0HBZkVJ0wWhCrDq5Qrs
+      UPLOADS_DIR: /uploads
+    volumes:
+      - ./uploads:/uploads
     ports:
       - "3001:3000"
     depends_on:
