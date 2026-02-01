@@ -11,8 +11,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Exclude PWA files, static files, auth routes, and public auth pages from middleware
+  // Exclude PWA files, static files, auth routes, reconciliacao API, and public auth pages from middleware
   matcher: [
-    "/((?!_next/static|_next/image|manifest\\.json|sw\\.js|icon-.*|icons/.*|favicon\\.ico|api/pwa/.*|api/auth/.*|login|esqueci-password|repor-password).*)"
+    "/((?!_next/static|_next/image|manifest\\.json|sw\\.js|icon-.*|icons/.*|favicon\\.ico|api/pwa/.*|api/auth/.*|api/reconciliacao.*|login|esqueci-password|repor-password).*)"
   ],
 }
