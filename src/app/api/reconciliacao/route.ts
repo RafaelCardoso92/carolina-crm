@@ -44,12 +44,20 @@ function parseMapaPdfText(text: string): ParsedMapaPdf {
     vendedor = vendedorMatch[1].trim()
   }
 
-  // Parse total line "TOTAL VENDEDORES: 12 599,95 -2 591,76 10 008,19"
-  const totalMatch = text.match(/TOTAL\s+VENDEDORES[:\s]+([\d\s,.]+)\s+([-\d\s,.]+)\s+([\d\s,.]+)/i)
-  if (totalMatch) {
-    totalBruto = parsePortugueseNumber(totalMatch[1])
-    totalDescontos = Math.abs(parsePortugueseNumber(totalMatch[2]))
-    totalLiquido = parsePortugueseNumber(totalMatch[3])
+  // Parse total line - look for TOTAL VENDEDORES followed by 3 numbers
+  // Format: "TOTAL VENDEDORES:                                                  11 097,17    -1 629,21            9 467,96"
+  const totalLineMatch = text.match(/TOTAL\s+VENDEDORES[:\s]+(.+)$/im)
+  if (totalLineMatch) {
+    const numbersStr = totalLineMatch[1]
+    // Extract all numbers (including negative) from the line
+    // Numbers are formatted like: 11 097,17 or -1 629,21 (space as thousands separator)
+    const numberPattern = /-?[\d]+(?:\s[\d]{3})*,\d{2}/g
+    const numbers = numbersStr.match(numberPattern)
+    if (numbers && numbers.length >= 3) {
+      totalBruto = parsePortugueseNumber(numbers[0])
+      totalDescontos = Math.abs(parsePortugueseNumber(numbers[1]))
+      totalLiquido = parsePortugueseNumber(numbers[2])
+    }
   }
 
   // Parse client lines
@@ -87,12 +95,17 @@ function parseMapaPdfText(text: string): ParsedMapaPdf {
     }
 
     // Check for value lines (BB Babor, AV Andrea Valomo, etc.)
-    // Pattern: brand code + name + 3 numbers
-    const valueMatch = line.match(/^[A-Z]{2}\s+\S+.*?([\d\s,.]+)\s+([-\d\s,.]+)\s+([\d\s,.]+)$/)
-    if (valueMatch && currentClient) {
-      currentClient.bruto += parsePortugueseNumber(valueMatch[1])
-      currentClient.desconto += Math.abs(parsePortugueseNumber(valueMatch[2]))
-      currentClient.liquido += parsePortugueseNumber(valueMatch[3])
+    // Pattern: brand code (2 letters) + name + 3 numbers at end
+    // Numbers format: 1 117,71 (space as thousands sep, comma as decimal)
+    if (currentClient && /^[A-Z]{2}\s+\S+/.test(line)) {
+      // Extract all numbers from the line
+      const numberPattern = /-?[\d]+(?:\s[\d]{3})*,\d{2}/g
+      const numbers = line.match(numberPattern)
+      if (numbers && numbers.length >= 3) {
+        currentClient.bruto += parsePortugueseNumber(numbers[0])
+        currentClient.desconto += Math.abs(parsePortugueseNumber(numbers[1]))
+        currentClient.liquido += parsePortugueseNumber(numbers[2])
+      }
     }
   }
 
@@ -121,7 +134,7 @@ function parseMapaPdfText(text: string): ParsedMapaPdf {
 // Parse Portuguese number format (1 234,56 -> 1234.56)
 function parsePortugueseNumber(str: string): number {
   if (!str) return 0
-  // Remove spaces, replace comma with dot
+  // Remove spaces (thousands separator), replace comma with dot (decimal)
   const cleaned = str.replace(/\s/g, "").replace(",", ".")
   const num = parseFloat(cleaned)
   return isNaN(num) ? 0 : num
