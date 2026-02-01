@@ -361,9 +361,9 @@ export default function VendasView({ vendas, clientes, produtos, objetivosVarios
       itens,
       mes,
       ano,
-      // Cobranca data - include objetivo vario value in cobranca
-      criarCobranca: criarCobranca && !editingId, // Only for new vendas
-      cobranca: criarCobranca && !editingId ? {
+      // Cobranca data - for new vendas or editing vendas without cobranca
+      criarCobranca: criarCobranca && (!editingId || !vendas.find(v => v.id === editingId)?.cobranca),
+      cobranca: criarCobranca && (!editingId || !vendas.find(v => v.id === editingId)?.cobranca) ? {
         numeroParcelas: parseInt(cobrancaParcelas) || 1,
         dataEmissao: cobrancaDataEmissao || null,
         incluirObjetivoVario: selectedObjetivoVarioId && objetivoVarioValor ? true : false
@@ -1409,20 +1409,63 @@ export default function VendasView({ vendas, clientes, produtos, objetivosVarios
                     </div>
                   ) : editingId ? (
                     /* Show option to create cobranca when editing and no cobranca exists */
-                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
-                      <div className="flex items-start gap-3">
-                        <svg className="w-5 h-5 text-amber-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        <div>
-                          <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                            Esta venda nao tem cobranca associada
-                          </p>
-                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                            Para criar uma cobranca, va a pagina de Cobrancas
-                          </p>
+                    <div className="space-y-4">
+                      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+                        <div className="flex items-start gap-3">
+                          <svg className="w-5 h-5 text-amber-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                              Esta venda nao tem cobranca associada
+                            </p>
+                          </div>
                         </div>
                       </div>
+
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={criarCobranca}
+                          onChange={(e) => setCriarCobranca(e.target.checked)}
+                          className="w-5 h-5 text-primary rounded border-border focus:ring-primary"
+                        />
+                        <span className="text-sm font-medium text-foreground">Criar cobranca agora</span>
+                      </label>
+
+                      {criarCobranca && (
+                        <div className="grid grid-cols-2 gap-4 p-4 bg-secondary/50 rounded-xl">
+                          <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">Parcelas</label>
+                            <select
+                              value={cobrancaParcelas}
+                              onChange={(e) => setCobrancaParcelas(e.target.value)}
+                              className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
+                            >
+                              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => (
+                                <option key={n} value={n}>{n}x</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">Data Emissao</label>
+                            <input
+                              type="date"
+                              value={cobrancaDataEmissao}
+                              onChange={(e) => setCobrancaDataEmissao(e.target.value)}
+                              className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
+                            />
+                          </div>
+                          {/* Show objetivo vario value will be included */}
+                          {selectedObjetivoVarioId && objetivoVarioValor && parseFloat(objetivoVarioValor) > 0 && (
+                            <div className="col-span-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
+                              <p className="text-sm text-purple-700 dark:text-purple-300">
+                                <span className="font-medium">Nota:</span> O valor do objetivo vario ({formatCurrency(parseFloat(objetivoVarioValor))} EUR) sera incluido na cobranca
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     /* New sale - option to create cobranca */

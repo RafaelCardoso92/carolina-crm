@@ -154,6 +154,11 @@ export async function PUT(
       return NextResponse.json({ error: "Ja existe outra venda para este cliente neste mes" }, { status: 400 })
     }
 
+    // Check if venda already has a cobranca
+    const existingCobranca = await prisma.cobranca.findUnique({
+      where: { vendaId: id }
+    })
+
     // Update venda with items in a transaction
     // Support both old format (campanhaIds: string[]) and new format (campanhas: {id, quantidade}[])
     const campanhas: { id: string; quantidade: number }[] = data.campanhas ||
@@ -206,6 +211,53 @@ export async function PUT(
             quantidade: c.quantidade
           }))
         })
+      }
+
+      // Create cobrança if requested and doesn't exist
+      if (data.criarCobranca && data.cobranca && !existingCobranca) {
+        const numeroParcelas = data.cobranca.numeroParcelas || 1
+        const dataEmissao = data.cobranca.dataEmissao
+          ? new Date(data.cobranca.dataEmissao)
+          : new Date()
+
+        // Cobranca value includes objetivo vario value (which is NOT part of sale total)
+        const objetivoVarioValor = data.objetivoVarioValor ? parseFloat(data.objetivoVarioValor) : 0
+        const cobrancaValor = total + objetivoVarioValor
+
+        // Create the cobrança
+        const cobranca = await tx.cobranca.create({
+          data: {
+            clienteId: data.clienteId,
+            vendaId: id,
+            valor: cobrancaValor,
+            valorSemIva: cobrancaValor,
+            dataEmissao,
+            dataInicioVencimento: dataEmissao,
+            numeroParcelas,
+            pago: false
+          }
+        })
+
+        // Create parcelas if more than 1
+        if (numeroParcelas > 1) {
+          const valorParcela = cobrancaValor / numeroParcelas
+          const parcelas = []
+
+          for (let i = 0; i < numeroParcelas; i++) {
+            const dataVencimento = new Date(dataEmissao)
+            dataVencimento.setMonth(dataVencimento.getMonth() + i)
+
+            parcelas.push({
+              cobrancaId: cobranca.id,
+              numero: i + 1,
+              valor: valorParcela,
+              dataVencimento,
+              pago: false
+            })
+          }
+
+          await tx.parcela.createMany({ data: parcelas })
+        }
       }
 
       // Return venda with items, client, objetivoVario, campanhas, and cobranca
