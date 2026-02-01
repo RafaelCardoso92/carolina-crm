@@ -14,9 +14,9 @@ interface Props {
 }
 
 const segmentoColors = {
-  A: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-green-300",
-  B: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 border-blue-300",
-  C: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 border-gray-300"
+  A: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30",
+  B: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30",
+  C: "bg-secondary text-muted-foreground border-border"
 }
 
 const segmentoLabels = {

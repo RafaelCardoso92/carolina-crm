@@ -38,9 +38,12 @@ export default function QuotationForm({ prospectoId, clienteId, onSuccess }: Pro
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    fetch("/api/produtos")
+    fetch("/api/produtos?limit=1000")
       .then(r => r.json())
-      .then(data => setProdutos(data.filter((p: Produto & { ativo: boolean }) => p.ativo)))
+      .then(data => {
+        const list = Array.isArray(data) ? data : (data?.data || [])
+        setProdutos(list.filter((p: Produto & { ativo: boolean }) => p.ativo))
+      })
       .catch(console.error)
   }, [])
 

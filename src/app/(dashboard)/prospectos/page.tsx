@@ -12,22 +12,22 @@ export default function ProspectosPage() {
       <div className="mb-4 md:mb-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-foreground flex items-center gap-2">
-              <svg className="w-5 h-5 md:w-6 md:h-6 lg:w-8 lg:h-8 text-purple-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <h1 className="text-xl md:text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Prospectos</h1>
+            <p className="text-muted-foreground mt-1 text-xs md:text-sm flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
-              <span className="truncate">Prospectos</span>
-            </h1>
-            <p className="text-muted-foreground mt-0.5 text-xs md:text-sm">Gerir potenciais clientes</p>
+              Gerir potenciais clientes
+            </p>
           </div>
 
           {/* View Toggle - Always show text */}
-          <div className="flex items-center bg-secondary rounded-lg p-0.5 flex-shrink-0">
+          <div className="flex items-center bg-gradient-to-br from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 rounded-xl p-1 flex-shrink-0 border border-border/50">
             <button
               onClick={() => setView("list")}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md font-medium transition text-xs md:text-sm ${
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-semibold transition text-xs md:text-sm ${
                 view === "list"
-                  ? "bg-card text-foreground shadow-sm"
+                  ? "bg-card text-foreground shadow-md"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -38,9 +38,9 @@ export default function ProspectosPage() {
             </button>
             <button
               onClick={() => setView("map")}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md font-medium transition text-xs md:text-sm ${
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-semibold transition text-xs md:text-sm ${
                 view === "map"
-                  ? "bg-card text-foreground shadow-sm"
+                  ? "bg-card text-foreground shadow-md"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >

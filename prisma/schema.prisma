@@ -1,22 +1,70 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL")
+}
+
+enum UserRole {
+  MASTERADMIN
+  ADMIN
+  SELLER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String?
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   String     @id @default(cuid())
+  name                 String?
+  email                String     @unique
+  password             String
+  role                 UserRole   @default(SELLER)
+  status               UserStatus @default(PENDING)
+  lastLoginAt          DateTime?
+  resetPasswordToken   String?    @unique
+  resetPasswordExpires DateTime?
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+
+  // Owned data relationships
+  clientes       Cliente[]
+  prospectos     Prospecto[]
+  tarefas        Tarefa[]
+  comunicacoes   Comunicacao[]
+  amostras       Amostra[]
+  orcamentos     Orcamento[]
+  rotasSalvas    RotaSalva[]
+  campanhas      Campanha[]
+  moodEntries    MoodEntry[]
+  objetivosVarios ObjetivoVario[]
+
+  @@index([role])
+  @@index([status])
+}
+
+model ImpersonationLog {
+  id                 String    @id @default(cuid())
+  impersonatorId     String
+  impersonatedUserId String
+  impersonatedEmail  String
+  startedAt          DateTime  @default(now())
+  endedAt            DateTime?
+
+  @@index([impersonatorId])
+  @@index([startedAt])
 }
 
 model Cliente {
   id                 String              @id @default(cuid())
+  userId             String?
   nome               String
   codigo             String?             @unique
   telefone           String?
@@ -31,6 +79,7 @@ model Cliente {
   codigoPostal       String?
   latitude           Float?
   longitude          Float?
+  user               User?               @relation(fields: [userId], references: [id])
   amostras           Amostra[]
   insights           ClienteInsight[]
   segmento           ClienteSegmento?
@@ -41,28 +90,39 @@ model Cliente {
   tarefas            Tarefa[]
   vendas             Venda[]
   acordoParceria     AcordoParceria?
+
+  @@index([userId])
+  @@index([ativo])
+  @@index([ativo, ultimoContacto])
+  @@index([nome])
 }
 
 model Venda {
-  id                 String              @id @default(cuid())
-  clienteId          String
-  valor1             Decimal?            @db.Decimal(10, 2)
-  valor2             Decimal?            @db.Decimal(10, 2)
-  total              Decimal             @db.Decimal(10, 2)
-  mes                Int
-  ano                Int
-  notas              String?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  campanhas          CampanhaVenda[]
-  cobranca           Cobranca?
-  devolucoes         Devolucao[]
-  itensReconciliacao ItemReconciliacao[]
-  itens              ItemVenda[]
-  cliente            Cliente             @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  id                      String              @id @default(cuid())
+  clienteId               String
+  valor1                  Decimal?            @db.Decimal(10, 2)
+  valor2                  Decimal?            @db.Decimal(10, 2)
+  total                   Decimal             @db.Decimal(10, 2)
+  mes                     Int
+  ano                     Int
+  notas                   String?
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+  objetivoVarioId         String?
+  objetivoVarioQuantidade Int?
+  campanhas               CampanhaVenda[]
+  cobranca                Cobranca?
+  devolucoes              Devolucao[]
+  itensReconciliacao      ItemReconciliacao[]
+  itens                   ItemVenda[]
+  cliente                 Cliente             @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  objetivoVario           ObjetivoVario?      @relation(fields: [objetivoVarioId], references: [id])
 
   @@index([clienteId])
   @@index([mes, ano])
+  @@index([objetivoVarioId])
+  @@index([clienteId, mes, ano])
+  @@index([ano])
 }
 
 model Cobranca {
@@ -87,6 +147,8 @@ model Cobranca {
 
   @@index([clienteId])
   @@index([pago])
+  @@index([clienteId, pago])
+  @@index([pago, createdAt])
 }
 
 model Parcela {
@@ -106,6 +168,7 @@ model Parcela {
   @@index([cobrancaId])
   @@index([dataVencimento])
   @@index([pago])
+  @@index([pago, dataVencimento])
 }
 
 model ObjetivoMensal {
@@ -175,21 +238,22 @@ model PremioAnual {
 }
 
 model Produto {
-  id              String            @id @default(cuid())
-  nome            String
-  codigo          String?           @unique
-  categoria       String?
-  descricao       String?
-  ativo           Boolean           @default(true)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  preco           Decimal?          @db.Decimal(10, 2)
-  tipo            String?
-  amostras        Amostra[]
-  produtos CampanhaProduto[]
-  substituicoes   ItemDevolucao[]   @relation("Substituicao")
-  itensOrcamento  ItemOrcamento[]
-  itensVenda      ItemVenda[]
+  id               String                 @id @default(cuid())
+  nome             String
+  codigo           String?                @unique
+  categoria        String?
+  descricao        String?
+  ativo            Boolean                @default(true)
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  preco            Decimal?               @db.Decimal(10, 2)
+  tipo             String?
+  amostras         Amostra[]
+  produtos         CampanhaProduto[]
+  substituicoes    ItemDevolucao[]        @relation("Substituicao")
+  itensOrcamento   ItemOrcamento[]
+  itensVenda       ItemVenda[]
+  objetivosVarios  ObjetivoVarioProduto[]
 }
 
 model ItemVenda {
@@ -210,6 +274,7 @@ model ItemVenda {
 
 model Prospecto {
   id                 String            @id @default(cuid())
+  userId             String?
   nomeEmpresa        String
   tipoNegocio        String?
   website            String?
@@ -233,14 +298,18 @@ model Prospecto {
   ativo              Boolean           @default(true)
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
+  user               User?             @relation(fields: [userId], references: [id])
   amostras           Amostra[]
   comunicacoes       Comunicacao[]
   orcamentos         Orcamento[]
   tactics            ProspectoTactic[]
   tarefas            Tarefa[]
 
+  @@index([userId])
   @@index([estado])
   @@index([cidade])
+  @@index([ativo, estado])
+  @@index([ativo, dataUltimoContacto])
 }
 
 model Devolucao {
@@ -375,6 +444,7 @@ model ProspectoTactic {
 
 model Tarefa {
   id             String           @id @default(cuid())
+  userId         String?
   titulo         String
   descricao      String?
   tipo           String?
@@ -387,9 +457,11 @@ model Tarefa {
   prospectoId    String?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
+  user           User?            @relation(fields: [userId], references: [id])
   cliente        Cliente?         @relation(fields: [clienteId], references: [id])
   prospecto      Prospecto?       @relation(fields: [prospectoId], references: [id])
 
+  @@index([userId])
   @@index([clienteId])
   @@index([prospectoId])
   @@index([estado])
@@ -399,6 +471,7 @@ model Tarefa {
 
 model Comunicacao {
   id           String          @id @default(cuid())
+  userId       String?
   clienteId    String?
   prospectoId  String?
   tipo         TipoComunicacao
@@ -408,12 +481,16 @@ model Comunicacao {
   duracao      Int?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
+  user         User?           @relation(fields: [userId], references: [id])
   cliente      Cliente?        @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   prospecto    Prospecto?      @relation(fields: [prospectoId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@index([clienteId])
   @@index([prospectoId])
   @@index([dataContacto])
+  @@index([clienteId, dataContacto])
+  @@index([prospectoId, dataContacto])
 }
 
 model ClienteSegmento {
@@ -432,6 +509,7 @@ model ClienteSegmento {
 
 model Amostra {
   id            String      @id @default(cuid())
+  userId        String?
   clienteId     String?
   prospectoId   String?
   produtoId     String?
@@ -443,10 +521,12 @@ model Amostra {
   notas         String?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+  user          User?       @relation(fields: [userId], references: [id])
   cliente       Cliente?    @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   produto       Produto?    @relation(fields: [produtoId], references: [id])
   prospecto     Prospecto?  @relation(fields: [prospectoId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@index([clienteId])
   @@index([prospectoId])
   @@index([produtoId])
@@ -454,6 +534,7 @@ model Amostra {
 
 model Orcamento {
   id           String          @id @default(cuid())
+  userId       String?
   numero       String          @unique
   prospectoId  String?
   clienteId    String?
@@ -471,10 +552,12 @@ model Orcamento {
   notas        String?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
+  user         User?           @relation(fields: [userId], references: [id])
   itens        ItemOrcamento[]
   cliente      Cliente?        @relation(fields: [clienteId], references: [id])
   prospecto    Prospecto?      @relation(fields: [prospectoId], references: [id])
 
+  @@index([userId])
   @@index([prospectoId])
   @@index([clienteId])
   @@index([estado])
@@ -546,6 +629,7 @@ model PrevisaoVendas {
 
 model Campanha {
   id              String            @id @default(cuid())
+  userId          String?
   titulo          String
   descricao       String?
   mes             Int
@@ -553,9 +637,11 @@ model Campanha {
   ativo           Boolean           @default(true)
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
-  produtos CampanhaProduto[]
+  user            User?             @relation(fields: [userId], references: [id])
+  produtos        CampanhaProduto[]
   vendas          CampanhaVenda[]
 
+  @@index([userId])
   @@index([ativo])
   @@index([mes, ano])
 }
@@ -589,17 +675,56 @@ model CampanhaVenda {
   @@index([vendaId])
 }
 
+model ObjetivoVario {
+  id          String                 @id @default(cuid())
+  userId      String?
+  titulo      String
+  descricao   String?
+  mes         Int
+  ano         Int
+  ativo       Boolean                @default(true)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  user        User?                  @relation(fields: [userId], references: [id])
+  produtos    ObjetivoVarioProduto[]
+  vendas      Venda[]
+
+  @@index([userId])
+  @@index([ativo])
+  @@index([mes, ano])
+}
+
+model ObjetivoVarioProduto {
+  id              String        @id @default(cuid())
+  objetivoVarioId String
+  produtoId       String?
+  nome            String
+  precoSemIva     Decimal       @db.Decimal(10, 2)
+  quantidade      Int           @default(1)
+  createdAt       DateTime      @default(now())
+  objetivoVario   ObjetivoVario @relation(fields: [objetivoVarioId], references: [id], onDelete: Cascade)
+  produto         Produto?      @relation(fields: [produtoId], references: [id])
+
+  @@index([objetivoVarioId])
+  @@index([produtoId])
+}
+
 model MoodEntry {
   id        String   @id @default(cuid())
-  date      String   @unique
+  userId    String?
+  date      String
   rating    Int
   createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
 
+  @@unique([userId, date])
+  @@index([userId])
   @@index([date])
 }
 
 model RotaSalva {
   id                  String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  userId              String?
   nome                String?
   data                DateTime  @db.Timestamp(6)
   origemLatitude      Float
@@ -621,7 +746,9 @@ model RotaSalva {
   custoTotal          Decimal?  @db.Decimal(10, 2)
   custoReal           Decimal?  @db.Decimal(10, 2)
   notasCustos         String?
+  user                User?     @relation(fields: [userId], references: [id])
 
+  @@index([userId])
   @@index([concluida])
   @@index([data])
 }

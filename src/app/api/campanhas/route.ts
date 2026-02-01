@@ -1,14 +1,18 @@
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
+import { requirePermission, userScopedWhere, getEffectiveUserId } from "@/lib/api-auth"
+import { PERMISSIONS } from "@/lib/permissions"
 
 export async function GET(request: Request) {
   try {
+    const session = await requirePermission(PERMISSIONS.CAMPANHAS_READ)
+
     const { searchParams } = new URL(request.url)
     const mes = searchParams.get("mes") ? parseInt(searchParams.get("mes")!) : undefined
     const ano = searchParams.get("ano") ? parseInt(searchParams.get("ano")!) : undefined
     const ativo = searchParams.get("ativo")
 
-    const where: Record<string, unknown> = {}
+    const where: Record<string, unknown> = { ...userScopedWhere(session) }
     if (mes) where.mes = mes
     if (ano) where.ano = ano
     if (ativo !== null && ativo !== undefined) where.ativo = ativo === "true"
@@ -39,6 +43,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(campanhasComTotais)
   } catch (error) {
+    if (error instanceof Response) return error
     console.error("Error fetching campanhas:", error)
     return NextResponse.json({ error: "Erro ao buscar campanhas" }, { status: 500 })
   }
@@ -53,6 +58,9 @@ type ProdutoInput = {
 
 export async function POST(request: Request) {
   try {
+    const session = await requirePermission(PERMISSIONS.CAMPANHAS_WRITE)
+    const userId = getEffectiveUserId(session)
+
     const data = await request.json()
 
     if (!data.titulo || !data.mes || !data.ano) {
@@ -63,6 +71,7 @@ export async function POST(request: Request) {
 
     const campanha = await prisma.campanha.create({
       data: {
+        userId,
         titulo: data.titulo,
         descricao: data.descricao || null,
         mes: parseInt(data.mes),
@@ -86,6 +95,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(campanha, { status: 201 })
   } catch (error) {
+    if (error instanceof Response) return error
     console.error("Error creating campanha:", error)
     return NextResponse.json({ error: "Erro ao criar campanha" }, { status: 500 })
   }

@@ -134,12 +134,12 @@ export default function ProspectoAITactics({ prospectoId }: Props) {
 
   const providerLabel = (p: string) => p === "openai" ? "GPT-5.1" : "Gemini"
   const providerColor = (p: string) => p === "openai" ? "text-green-600" : "text-blue-600"
-  const providerBg = (p: string) => p === "openai" ? "bg-green-100 dark:bg-green-900/30" : "bg-blue-100 dark:bg-blue-900/30"
+  const providerBg = (p: string) => p === "openai" ? "bg-green-500/10" : "bg-blue-500/10"
 
   const probabilidadeColors: Record<string, string> = {
-    "Alta": "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
-    "Media": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300",
-    "Baixa": "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
+    "Alta": "bg-green-500/10 text-green-600 dark:text-green-400",
+    "Media": "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+    "Baixa": "bg-red-500/10 text-red-600 dark:text-red-400",
   }
 
   if (loadingSaved) {
@@ -205,7 +205,7 @@ export default function ProspectoAITactics({ prospectoId }: Props) {
               disabled={!availableProviders.gemini || switchingProvider}
               className={`px-3 py-1 text-xs font-medium transition ${
                 currentProvider === "gemini"
-                  ? "bg-blue-600 text-white"
+                  ? "bg-primary text-white"
                   : "bg-secondary text-muted-foreground hover:bg-secondary/80"
               } ${!availableProviders.gemini ? "opacity-50 cursor-not-allowed" : ""}`}
             >

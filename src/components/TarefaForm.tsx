@@ -38,7 +38,7 @@ const TIPOS_TAREFA = [
   "Telefonema",
   "Visita",
   "Email",
-  "Reunião",
+  "Reuniao",
   "Proposta",
   "Follow-up",
   "Outro"
@@ -73,10 +73,11 @@ export default function TarefaForm({ tarefa, onSuccess, onCancel }: Props) {
 
   async function fetchClientes() {
     try {
-      const res = await fetch("/api/clientes?ativo=true")
+      const res = await fetch("/api/clientes?ativo=true&limit=1000")
       if (res.ok) {
         const data = await res.json()
-        setClientes(data)
+        const list = Array.isArray(data) ? data : (data?.data || [])
+        setClientes(list)
       }
     } catch (error) {
       console.error("Error fetching clientes:", error)
@@ -85,10 +86,11 @@ export default function TarefaForm({ tarefa, onSuccess, onCancel }: Props) {
 
   async function fetchProspectos() {
     try {
-      const res = await fetch("/api/prospectos?ativo=true")
+      const res = await fetch("/api/prospectos?ativo=true&limit=1000")
       if (res.ok) {
         const data = await res.json()
-        setProspectos(data)
+        const list = Array.isArray(data) ? data : (data?.data || [])
+        setProspectos(list)
       }
     } catch (error) {
       console.error("Error fetching prospectos:", error)

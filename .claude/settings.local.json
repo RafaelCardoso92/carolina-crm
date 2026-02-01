@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker-compose up:*)",
+      "Bash(docker compose:*)",
+      "Bash(docker exec:*)",
+      "Bash(npx prisma db push:*)",
+      "Bash(tree:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(npm run build:*)",
+      "Bash(npm install:*)",
+      "Bash(docker ps:*)",
+      "Bash(wc:*)",
+      "Bash(pm2 restart:*)",
+      "Bash(lsof:*)",
+      "Bash(pm2 list:*)",
+      "Bash(netstat:*)",
+      "Bash(npx next dev:*)",
+      "Bash(fuser:*)",
+      "Bash(ps:*)",
+      "Bash(kill:*)",
+      "Bash(curl:*)",
+      "Bash(pkill:*)",
+      "Bash(git -C /home/ubuntu/carolina-crm status)",
+      "Bash(ls:*)",
+      "Bash(systemctl status:*)",
+      "Bash(docker-compose:*)",
+      "Bash(docker build:*)",
+      "Bash(docker restart:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker inspect:*)",
+      "Bash(docker stop:*)",
+      "Bash(docker rm:*)",
+      "Bash(docker run:*)",
+      "Bash(docker network:*)",
+      "Bash(git -C /home/ubuntu/carolina-crm.backup remote -v)",
+      "Bash(git add:*)"
+    ]
+  }
+}

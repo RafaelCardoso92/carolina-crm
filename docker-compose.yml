@@ -44,6 +44,14 @@ services:
       - proxy
     labels:
       - "traefik.enable=true"
+      - "traefik.http.routers.carolina-http.entrypoints=http"
+      - "traefik.http.routers.carolina-http.rule=Host(`carolina.rafaelcardoso.co.uk`)"
+      - "traefik.http.routers.carolina-http.middlewares=https-redirectscheme@file"
+      - "traefik.http.routers.carolina.entrypoints=https"
+      - "traefik.http.routers.carolina.rule=Host(`carolina.rafaelcardoso.co.uk`)"
+      - "traefik.http.routers.carolina.tls=true"
+      - "traefik.http.routers.carolina.tls.certresolver=cloudflare"
+      - "traefik.http.routers.carolina.middlewares=default-security-headers@file"
       - "traefik.http.services.carolina.loadbalancer.server.port=3000"
 
 networks:

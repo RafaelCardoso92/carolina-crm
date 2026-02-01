@@ -17,8 +17,11 @@ function calculateHealthScore(data: {
 
   // Payment score (0-100)
   if (data.totalVendas > 0) {
-    const totalPagamentos = data.totalPago + data.totalPendente; const taxaPagamento = totalPagamentos > 0 ? (data.totalPago / totalPagamentos * 100) : 100
-    scorePagamento = Math.round(taxaPagamento)
+    const totalPayments = data.totalPago + data.totalPendente
+    if (totalPayments > 0) {
+      const taxaPagamento = (data.totalPago / totalPayments) * 100
+      scorePagamento = Math.round(taxaPagamento)
+    }
     // Penalize for overdue payments
     if (data.parcelasAtrasadas > 0) {
       scorePagamento = Math.max(0, scorePagamento - (data.parcelasAtrasadas * 10))
@@ -47,6 +50,11 @@ function calculateHealthScore(data: {
   // Bonus for high value
   if (data.totalVendas > 5000) scoreCompras = Math.min(100, scoreCompras + 10)
   if (data.totalVendas > 10000) scoreCompras = Math.min(100, scoreCompras + 10)
+
+  // Ensure all scores are valid numbers
+  scorePagamento = isNaN(scorePagamento) ? 100 : Math.max(0, Math.min(100, scorePagamento))
+  scoreEngajamento = isNaN(scoreEngajamento) ? 50 : Math.max(0, Math.min(100, scoreEngajamento))
+  scoreCompras = isNaN(scoreCompras) ? 50 : Math.max(0, Math.min(100, scoreCompras))
 
   // Overall score (weighted average)
   const scoreGeral = Math.round(

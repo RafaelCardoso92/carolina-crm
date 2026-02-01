@@ -32,9 +32,9 @@ export default function DevolucaoList({ devolucoes, vendaTotal, onStatusChange, 
   const totalLiquido = vendaTotal - totalDevolvido + totalSubstituido
 
   const estadoColors = {
-    PENDENTE: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-    PROCESSADA: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-    CANCELADA: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+    PENDENTE: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+    PROCESSADA: "bg-green-500/10 text-green-600 dark:text-green-400",
+    CANCELADA: "bg-red-500/10 text-red-600 dark:text-red-400"
   }
 
   const estadoLabels = {

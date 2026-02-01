@@ -1,16 +1,10 @@
 import { PrismaClient } from "@prisma/client"
-import { PrismaPg } from "@prisma/adapter-pg"
-import { Pool } from "pg"
 import bcrypt from "bcryptjs"
 import fs from "fs"
 import path from "path"
 import "dotenv/config"
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
-})
-const adapter = new PrismaPg(pool)
-const prisma = new PrismaClient({ adapter })
+const prisma = new PrismaClient()
 
 async function main() {
   console.log("Starting seed...")
@@ -20,7 +14,7 @@ async function main() {
 
   const user = await prisma.user.upsert({
     where: { email: "carolina" },
-    update: { password: hashedPassword },
+    update: {},
     create: {
       email: "carolina",
       name: "Carolina",

@@ -124,8 +124,8 @@ export const TIPO_DISCREPANCIA_LABELS: Record<TipoDiscrepancia, string> = {
 }
 
 export const ESTADO_RECONCILIACAO_COLORS: Record<EstadoReconciliacao, string> = {
-  PENDENTE: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-  EM_REVISAO: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-  APROVADA: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-  COM_PROBLEMAS: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+  PENDENTE: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+  EM_REVISAO: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  APROVADA: "bg-green-500/10 text-green-600 dark:text-green-400",
+  COM_PROBLEMAS: "bg-red-500/10 text-red-600 dark:text-red-400"
 }

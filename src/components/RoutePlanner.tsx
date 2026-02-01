@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { GoogleMap, useJsApiLoader, Marker, DirectionsRenderer } from "@react-google-maps/api"
+import { GOOGLE_MAPS_CONFIG } from "@/lib/google-maps"
 
 interface Location {
   id: string
@@ -30,10 +31,7 @@ export default function RoutePlanner({ locations }: Props) {
   const [totalDistance, setTotalDistance] = useState<string>("")
   const [totalDuration, setTotalDuration] = useState<string>("")
 
-  const { isLoaded } = useJsApiLoader({
-    id: "google-map-script",
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""
-  })
+  const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_CONFIG)
 
   const validLocations = locations.filter(l => l.latitude && l.longitude)
 
@@ -147,7 +145,7 @@ export default function RoutePlanner({ locations }: Props) {
         {optimizedRoute.length > 0 && (
           <button
             onClick={openInGoogleMaps}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition flex items-center gap-2"
+            className="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-hover transition flex items-center gap-2"
           >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 0C7.31 0 3.07 3.35 2 8c-.12.57-.2 1.14-.2 1.74 0 1.21.29 2.35.79 3.37l9.39 10.89 9.39-10.89c.5-1.02.79-2.16.79-3.37 0-.6-.08-1.17-.2-1.74C20.93 3.35 16.69 0 12 0zm0 12c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>

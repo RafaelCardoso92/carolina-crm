@@ -325,7 +325,7 @@ export default function ProspectoForm({ prospecto }: { prospecto?: ProspectoData
               type="button"
               onClick={handleGeocode}
               disabled={geocoding}
-              className="px-3 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-1.5 text-xs"
+              className="px-3 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-hover transition disabled:opacity-50 flex items-center justify-center gap-1.5 text-xs"
             >
               {geocoding ? (
                 <>

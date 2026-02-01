@@ -8,50 +8,104 @@ const meses = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
 ]
 
-async function getVendasData(mes: number, ano: number) {
-  const [vendas, clientes, objetivo, produtos, campanhas] = await Promise.all([
-    prisma.venda.findMany({
-      where: { mes, ano },
-      include: {
-        cliente: true,
-        itens: {
-          include: {
-            produto: true,
-            devolucoes: true
-          },
-          orderBy: { createdAt: "asc" }
-        },
-        devolucoes: {
-          include: {
-            venda: {
-              include: { cliente: true }
-            },
-            imagens: true,
-            itens: {
-              include: {
-                itemVenda: {
-                  include: { produto: true }
-                },
-                substituicao: true
-              }
-            }
-          }
-        },
-        cobranca: {
-          include: {
-            parcelas: {
-              orderBy: { numero: "asc" }
-            }
-          }
-        },
-        campanhas: {
-          include: {
-            campanha: true
-          }
+// Helper to convert Decimal to number for serialization
+function serializeDecimal(value: unknown): number | null {
+  if (value === null || value === undefined) return null
+  return Number(value)
+}
+
+// Serialize venda data for client component
+function serializeVendas(vendas: Awaited<ReturnType<typeof fetchVendas>>) {
+  return vendas.map(v => ({
+    ...v,
+    valor1: serializeDecimal(v.valor1),
+    valor2: serializeDecimal(v.valor2),
+    total: serializeDecimal(v.total),
+    itens: v.itens?.map(item => ({
+      ...item,
+      quantidade: serializeDecimal(item.quantidade),
+      precoUnit: serializeDecimal(item.precoUnit),
+      subtotal: serializeDecimal(item.subtotal),
+      devolucoes: item.devolucoes?.map(d => ({
+        ...d,
+        quantidade: serializeDecimal(d.quantidade),
+      }))
+    })),
+    devolucoes: v.devolucoes?.map(d => ({
+      ...d,
+      totalDevolvido: serializeDecimal(d.totalDevolvido),
+      totalSubstituido: serializeDecimal(d.totalSubstituido),
+      venda: d.venda ? {
+        ...d.venda,
+        valor1: serializeDecimal(d.venda.valor1),
+        valor2: serializeDecimal(d.venda.valor2),
+        total: serializeDecimal(d.venda.total),
+      } : null,
+      itens: d.itens?.map(item => ({
+        ...item,
+        quantidade: serializeDecimal(item.quantidade),
+        valorUnitario: serializeDecimal(item.valorUnitario),
+        subtotal: serializeDecimal(item.subtotal),
+        qtdSubstituicao: serializeDecimal(item.qtdSubstituicao),
+        precoSubstituicao: serializeDecimal(item.precoSubstituicao),
+        subtotalSubstituicao: serializeDecimal(item.subtotalSubstituicao),
+        itemVenda: item.itemVenda ? {
+          ...item.itemVenda,
+          quantidade: serializeDecimal(item.itemVenda.quantidade),
+          precoUnit: serializeDecimal(item.itemVenda.precoUnit),
+          subtotal: serializeDecimal(item.itemVenda.subtotal),
+        } : null,
+        substituicao: item.substituicao ? {
+          ...item.substituicao,
+          preco: serializeDecimal(item.substituicao.preco),
+        } : null,
+      }))
+    }))
+  }))
+}
+
+async function fetchVendas(mes: number, ano: number) {
+  return prisma.venda.findMany({
+    where: { mes, ano },
+    include: {
+      cliente: true,
+      objetivoVario: true,
+      campanhas: {
+        include: {
+          campanha: true
         }
       },
-      orderBy: { cliente: { nome: "asc" } }
-    }),
+      itens: {
+        include: {
+          produto: true,
+          devolucoes: true
+        },
+        orderBy: { createdAt: "asc" }
+      },
+      devolucoes: {
+        include: {
+          venda: {
+            include: { cliente: true }
+          },
+          imagens: true,
+          itens: {
+            include: {
+              itemVenda: {
+                include: { produto: true }
+              },
+              substituicao: true
+            }
+          }
+        }
+      }
+    },
+    orderBy: { cliente: { nome: "asc" } }
+  })
+}
+
+async function getVendasData(mes: number, ano: number) {
+  const [vendas, clientes, objetivo, produtos, objetivosVarios, campanhas] = await Promise.all([
+    fetchVendas(mes, ano),
     prisma.cliente.findMany({
       where: { ativo: true },
       orderBy: { nome: "asc" }
@@ -66,21 +120,33 @@ async function getVendasData(mes: number, ano: number) {
         nome: true,
         codigo: true,
         categoria: true,
-        preco: true,
-        tipo: true,
-        ativo: true
+        preco: true
       },
       orderBy: { nome: "asc" }
     }),
+    prisma.objetivoVario.findMany({
+      where: { ativo: true, mes, ano },
+      include: {
+        produtos: true
+      },
+      orderBy: { titulo: "asc" }
+    }),
     prisma.campanha.findMany({
-      where: { mes, ano, ativo: true },
+      where: { ativo: true, mes, ano },
+      select: {
+        id: true,
+        titulo: true,
+        mes: true,
+        ano: true
+      },
       orderBy: { titulo: "asc" }
     })
   ])
 
   const total = vendas.reduce((sum, v) => sum + Number(v.total), 0)
+  const serializedVendas = serializeVendas(vendas)
 
-  return { vendas, clientes, objetivo, total, produtos, campanhas }
+  return { vendas: serializedVendas, clientes, objetivo, total, produtos, objetivosVarios, campanhas }
 }
 
 export default async function VendasPage({
@@ -102,43 +168,19 @@ export default async function VendasPage({
         <p className="text-gray-500">{meses[mes]} {ano}</p>
       </div>
 
+      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <VendasView
-        vendas={data.vendas.map(v => ({
-          ...v,
-          valor1: v.valor1 ? String(v.valor1) : null,
-          valor2: v.valor2 ? String(v.valor2) : null,
-          total: String(v.total),
-          itens: v.itens?.map(i => ({
-            ...i,
-            quantidade: String(i.quantidade),
-            precoUnit: String(i.precoUnit),
-            subtotal: String(i.subtotal),
-            devolucoes: i.devolucoes?.map(d => ({
-              ...d,
-              quantidade: String(d.quantidade)
-            }))
-          })),
-          cobranca: v.cobranca ? {
-            ...v.cobranca,
-            valor: String(v.cobranca.valor),
-            valorSemIva: v.cobranca.valorSemIva ? String(v.cobranca.valorSemIva) : null,
-            comissao: v.cobranca.comissao ? String(v.cobranca.comissao) : null,
-            parcelas: v.cobranca.parcelas.map(p => ({
-              ...p,
-              valor: String(p.valor)
-            }))
-          } : null,
-          campanhas: v.campanhas?.map(cv => ({
-            id: cv.id,
-            campanhaId: cv.campanhaId,
-            quantidade: cv.quantidade,
-            campanha: cv.campanha
-          })) || []
-        }))}
+        vendas={data.vendas as any}
         clientes={data.clientes}
         produtos={data.produtos.map(p => ({
           ...p,
           preco: p.preco ? String(p.preco) : null
+        }))}
+        objetivosVarios={data.objetivosVarios.map(o => ({
+          id: o.id,
+          titulo: o.titulo,
+          mes: o.mes,
+          ano: o.ano
         }))}
         campanhas={data.campanhas}
         objetivo={data.objetivo ? Number(data.objetivo.objetivo) : null}

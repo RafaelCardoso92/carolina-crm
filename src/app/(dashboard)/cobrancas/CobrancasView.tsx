@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Swal from "sweetalert2"
@@ -71,11 +71,6 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState<"all" | "pending" | "paid" | "overdue">("pending")
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
-  
-  // Search and Sort state
-  const [searchQuery, setSearchQuery] = useState("")
-  const [sortBy, setSortBy] = useState<"nome" | "data" | "valor">("data")
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
 
   // Form state for installments
   const [tipoParcelado, setTipoParcelado] = useState(false)
@@ -83,52 +78,20 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
   const [dataInicioVencimento, setDataInicioVencimento] = useState("")
   const [valorTotal, setValorTotal] = useState("")
 
-  const filtered = useMemo(() => {
-    let result = cobrancas.filter(c => {
-      if (filter === "pending") return !c.pago
-      if (filter === "paid") return c.pago
-      if (filter === "overdue") {
-        // Has at least one overdue parcela
-        return c.parcelas.some(p => isParcelaAtrasada(p))
-      }
-      return true
-    })
-    
-    // Apply search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      result = result.filter(c => 
-        c.cliente.nome.toLowerCase().includes(query) ||
-        (c.cliente.codigo && c.cliente.codigo.toLowerCase().includes(query)) ||
-        (c.fatura && c.fatura.toLowerCase().includes(query)) ||
-        (c.notas && c.notas.toLowerCase().includes(query))
-      )
+  const filtered = cobrancas.filter(c => {
+    if (filter === "pending") return !c.pago
+    if (filter === "paid") return c.pago
+    if (filter === "overdue") {
+      // Has at least one overdue parcela
+      return c.parcelas.some(p => isParcelaAtrasada(p))
     }
-    
-    // Apply sorting
-    result.sort((a, b) => {
-      let comparison = 0
-      if (sortBy === "nome") {
-        comparison = a.cliente.nome.localeCompare(b.cliente.nome)
-      } else if (sortBy === "valor") {
-        comparison = Number(a.valor) - Number(b.valor)
-      } else if (sortBy === "data") {
-        const dateA = a.dataEmissao ? new Date(a.dataEmissao).getTime() : 0
-        const dateB = b.dataEmissao ? new Date(b.dataEmissao).getTime() : 0
-        comparison = dateA - dateB
-      }
-      return sortOrder === "asc" ? comparison : -comparison
-    })
-    
-    return result
-  }, [cobrancas, filter, searchQuery, sortBy, sortOrder])
+    return true
+  })
 
-  // Count overdue parcelas (memoized)
-  const totalAtrasadas = useMemo(() => {
-    return cobrancas.reduce((acc, c) => {
-      return acc + c.parcelas.filter(p => isParcelaAtrasada(p)).length
-    }, 0)
-  }, [cobrancas])
+  // Count overdue parcelas
+  const totalAtrasadas = cobrancas.reduce((acc, c) => {
+    return acc + c.parcelas.filter(p => isParcelaAtrasada(p)).length
+  }, 0)
 
   function toggleRowExpanded(id: string) {
     setExpandedRows(prev => {
@@ -317,7 +280,6 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
   }
 
   function startEdit(cobranca: Cobranca) {
-    setValorTotal(String(cobranca.valor))
     setEditingId(cobranca.id)
     setShowForm(true)
     // Reset installment fields for edit mode (not editable for existing)
@@ -348,10 +310,10 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
   return (
     <div>
       {/* Year Selector */}
-      <div className="bg-card rounded-xl shadow-sm p-3 mb-3">
+      <div className="bg-card rounded-2xl shadow-sm p-3 md:p-4 mb-4 md:mb-6 border border-border">
         <div className="flex flex-wrap items-center justify-center gap-2 md:gap-4">
-          <div className="flex items-center gap-2">
-            <label className="text-xs md:text-sm font-semibold text-foreground">Ano:</label>
+          <div className="flex items-center gap-2 bg-secondary px-3 py-1.5 rounded-xl border border-border">
+            <label className="text-xs md:text-sm font-semibold text-muted-foreground">Ano:</label>
             <select
               value={ano || ""}
               onChange={(e) => {
@@ -362,7 +324,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                   router.push(`/cobrancas`)
                 }
               }}
-              className="px-3 md:px-4 py-2 md:py-2.5 border-2 border-border rounded-xl text-foreground font-semibold focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-card text-sm md:text-base"
+              className="px-2 md:px-3 py-1.5 md:py-2 border-0 rounded-lg text-primary font-bold focus:ring-2 focus:ring-primary outline-none bg-card text-sm md:text-base"
             >
               <option value="">Todos</option>
               {[2023, 2024, 2025, 2026].map((y) => (
@@ -374,104 +336,49 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4 mb-3">
-        <div className="bg-card rounded-xl shadow-sm p-3 md:p-4 border-l-4 border-orange-500">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6">
+        <div className="bg-white dark:bg-card rounded-2xl shadow-sm p-4 md:p-5 border-l-4 border-orange-500 border border-border">
           <div className="flex items-center gap-2 md:gap-3 mb-2">
-            <div className="p-1.5 md:p-2 bg-orange-500/10 rounded-lg">
-              <svg className="w-5 h-5 md:w-6 md:h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="p-2 md:p-2.5 bg-orange-500/10 rounded-xl">
+              <svg className="w-5 h-5 md:w-6 md:h-6 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h3 className="text-xs md:text-sm font-bold text-foreground">Pendente</h3>
+            <h3 className="text-xs md:text-sm font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wide">Pendente</h3>
           </div>
-          <p className="text-lg md:text-2xl font-bold text-orange-600">{formatCurrency(totalPendente)} €</p>
+          <p className="text-xl md:text-3xl font-bold text-orange-600 dark:text-orange-400">{formatCurrency(totalPendente)} €</p>
           <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden md:block">Por receber {ano ? `(${ano})` : ""}</p>
         </div>
-        <div className="bg-card rounded-xl shadow-sm p-3 md:p-4 border-l-4 border-primary">
+        <div className="bg-white dark:bg-card rounded-2xl shadow-sm p-4 md:p-5 border-l-4 border-primary border border-border">
           <div className="flex items-center gap-2 md:gap-3 mb-2">
-            <div className="p-1.5 md:p-2 bg-primary/10 rounded-lg">
+            <div className="p-2 md:p-2.5 bg-primary/10 rounded-xl">
               <svg className="w-5 h-5 md:w-6 md:h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
             </div>
-            <h3 className="text-xs md:text-sm font-bold text-foreground">Comissao</h3>
+            <h3 className="text-xs md:text-sm font-bold text-muted-foreground uppercase tracking-wide">Comissão</h3>
           </div>
-          <p className="text-lg md:text-2xl font-bold text-primary">{formatCurrency(totalComissao)} €</p>
+          <p className="text-xl md:text-3xl font-bold text-primary">{formatCurrency(totalComissao)} €</p>
           <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden md:block">3.5% pendentes</p>
         </div>
         {totalAtrasadas > 0 && (
-          <div className="bg-card rounded-xl shadow-sm p-3 md:p-4 border-l-4 border-red-500 col-span-2 md:col-span-1">
+          <div className="bg-white dark:bg-card rounded-2xl shadow-sm p-4 md:p-5 border-l-4 border-red-500 border border-border col-span-2 md:col-span-1 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-2 md:gap-3 mb-2">
-              <div className="p-1.5 md:p-2 bg-red-500/10 rounded-lg">
-                <svg className="w-5 h-5 md:w-6 md:h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="p-2 md:p-2.5 bg-red-500/15 rounded-xl">
+                <svg className="w-5 h-5 md:w-6 md:h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
-              <h3 className="text-xs md:text-sm font-bold text-foreground">Em Atraso</h3>
+              <h3 className="text-xs md:text-sm font-bold text-muted-foreground uppercase tracking-wide">Em Atraso</h3>
             </div>
-            <p className="text-lg md:text-2xl font-bold text-red-600">{totalAtrasadas}</p>
+            <p className="text-xl md:text-3xl font-bold text-red-600 dark:text-red-400">{totalAtrasadas}</p>
             <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden md:block">Parcelas atrasadas</p>
           </div>
         )}
       </div>
 
-      {/* Search, Sort and Filter Controls */}
-      <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
-        <div className="flex flex-col lg:flex-row gap-4">
-          {/* Search */}
-          <div className="relative flex-1 max-w-md">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Pesquisar por cliente, fatura..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-secondary border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-            />
-          </div>
-          
-          {/* Sort Controls */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground hidden sm:inline">Ordenar:</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as "nome" | "data" | "valor")}
-              className="px-3 py-2 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="data">Data</option>
-              <option value="nome">Nome</option>
-              <option value="valor">Valor</option>
-            </select>
-            <button
-              onClick={() => setSortOrder(prev => prev === "asc" ? "desc" : "asc")}
-              className="p-2 bg-secondary border border-border rounded-lg hover:bg-secondary/80 transition"
-              title={sortOrder === "asc" ? "Crescente" : "Decrescente"}
-            >
-              {sortOrder === "asc" ? (
-                <svg className="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
-                </svg>
-              )}
-            </button>
-          </div>
-        </div>
-        
-        {/* Results count when searching */}
-        {searchQuery && (
-          <p className="text-xs text-muted-foreground mt-2">
-            {filtered.length} resultado{filtered.length !== 1 ? "s" : ""} encontrado{filtered.length !== 1 ? "s" : ""}
-          </p>
-        )}
-      </div>
-
       {/* Filter and Add Button */}
-      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2 md:gap-3 mb-3">
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 md:gap-4 mb-4 md:mb-6">
         <div className="flex gap-1.5 md:gap-2 flex-wrap">
           {[
             { value: "pending", label: "Pendentes", shortLabel: "Pend.", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
@@ -519,14 +426,14 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
 
       {/* Add/Edit Form */}
       {showForm && (
-        <div className="bg-card rounded-xl shadow-sm p-3 md:p-4 mb-3 border-2 border-primary/20">
-          <h3 className="text-lg md:text-xl font-bold text-foreground mb-3 flex items-center gap-2">
+        <div className="bg-card rounded-xl shadow-sm p-4 md:p-6 mb-4 md:mb-6 border-2 border-primary/20">
+          <h3 className="text-lg md:text-xl font-bold text-foreground mb-4 md:mb-6 flex items-center gap-2">
             <svg className="w-5 h-5 md:w-6 md:h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             {editingId ? "Editar Cobranca" : "Nova Cobranca"}
           </h3>
-          <form key={editingId || "new"} onSubmit={handleSubmit} className="space-y-2 md:space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-sm font-bold text-foreground mb-2">Cliente *</label>
@@ -562,7 +469,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                     type="number"
                     step="0.01"
                     required
-                    value={valorTotal}
+                    value={editingCobranca?.valor ? String(editingCobranca.valor) : valorTotal}
                     onChange={(e) => setValorTotal(e.target.value)}
                     className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium pr-10 bg-card"
                     placeholder="0.00"
@@ -716,8 +623,8 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
         </div>
       )}
 
-      {/* Cobrancas Table - Desktop */}
-      <div className="hidden md:block bg-card rounded-xl shadow-sm overflow-hidden">
+      {/* Cobrancas Table */}
+      <div className="bg-card rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-secondary border-b-2 border-border">
@@ -813,7 +720,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={cobranca.pago ? "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" : "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"} />
                             </svg>
-                            {cobranca.pago ? "Marcar Pendente" : "Marcar Pago"}
+                            {cobranca.pago ? "Pago" : "Pendente"}
                           </button>
                         ) : (
                           <span className={`px-4 py-2 rounded-xl text-sm font-bold inline-flex items-center gap-2 ${
@@ -841,7 +748,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                           <button
                             onClick={() => startEdit(cobranca)}
                             className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition"
-                            title="Editar" aria-label="Editar"
+                            title="Editar"
                           >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -850,7 +757,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                           <button
                             onClick={() => handleDelete(cobranca.id)}
                             className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition"
-                            title="Eliminar" aria-label="Eliminar"
+                            title="Eliminar"
                           >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -916,7 +823,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                                     : "bg-orange-100 text-orange-700 hover:bg-orange-200"
                               }`}
                             >
-                              {parcela.pago ? "Marcar Pendente" : "Marcar Pago"}
+                              {parcela.pago ? "Pago" : "Marcar Pago"}
                             </button>
                           </td>
                           <td className="px-4 py-3"></td>
@@ -930,165 +837,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
           </table>
         </div>
 
-
-      {/* Mobile Cards */}
-      <div className="md:hidden space-y-3">
-        {filtered.map((cobranca) => {
-          const hasOverdue = cobranca.parcelas.some(p => isParcelaAtrasada(p))
-          const isExpanded = expandedRows.has(cobranca.id)
-          
-          return (
-            <div key={cobranca.id} className={`bg-card rounded-xl shadow-sm border-2 overflow-hidden ${
-              cobranca.pago
-                ? "border-green-200"
-                : hasOverdue
-                  ? "border-red-200"
-                  : "border-border"
-            }`}>
-              <div className="p-4">
-                {/* Header with client name and status */}
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex-1 min-w-0">
-                    <Link href={`/clientes/${cobranca.cliente.id}`} className="font-semibold text-foreground hover:text-primary transition block truncate">
-                      {cobranca.cliente.nome}
-                    </Link>
-                    {cobranca.fatura && (
-                      <span className="text-xs text-muted-foreground">Fatura: {cobranca.fatura}</span>
-                    )}
-                  </div>
-                  <span className={`px-2 py-1 rounded-lg text-xs font-bold ${
-                    cobranca.pago
-                      ? "bg-green-100 text-green-700"
-                      : hasOverdue
-                        ? "bg-red-100 text-red-700"
-                        : "bg-orange-100 text-orange-700"
-                  }`}>
-                    {cobranca.pago ? "Pago" : hasOverdue ? "Atrasado" : "Pendente"}
-                  </span>
-                </div>
-                
-                {/* Values grid */}
-                <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-                  <div className="bg-secondary/50 rounded-lg p-2">
-                    <span className="text-muted-foreground text-xs block">Valor c/IVA</span>
-                    <span className="font-bold text-foreground">{formatCurrency(Number(cobranca.valor))} €</span>
-                  </div>
-                  <div className="bg-primary/10 rounded-lg p-2">
-                    <span className="text-primary text-xs block">Comissão</span>
-                    <span className="font-bold text-primary">{cobranca.comissao ? formatCurrency(Number(cobranca.comissao)) : "-"} €</span>
-                  </div>
-                </div>
-                
-                {/* Parcelas info */}
-                {cobranca.parcelas.length > 0 && (
-                  <div className="mb-3">
-                    <button
-                      onClick={() => toggleRowExpanded(cobranca.id)}
-                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition w-full"
-                    >
-                      <svg className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-90" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                        hasOverdue
-                          ? "bg-red-100 text-red-700"
-                          : cobranca.pago
-                            ? "bg-green-100 text-green-700"
-                            : "bg-blue-100 text-blue-700"
-                      }`}>
-                        {getParcelasStatus(cobranca)}
-                      </span>
-                    </button>
-                    
-                    {/* Expanded parcelas */}
-                    {isExpanded && (
-                      <div className="mt-2 space-y-2 pl-6">
-                        {cobranca.parcelas.map((parcela) => {
-                          const isAtrasada = isParcelaAtrasada(parcela)
-                          return (
-                            <div key={parcela.id} className={`flex items-center justify-between p-2 rounded-lg ${
-                              parcela.pago
-                                ? "bg-green-50"
-                                : isAtrasada
-                                  ? "bg-red-50"
-                                  : "bg-secondary/30"
-                            }`}>
-                              <div className="flex items-center gap-2">
-                                <div className={`w-2 h-2 rounded-full ${
-                                  parcela.pago
-                                    ? "bg-green-500"
-                                    : isAtrasada
-                                      ? "bg-red-500"
-                                      : "bg-orange-500"
-                                }`}></div>
-                                <span className="text-xs font-medium">P{parcela.numero}</span>
-                                <span className="text-xs text-muted-foreground">{formatDate(parcela.dataVencimento)}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-semibold">{formatCurrency(Number(parcela.valor))} €</span>
-                                <button
-                                  onClick={() => handleToggleParcelaPaid(parcela.id, parcela.pago)}
-                                  className={`p-1 rounded ${
-                                    parcela.pago
-                                      ? "text-green-600 hover:bg-green-100"
-                                      : "text-orange-600 hover:bg-orange-100"
-                                  }`}
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={parcela.pago ? "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" : "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"} />
-                                  </svg>
-                                </button>
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
-                
-                {/* Actions */}
-                <div className="flex justify-between items-center pt-2 border-t border-border">
-                  {cobranca.parcelas.length === 0 && (
-                    <button
-                      onClick={() => handleTogglePaid(cobranca.id, cobranca.pago)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                        cobranca.pago
-                          ? "bg-green-100 text-green-700"
-                          : "bg-orange-100 text-orange-700"
-                      }`}
-                    >
-                      {cobranca.pago ? "Marcar Pendente" : "Marcar Pago"}
-                    </button>
-                  )}
-                  {cobranca.parcelas.length > 0 && <div></div>}
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => startEdit(cobranca)}
-                      className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => handleDelete(cobranca.id)}
-                      className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Empty state */}
-      {filtered.length === 0 && (
+        {filtered.length === 0 && (
           <div className="text-center py-16">
             <svg className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

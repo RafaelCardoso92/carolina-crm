@@ -12,10 +12,10 @@ interface Props {
 }
 
 const estadoColors: Record<EstadoReconciliacao, string> = {
-  PENDENTE: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-  EM_REVISAO: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-  APROVADA: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-  COM_PROBLEMAS: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+  PENDENTE: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+  EM_REVISAO: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  APROVADA: "bg-green-500/10 text-green-600 dark:text-green-400",
+  COM_PROBLEMAS: "bg-red-500/10 text-red-600 dark:text-red-400"
 }
 
 const estadoLabels: Record<EstadoReconciliacao, string> = {
@@ -342,11 +342,11 @@ export default function ReconciliacaoView({ reconciliacoes, meses, anosDisponive
                     <span className="px-3 py-1 bg-secondary rounded-full text-sm">
                       {rec.totalItens} clientes
                     </span>
-                    <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-sm">
+                    <span className="px-3 py-1 bg-green-500/10 text-green-600 dark:text-green-400 rounded-full text-sm">
                       {rec.itensCorretos} correctos
                     </span>
                     {rec.itensComProblema > 0 && (
-                      <span className="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-full text-sm">
+                      <span className="px-3 py-1 bg-red-500/10 text-red-600 dark:text-red-400 rounded-full text-sm">
                         {rec.itensComProblema} com problemas
                       </span>
                     )}
@@ -453,7 +453,7 @@ export default function ReconciliacaoView({ reconciliacoes, meses, anosDisponive
                                 {!item.corresponde && !item.resolvido ? (
                                   <button
                                     onClick={() => handleResolveWithNote(rec.id, item)}
-                                    className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                                    className="px-3 py-1 text-xs bg-primary text-white rounded hover:bg-primary-hover transition"
                                   >
                                     Resolver
                                   </button>

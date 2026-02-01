@@ -9,25 +9,6 @@ const UPLOADS_DIR = process.env.UPLOADS_DIR || "/uploads"
 const MAX_FILE_SIZE = 5 * 1024 * 1024  // 5MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
 
-// Magic bytes for image validation
-const MAGIC_BYTES: Record<string, number[][]> = {
-  "image/jpeg": [[0xFF, 0xD8, 0xFF]],
-  "image/png": [[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]],
-  "image/webp": [[0x52, 0x49, 0x46, 0x46]]  // RIFF header
-}
-
-function validateMagicBytes(buffer: Buffer, mimeType: string): boolean {
-  const signatures = MAGIC_BYTES[mimeType]
-  if (!signatures) return false
-  
-  return signatures.some(signature => {
-    for (let i = 0; i < signature.length; i++) {
-      if (buffer[i] !== signature[i]) return false
-    }
-    return true
-  })
-}
-
 // POST - Upload image for a return
 export async function POST(request: NextRequest) {
   try {
@@ -87,18 +68,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Read file content for magic byte validation
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-
-    // Validate magic bytes (actual file content)
-    if (!validateMagicBytes(buffer, file.type)) {
-      return NextResponse.json<ImageUploadResponse>(
-        { success: false, error: "Ficheiro inválido. O conteúdo não corresponde ao tipo declarado." },
-        { status: 400 }
-      )
-    }
-
     // Create directory for this devolucao
     const dirPath = join(UPLOADS_DIR, "devolucoes", devolucaoId)
     await mkdir(dirPath, { recursive: true })
@@ -109,7 +78,9 @@ export async function POST(request: NextRequest) {
     const relativePath = join("devolucoes", devolucaoId, filename)
     const fullPath = join(UPLOADS_DIR, relativePath)
 
-    // Write file (buffer already created above for validation)
+    // Write file
+    const bytes = await file.arrayBuffer()
+    const buffer = Buffer.from(bytes)
     await writeFile(fullPath, buffer)
 
     // Create database record

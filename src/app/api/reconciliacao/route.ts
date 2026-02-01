@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { Prisma } from "@prisma/client"
 import { writeFile, mkdir } from "fs/promises"
 import { join } from "path"
 import { randomUUID } from "crypto"
@@ -217,8 +216,8 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes)
     await writeFile(fullPath, buffer)
 
-    // Parse PDF using pdf-parse
-    const parser = new PDFParse({ data: buffer })
+    // Parse PDF using PDFParse class
+    const parser = new PDFParse({ data: new Uint8Array(buffer) })
     const textResult = await parser.getText()
     const text = textResult.text
     await parser.destroy()
@@ -383,15 +382,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error("Error creating reconciliacao:", error)
-    
-    // Handle unique constraint violation (race condition)
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json<ReconciliacaoResponse>(
-        { success: false, error: "Já existe uma reconciliação para este mês. Recarregue a página." },
-        { status: 409 }
-      )
-    }
-    
     return NextResponse.json<ReconciliacaoResponse>(
       { success: false, error: "Erro ao processar reconciliação" },
       { status: 500 }

@@ -1,19 +1,34 @@
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
+import { requirePermission, getEffectiveUserId } from "@/lib/api-auth"
+import { PERMISSIONS, canViewAllData } from "@/lib/permissions"
 
 export async function GET(request: Request) {
   try {
+    const session = await requirePermission(PERMISSIONS.VENDAS_READ)
     const { searchParams } = new URL(request.url)
     const mes = searchParams.get("mes") ? parseInt(searchParams.get("mes")!) : undefined
     const ano = searchParams.get("ano") ? parseInt(searchParams.get("ano")!) : undefined
 
+    // Build user scoped where clause through cliente relationship
+    const userFilter = canViewAllData(session.user.role) && !session.user.impersonating
+      ? {}
+      : { cliente: { userId: getEffectiveUserId(session) } }
+
     const vendas = await prisma.venda.findMany({
       where: {
+        ...userFilter,
         ...(mes && { mes }),
         ...(ano && { ano })
       },
       include: {
         cliente: true,
+        objetivoVario: true,
+        campanhas: {
+          include: {
+            campanha: true
+          }
+        },
         itens: {
           include: {
             produto: true,
@@ -34,18 +49,6 @@ export async function GET(request: Request) {
             imagens: true
           },
           orderBy: { dataRegisto: "desc" }
-        },
-        cobranca: {
-          include: {
-            parcelas: {
-              orderBy: { numero: "asc" }
-            }
-          }
-        },
-        campanhas: {
-          include: {
-            campanha: true
-          }
         }
       },
       orderBy: [{ ano: "desc" }, { mes: "desc" }]
@@ -53,6 +56,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(vendas)
   } catch (error) {
+    if (error instanceof Response) return error
     console.error("Error fetching vendas:", error)
     return NextResponse.json({ error: "Erro ao buscar vendas" }, { status: 500 })
   }
@@ -64,53 +68,80 @@ type ItemInput = {
   precoUnit: number
 }
 
-type CampanhaInput = {
-  campanhaId: string
-  quantidade: number
-}
-
 export async function POST(request: Request) {
   try {
+    const session = await requirePermission(PERMISSIONS.VENDAS_WRITE)
+    const effectiveUserId = getEffectiveUserId(session)
     const data = await request.json()
+
+    // Verify the cliente belongs to this user
+    const cliente = await prisma.cliente.findUnique({
+      where: { id: data.clienteId },
+      select: { userId: true }
+    })
+
+    if (!cliente) {
+      return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 })
+    }
+
+    // Check ownership (unless MASTERADMIN not impersonating)
+    if (!(canViewAllData(session.user.role) && !session.user.impersonating)) {
+      if (cliente.userId !== effectiveUserId) {
+        return NextResponse.json({ error: "Sem permissão para este cliente" }, { status: 403 })
+      }
+    }
 
     if (!data.clienteId || !data.mes || !data.ano) {
       return NextResponse.json({ error: "Cliente, mes e ano sao obrigatorios" }, { status: 400 })
     }
 
-    // Calculate total from both manual values AND items
-    // All values are stored ex-VAT (sem IVA)
+    // Calculate total from items if provided, otherwise from valor1/valor2
+    let total = 0
     const itens: ItemInput[] = data.itens || []
-    
-    // Manual values (ex-VAT)
-    const valor1 = data.valor1 ? parseFloat(data.valor1) : 0
-    const valor2 = data.valor2 ? parseFloat(data.valor2) : 0
-    const manualTotal = valor1 + valor2
-    
-    // Items total (ex-VAT)
-    const itemsTotal = itens.reduce((sum: number, item: ItemInput) => {
-      return sum + (item.quantidade * item.precoUnit)
-    }, 0)
-    
-    // Combined total (ex-VAT)
-    const total = manualTotal + itemsTotal
+
+    if (itens.length > 0) {
+      // Calculate total from items
+      total = itens.reduce((sum: number, item: ItemInput) => {
+        return sum + (item.quantidade * item.precoUnit)
+      }, 0)
+    } else {
+      // Backward compatibility: use valor1/valor2
+      const valor1 = data.valor1 ? parseFloat(data.valor1) : 0
+      const valor2 = data.valor2 ? parseFloat(data.valor2) : 0
+      total = valor1 + valor2
+    }
 
     if (total <= 0) {
       return NextResponse.json({ error: "O total deve ser maior que zero" }, { status: 400 })
     }
 
-    // Payment tracking fields
-    const fatura = data.fatura || null
-    const numeroParcelas = data.numeroParcelas ? parseInt(data.numeroParcelas) : 1
-    const dataInicioVencimento = data.dataInicioVencimento ? new Date(data.dataInicioVencimento) : null
+    // Check if venda already exists for this client/month/year
+    const existing = await prisma.venda.findFirst({
+      where: {
+        clienteId: data.clienteId,
+        mes: data.mes,
+        ano: data.ano
+      }
+    })
 
-    // Create venda with items and cobranca in a transaction
+    if (existing) {
+      return NextResponse.json({ error: "Ja existe uma venda para este cliente neste mes" }, { status: 400 })
+    }
+
+    // Create venda with items in a transaction
+    // Support both old format (campanhaIds: string[]) and new format (campanhas: {id, quantidade}[])
+    const campanhas: { id: string; quantidade: number }[] = data.campanhas ||
+      (data.campanhaIds ? data.campanhaIds.map((id: string) => ({ id, quantidade: 1 })) : [])
+
     const venda = await prisma.$transaction(async (tx) => {
-      // Create the venda (stored ex-VAT)
+      // Create the venda
       const newVenda = await tx.venda.create({
         data: {
           clienteId: data.clienteId,
-          valor1: valor1 || null,
-          valor2: valor2 || null,
+          objetivoVarioId: data.objetivoVarioId || null,
+          objetivoVarioQuantidade: data.objetivoVarioQuantidade || null,
+          valor1: data.valor1 || null,
+          valor2: data.valor2 || null,
           total,
           mes: data.mes,
           ano: data.ano,
@@ -118,7 +149,7 @@ export async function POST(request: Request) {
         }
       })
 
-      // Create items if provided (stored ex-VAT)
+      // Create items if provided
       if (itens.length > 0) {
         await tx.itemVenda.createMany({
           data: itens.map((item: ItemInput) => ({
@@ -131,76 +162,71 @@ export async function POST(request: Request) {
         })
       }
 
-      // Auto-create linked cobranca for payment tracking
-      // Value with VAT (23%)
-      const valorComIva = total * 1.23
-      const comissaoPercent = 3.5
-      const comissao = total * (comissaoPercent / 100)
-
-      const cobranca = await tx.cobranca.create({
-        data: {
-          clienteId: data.clienteId,
-          vendaId: newVenda.id,
-          fatura,
-          valor: valorComIva,
-          valorSemIva: total,
-          comissao,
-          dataEmissao: new Date(),
-          numeroParcelas,
-          dataInicioVencimento,
-          pago: false
-        }
-      })
-
-      // Create installments if more than 1
-      if (numeroParcelas > 1 && dataInicioVencimento) {
-        const valorParcela = valorComIva / numeroParcelas
-        const parcelas = []
-        
-        for (let i = 0; i < numeroParcelas; i++) {
-          const dataVencimento = new Date(dataInicioVencimento)
-          dataVencimento.setMonth(dataVencimento.getMonth() + i + 1)
-          
-          parcelas.push({
-            cobrancaId: cobranca.id,
-            numero: i + 1,
-            valor: valorParcela,
-            dataVencimento,
-            pago: false
-          })
-        }
-        
-        await tx.parcela.createMany({ data: parcelas })
-      } else if (dataInicioVencimento) {
-        // Single payment - create one parcela
-        await tx.parcela.create({
-          data: {
-            cobrancaId: cobranca.id,
-            numero: 1,
-            valor: valorComIva,
-            dataVencimento: new Date(new Date(dataInicioVencimento).setMonth(new Date(dataInicioVencimento).getMonth() + 1)),
-            pago: false
-          }
-        })
-      }
-
-      // Create campanha links if provided
-      const campanhasInput: CampanhaInput[] = data.campanhas || []
-      if (campanhasInput.length > 0) {
+      // Create campanha associations if provided
+      if (campanhas.length > 0) {
         await tx.campanhaVenda.createMany({
-          data: campanhasInput.map((c: CampanhaInput) => ({
+          data: campanhas.map((c: { id: string; quantidade: number }) => ({
             vendaId: newVenda.id,
-            campanhaId: c.campanhaId,
+            campanhaId: c.id,
             quantidade: c.quantidade
           }))
         })
       }
 
-      // Return venda with all relations
+      // Create cobrança if requested
+      if (data.criarCobranca && data.cobranca) {
+        const numeroParcelas = data.cobranca.numeroParcelas || 1
+        const dataEmissao = data.cobranca.dataEmissao
+          ? new Date(data.cobranca.dataEmissao)
+          : new Date()
+
+        // Create the cobrança
+        const cobranca = await tx.cobranca.create({
+          data: {
+            clienteId: data.clienteId,
+            vendaId: newVenda.id,
+            valor: total, // Total sem IVA
+            valorSemIva: total,
+            dataEmissao,
+            dataInicioVencimento: dataEmissao, // Use emission date as first due date
+            numeroParcelas,
+            pago: false
+          }
+        })
+
+        // Create parcelas if more than 1
+        if (numeroParcelas > 1) {
+          const valorParcela = total / numeroParcelas
+          const parcelas = []
+
+          for (let i = 0; i < numeroParcelas; i++) {
+            const dataVencimento = new Date(dataEmissao)
+            dataVencimento.setMonth(dataVencimento.getMonth() + i)
+
+            parcelas.push({
+              cobrancaId: cobranca.id,
+              numero: i + 1,
+              valor: valorParcela,
+              dataVencimento,
+              pago: false
+            })
+          }
+
+          await tx.parcela.createMany({ data: parcelas })
+        }
+      }
+
+      // Return venda with items, client, objetivoVario, campanhas, and devolucoes
       return tx.venda.findUnique({
         where: { id: newVenda.id },
         include: {
           cliente: true,
+          objetivoVario: true,
+          campanhas: {
+            include: {
+              campanha: true
+            }
+          },
           itens: {
             include: {
               produto: true,
@@ -217,14 +243,6 @@ export async function POST(request: Request) {
               },
               imagens: true
             }
-          },
-          cobranca: {
-            include: {
-              parcelas: { orderBy: { numero: "asc" } }
-            }
-          },
-          campanhas: {
-            include: { campanha: true }
           }
         }
       })
@@ -232,6 +250,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(venda, { status: 201 })
   } catch (error) {
+    if (error instanceof Response) return error
     console.error("Error creating venda:", error)
     return NextResponse.json({ error: "Erro ao criar venda" }, { status: 500 })
   }

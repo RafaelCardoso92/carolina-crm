@@ -1,12 +1,29 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { cache, cacheKeys, cacheTags } from "@/lib/cache"
+import { logger, createTimer } from "@/lib/logger"
+import { requirePermission } from "@/lib/api-auth"
+import { PERMISSIONS } from "@/lib/permissions"
 
 export async function GET(request: Request) {
+  const timer = createTimer()
+
   try {
+    const session = await requirePermission(PERMISSIONS.DASHBOARD_READ)
+    const userId = session.user?.id || 'anonymous'
+
     const { searchParams } = new URL(request.url)
     const ano = parseInt(searchParams.get("ano") || new Date().getFullYear().toString())
     const mes = parseInt(searchParams.get("mes") || (new Date().getMonth() + 1).toString())
     const trimestre = Math.ceil(mes / 3)
+
+    // Check cache first
+    const cacheKey = cacheKeys.dashboard(userId) + `:${ano}:${mes}`
+    const cached = cache.get(cacheKey)
+    if (cached) {
+      logger.debug('Dashboard cache hit', { userId, duration: timer.elapsed() })
+      return NextResponse.json(cached)
+    }
 
     const now = new Date()
 
@@ -30,11 +47,7 @@ export async function GET(request: Request) {
       premiosTrimestrais,
       parcelasAtrasadas,
       parcelasAtrasadasValor,
-      proximasParcelas,
-      // Varios items to exclude from objectives
-      variosMes,
-      variosTrimestre,
-      variosAno
+      proximasParcelas
     ] = await Promise.all([
       prisma.cliente.count(),
       prisma.cliente.count({ where: { ativo: true } }),
@@ -138,37 +151,6 @@ export async function GET(request: Request) {
         },
         orderBy: { dataVencimento: "asc" },
         take: 5
-      }),
-      // Varios items (tipo="Varios") - exclude from objectives calculations
-      // Monthly varios
-      prisma.itemVenda.aggregate({
-        where: {
-          venda: { mes, ano },
-          produto: { tipo: "Varios" }
-        },
-        _sum: { subtotal: true }
-      }),
-      // Quarterly varios
-      prisma.itemVenda.aggregate({
-        where: {
-          venda: {
-            ano,
-            mes: {
-              gte: (trimestre - 1) * 3 + 1,
-              lte: trimestre * 3
-            }
-          },
-          produto: { tipo: "Varios" }
-        },
-        _sum: { subtotal: true }
-      }),
-      // Yearly varios
-      prisma.itemVenda.aggregate({
-        where: {
-          venda: { ano },
-          produto: { tipo: "Varios" }
-        },
-        _sum: { subtotal: true }
       })
     ])
 
@@ -185,16 +167,10 @@ export async function GET(request: Request) {
     const devolvidoAno = Number(devolucoesAno._sum.totalDevolvido) || 0
     const substituidoAno = Number(devolucoesAno._sum.totalSubstituido) || 0
 
-    // Calculate Varios totals to exclude from objectives
-    const variosMesTotal = Number(variosMes._sum.subtotal) || 0
-    const variosTrimestreTotal = Number(variosTrimestre._sum.subtotal) || 0
-    const variosAnoTotal = Number(variosAno._sum.subtotal) || 0
-
-    // Calculate net totals (Original - Returns + Substitutions - Varios)
-    // Varios items are excluded because they don't count towards objectives/prizes
-    const vendasMesTotal = vendasMesBruto - devolvidoMes + substituidoMes - variosMesTotal
-    const vendasTrimestreTotal = vendasTrimestreBruto - devolvidoTrimestre + substituidoTrimestre - variosTrimestreTotal
-    const vendasAnoTotal = vendasAnoBruto - devolvidoAno + substituidoAno - variosAnoTotal
+    // Calculate net totals (Original - Returns + Substitutions)
+    const vendasMesTotal = vendasMesBruto - devolvidoMes + substituidoMes
+    const vendasTrimestreTotal = vendasTrimestreBruto - devolvidoTrimestre + substituidoTrimestre
+    const vendasAnoTotal = vendasAnoBruto - devolvidoAno + substituidoAno
 
     const pendentesTotal = Number(cobrancasPendentes._sum.valor) || 0
     const objMensal = Number(objetivoMensal?.objetivo) || 0
@@ -248,7 +224,7 @@ export async function GET(request: Request) {
       orderBy: { ano: "desc" }
     })
 
-    return NextResponse.json({
+    const responseData = {
       totalClientes,
       clientesAtivos,
       // Net sales (after returns)
@@ -302,9 +278,19 @@ export async function GET(request: Request) {
         cobrancaId: p.cobrancaId,
         fatura: p.cobranca.fatura
       }))
-    })
+    }
+
+    // Cache for 60 seconds (dashboard data changes frequently)
+    cache.set(cacheKey, responseData, { ttl: 60, tags: [cacheTags.dashboard] })
+
+    logger.info('Dashboard loaded', { userId, duration: timer.elapsed() })
+
+    return NextResponse.json(responseData)
   } catch (error) {
-    console.error("Error fetching dashboard data:", error)
+    if (error instanceof NextResponse) {
+      return error
+    }
+    logger.error("Error fetching dashboard data", { error: String(error), duration: timer.elapsed() })
     return NextResponse.json({ error: "Erro ao carregar dados" }, { status: 500 })
   }
 }

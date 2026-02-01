@@ -3,11 +3,10 @@ import Credentials from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { prisma } from "./prisma"
 import { authConfig } from "./auth.config"
-import { checkRateLimit, recordFailedAttempt, resetRateLimit } from "./rate-limit"
+import { UserRole, UserStatus } from "@prisma/client"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
-  debug: true,
   providers: [
     Credentials({
       name: "credentials",
@@ -15,18 +14,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" }
       },
-      async authorize(credentials, request) {
+      async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           return null
-        }
-
-        // Get IP for rate limiting (use email as fallback identifier)
-        const identifier = credentials.email as string
-
-        // Check rate limit
-        const rateCheck = checkRateLimit(identifier)
-        if (!rateCheck.allowed) {
-          throw new Error(`Too many attempts. Try again in ${rateCheck.blockedFor} minutes.`)
         }
 
         const user = await prisma.user.findUnique({
@@ -34,7 +24,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         })
 
         if (!user) {
-          recordFailedAttempt(identifier)
+          return null
+        }
+
+        // Check user status - only ACTIVE users can login
+        if (user.status !== "ACTIVE") {
           return null
         }
 
@@ -44,42 +38,66 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         )
 
         if (!passwordMatch) {
-          const result = recordFailedAttempt(identifier)
-          if (result.blocked) {
-            throw new Error(`Too many failed attempts. Account locked for ${result.blockedFor} minutes.`)
-          }
           return null
         }
 
-        // Successful login - reset rate limit
-        resetRateLimit(identifier)
+        // Update last login time
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { lastLoginAt: new Date() }
+        })
 
         return {
           id: user.id,
           email: user.email,
-          name: user.name
+          name: user.name,
+          role: user.role,
+          status: user.status
         }
       }
     })
   ],
   session: {
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
-  jwt: {
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    strategy: "jwt"
   },
   callbacks: {
     ...authConfig.callbacks,
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id
+        token.role = user.role as UserRole
+        token.status = user.status as UserStatus
       }
+
+      // Handle impersonation session updates
+      if (trigger === "update" && session) {
+        if (session.impersonating) {
+          token.impersonating = session.impersonating
+          token.originalUserId = token.originalUserId || token.id
+        } else if (session.impersonating === null) {
+          // Stop impersonating
+          delete token.impersonating
+          delete token.originalUserId
+        }
+      }
+
       return token
     },
     async session({ session, token }) {
       if (token && session.user) {
         session.user.id = token.id as string
+        session.user.role = token.role as UserRole
+        session.user.status = token.status as UserStatus
+
+        // Include impersonation info in session
+        if (token.impersonating) {
+          session.user.impersonating = token.impersonating as {
+            id: string
+            name: string | null
+            email: string
+          }
+          session.user.originalUserId = token.originalUserId as string
+        }
       }
       return session
     }

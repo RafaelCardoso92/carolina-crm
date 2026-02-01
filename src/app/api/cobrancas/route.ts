@@ -1,9 +1,19 @@
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
+import { requirePermission, getEffectiveUserId } from "@/lib/api-auth"
+import { PERMISSIONS, canViewAllData } from "@/lib/permissions"
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const session = await requirePermission(PERMISSIONS.COBRANCAS_READ)
+
+    // Build user scoped where clause through cliente relationship
+    const userFilter = canViewAllData(session.user.role) && !session.user.impersonating
+      ? {}
+      : { cliente: { userId: getEffectiveUserId(session) } }
+
     const cobrancas = await prisma.cobranca.findMany({
+      where: userFilter,
       include: {
         cliente: true,
         parcelas: {
@@ -14,6 +24,7 @@ export async function GET() {
     })
     return NextResponse.json(cobrancas)
   } catch (error) {
+    if (error instanceof Response) return error
     console.error("Error fetching cobrancas:", error)
     return NextResponse.json({ error: "Erro ao buscar cobranças" }, { status: 500 })
   }
@@ -21,10 +32,29 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const session = await requirePermission(PERMISSIONS.COBRANCAS_WRITE)
+    const effectiveUserId = getEffectiveUserId(session)
     const data = await request.json()
 
     if (!data.clienteId || !data.valor) {
       return NextResponse.json({ error: "Cliente e valor são obrigatórios" }, { status: 400 })
+    }
+
+    // Verify the cliente belongs to this user
+    const cliente = await prisma.cliente.findUnique({
+      where: { id: data.clienteId },
+      select: { userId: true }
+    })
+
+    if (!cliente) {
+      return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 })
+    }
+
+    // Check ownership (unless MASTERADMIN not impersonating)
+    if (!(canViewAllData(session.user.role) && !session.user.impersonating)) {
+      if (cliente.userId !== effectiveUserId) {
+        return NextResponse.json({ error: "Sem permissão para este cliente" }, { status: 403 })
+      }
     }
 
     const numeroParcelas = data.numeroParcelas || 1
@@ -63,7 +93,7 @@ export async function POST(request: Request) {
 
         for (let i = 0; i < numeroParcelas; i++) {
           const dataVencimento = new Date(dataInicioVencimento)
-          dataVencimento.setMonth(dataVencimento.getMonth() + i + 1)
+          dataVencimento.setMonth(dataVencimento.getMonth() + i)
 
           parcelas.push({
             cobrancaId: newCobranca.id,
@@ -91,6 +121,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(cobranca, { status: 201 })
   } catch (error) {
+    if (error instanceof Response) return error
     console.error("Error creating cobranca:", error)
     return NextResponse.json({ error: "Erro ao criar cobrança" }, { status: 500 })
   }

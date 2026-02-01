@@ -16,17 +16,17 @@ interface Tarefa {
 }
 
 const prioridadeColors = {
-  BAIXA: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300",
-  MEDIA: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  ALTA: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
-  URGENTE: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
+  BAIXA: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 font-medium",
+  MEDIA: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 font-medium",
+  ALTA: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100 font-medium",
+  URGENTE: "bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-100 font-semibold"
 }
 
 const estadoColors = {
-  PENDENTE: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
-  EM_PROGRESSO: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  CONCLUIDA: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-  CANCELADA: "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
+  PENDENTE: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100 font-medium",
+  EM_PROGRESSO: "bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-100 font-medium",
+  CONCLUIDA: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-100 font-medium",
+  CANCELADA: "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300 font-medium"
 }
 
 export default function TarefasView() {
@@ -34,7 +34,6 @@ export default function TarefasView() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<"todas" | "pendentes" | "hoje" | "atrasadas">("pendentes")
   const [showForm, setShowForm] = useState(false)
-  const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState({
     titulo: "",
     descricao: "",
@@ -66,7 +65,6 @@ export default function TarefasView() {
 
   async function createTarefa(e: React.FormEvent) {
     e.preventDefault()
-    setSaving(true)
     try {
       const res = await fetch("/api/tarefas", {
         method: "POST",
@@ -80,8 +78,6 @@ export default function TarefasView() {
       }
     } catch (error) {
       console.error("Error:", error)
-    } finally {
-      setSaving(false)
     }
   }
 
@@ -100,8 +96,16 @@ export default function TarefasView() {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-        <h1 className="text-xl md:text-2xl font-bold text-foreground">Tarefas</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Tarefas</h1>
+          <p className="text-muted-foreground flex items-center gap-2 mt-1">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+            Gestão de tarefas e follow-ups
+          </p>
+        </div>
         <button
           onClick={() => setShowForm(true)}
           className="bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-hover transition"
@@ -111,7 +115,7 @@ export default function TarefasView() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex gap-2 mb-4 flex-wrap">
+      <div className="flex gap-2 mb-6 flex-wrap">
         {[
           { key: "pendentes", label: "Pendentes" },
           { key: "hoje", label: "Hoje" },
@@ -134,9 +138,9 @@ export default function TarefasView() {
 
       {/* New Task Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-card rounded-xl p-6 w-full max-w-md">
-            <h2 id="modal-title" className="text-xl font-bold mb-4 text-foreground">Nova Tarefa</h2>
+            <h2 className="text-xl font-bold mb-4 text-foreground">Nova Tarefa</h2>
             <form onSubmit={createTarefa} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-1">Titulo</label>
@@ -168,7 +172,7 @@ export default function TarefasView() {
                     <option>Telefonema</option>
                     <option>Email</option>
                     <option>Visita</option>
-                    <option>Reunião</option>
+                    <option>Reuniao</option>
                     <option>Outro</option>
                   </select>
                 </div>
@@ -199,8 +203,8 @@ export default function TarefasView() {
                 <button type="button" onClick={() => setShowForm(false)} className="flex-1 px-4 py-2 border border-border rounded-lg text-foreground hover:bg-secondary">
                   Cancelar
                 </button>
-                <button type="submit" disabled={saving} className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover disabled:opacity-50">
-                  {saving ? "A guardar..." : "Criar"}
+                <button type="submit" className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover">
+                  Criar
                 </button>
               </div>
             </form>
@@ -218,21 +222,21 @@ export default function TarefasView() {
           Nenhuma tarefa encontrada
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {tarefas.map(tarefa => {
             const isOverdue = tarefa.dataVencimento && new Date(tarefa.dataVencimento) < new Date() && tarefa.estado !== "CONCLUIDA"
             return (
-              <div key={tarefa.id} className={`bg-card rounded-lg p-3 border ${isOverdue ? "border-red-300 dark:border-red-700" : "border-border"}`}>
+              <div key={tarefa.id} className={`bg-card rounded-xl p-4 border ${isOverdue ? "border-red-300 dark:border-red-700" : "border-border"}`}>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className={`font-semibold ${tarefa.estado === "CONCLUIDA" ? "line-through text-muted-foreground" : "text-foreground"}`}>
                         {tarefa.titulo}
                       </h3>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${prioridadeColors[tarefa.prioridade]}`}>
+                      <span className={`text-[11px] px-2.5 py-1 rounded-md ${prioridadeColors[tarefa.prioridade]}`}>
                         {tarefa.prioridade}
                       </span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${estadoColors[tarefa.estado]}`}>
+                      <span className={`text-[11px] px-2.5 py-1 rounded-md ${estadoColors[tarefa.estado]}`}>
                         {tarefa.estado.replace("_", " ")}
                       </span>
                     </div>

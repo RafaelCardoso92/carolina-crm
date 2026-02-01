@@ -2,14 +2,6 @@
 
 import { useState, useRef } from "react"
 import { MOTIVOS_DEVOLUCAO } from "@/types/devolucao"
-type ProdutoBasic = {
-  id: string
-  nome: string
-  codigo: string | null
-  ativo: boolean
-  preco?: string | null
-  tipo?: string | null
-}
 
 interface ItemVendaParaDevolucao {
   id: string
@@ -22,11 +14,19 @@ interface ItemVendaParaDevolucao {
   quantidadeDisponivel: number
 }
 
+// Simplified product type for replacement selection
+interface ProdutoForReplacement {
+  id: string
+  nome: string
+  codigo: string | null
+  ativo: boolean
+}
+
 interface Props {
   vendaId: string
   clienteNome: string
   itensVenda: ItemVendaParaDevolucao[]
-  produtos: ProdutoBasic[]  // For replacement selection
+  produtos: ProdutoForReplacement[]  // For replacement selection
   onSuccess: () => void
   onCancel: () => void
 }
@@ -203,9 +203,9 @@ export default function DevolucaoForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Header */}
-      <div className="border-b border-border pb-3 md:pb-4">
-        <h2 className="text-base md:text-lg font-bold text-foreground">Registar Devolução</h2>
-        <p className="text-xs md:text-sm text-muted-foreground">Cliente: {clienteNome}</p>
+      <div className="border-b border-border pb-4">
+        <h2 className="text-lg font-bold text-foreground">Registar Devolução</h2>
+        <p className="text-sm text-muted-foreground">Cliente: {clienteNome}</p>
       </div>
 
       {/* Error display */}
@@ -251,7 +251,7 @@ export default function DevolucaoForm({
                       <span className="text-xs text-muted-foreground">({item.produto.codigo})</span>
                     )}
                   </div>
-                  <div className="text-xs sm:text-sm text-muted-foreground mt-1">
+                  <div className="text-sm text-muted-foreground mt-1">
                     Original: {item.quantidade} × {formatCurrency(item.precoUnit)}€ = {formatCurrency(item.subtotal)}€
                   </div>
                   {item.quantidadeDevolvida > 0 && (
@@ -269,27 +269,25 @@ export default function DevolucaoForm({
               {inputItem.selected && (
                 <div className="mt-4 pl-7 space-y-3 border-t border-border pt-3">
                   {/* Quantity */}
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                    <label className="text-sm text-muted-foreground sm:w-24">Quantidade:</label>
-                    <div className="flex items-center gap-2">
-                      <input
+                  <div className="flex items-center gap-4">
+                    <label className="text-sm text-muted-foreground w-24">Quantidade:</label>
+                    <input
                       type="number"
                       min={0.01}
                       max={item.quantidadeDisponivel}
                       step={0.01}
                       value={inputItem.quantidade}
                       onChange={e => updateItem(index, { quantidade: parseFloat(e.target.value) || 0 })}
-                      className="w-20 sm:w-24 px-2 py-1 border border-border rounded bg-background text-foreground text-sm"
-                      />
-                      <span className="text-sm text-muted-foreground whitespace-nowrap">
-                        = {formatCurrency(inputItem.quantidade * item.precoUnit)}€
-                      </span>
-                    </div>
+                      className="w-24 px-2 py-1 border border-border rounded bg-background text-foreground text-sm"
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      = {formatCurrency(inputItem.quantidade * item.precoUnit)}€
+                    </span>
                   </div>
 
                   {/* Reason */}
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                    <label className="text-sm text-muted-foreground sm:w-24">Motivo:</label>
+                  <div className="flex items-center gap-4">
+                    <label className="text-sm text-muted-foreground w-24">Motivo:</label>
                     <select
                       value={inputItem.motivo}
                       onChange={e => updateItem(index, { motivo: e.target.value })}
@@ -318,8 +316,8 @@ export default function DevolucaoForm({
                   {/* Replacement details */}
                   {inputItem.temSubstituicao && (
                     <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 space-y-2">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                        <label className="text-sm text-muted-foreground sm:w-24">Produto:</label>
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm text-muted-foreground w-24">Produto:</label>
                         <select
                           value={inputItem.substituicaoId}
                           onChange={e => updateItem(index, { substituicaoId: e.target.value })}
@@ -333,30 +331,26 @@ export default function DevolucaoForm({
                           ))}
                         </select>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-                        <div className="flex items-center gap-2">
-                          <label className="text-sm text-muted-foreground">Qtd:</label>
-                          <input
-                            type="number"
-                            min={0.01}
-                            step={0.01}
-                            value={inputItem.qtdSubstituicao}
-                            onChange={e => updateItem(index, { qtdSubstituicao: parseFloat(e.target.value) || 0 })}
-                            className="w-16 sm:w-20 px-2 py-1 border border-border rounded bg-background text-foreground text-sm"
-                          />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <label className="text-sm text-muted-foreground">Preço:</label>
-                          <input
-                            type="number"
-                            min={0}
-                            step={0.01}
-                            value={inputItem.precoSubstituicao}
-                            onChange={e => updateItem(index, { precoSubstituicao: parseFloat(e.target.value) || 0 })}
-                            className="w-20 sm:w-24 px-2 py-1 border border-border rounded bg-background text-foreground text-sm"
-                          />
-                        </div>
-                        <span className="text-sm text-green-700 dark:text-green-400 whitespace-nowrap">
+                      <div className="flex items-center gap-4">
+                        <label className="text-sm text-muted-foreground w-24">Qtd:</label>
+                        <input
+                          type="number"
+                          min={0.01}
+                          step={0.01}
+                          value={inputItem.qtdSubstituicao}
+                          onChange={e => updateItem(index, { qtdSubstituicao: parseFloat(e.target.value) || 0 })}
+                          className="w-20 px-2 py-1 border border-border rounded bg-background text-foreground text-sm"
+                        />
+                        <label className="text-sm text-muted-foreground">Preço:</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.01}
+                          value={inputItem.precoSubstituicao}
+                          onChange={e => updateItem(index, { precoSubstituicao: parseFloat(e.target.value) || 0 })}
+                          className="w-24 px-2 py-1 border border-border rounded bg-background text-foreground text-sm"
+                        />
+                        <span className="text-sm text-green-700 dark:text-green-400">
                           = {formatCurrency(inputItem.qtdSubstituicao * inputItem.precoSubstituicao)}€
                         </span>
                       </div>

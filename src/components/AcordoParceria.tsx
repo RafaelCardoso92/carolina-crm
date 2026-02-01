@@ -23,9 +23,9 @@ interface Props {
 }
 
 const estadoColors = {
-  NO_CAMINHO: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  ATRAS: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  ADIANTADO: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+  NO_CAMINHO: "bg-green-500/10 text-green-600 dark:text-green-400",
+  ATRAS: "bg-red-500/10 text-red-600 dark:text-red-400",
+  ADIANTADO: "bg-blue-500/10 text-blue-600 dark:text-blue-400"
 }
 
 const estadoLabels = {

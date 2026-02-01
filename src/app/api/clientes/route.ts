@@ -1,20 +1,79 @@
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
+import { requirePermission, userScopedWhere, getEffectiveUserId } from "@/lib/api-auth"
+import { PERMISSIONS } from "@/lib/permissions"
+import { parsePaginationParams, calculateSkip, buildPaginatedResponse } from "@/lib/pagination"
+import { clienteListSelect, buildSearchFilter } from "@/lib/query-utils"
+import { cache, cacheKeys, cacheTags } from "@/lib/cache"
+import { logger } from "@/lib/logger"
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const clientes = await prisma.cliente.findMany({
-      orderBy: { nome: "asc" }
-    })
-    return NextResponse.json(clientes)
+    const session = await requirePermission(PERMISSIONS.CLIENTES_READ)
+    const { searchParams } = new URL(request.url)
+
+    // Check if full list is requested (for backward compatibility)
+    const all = searchParams.get('all') === 'true'
+
+    if (all) {
+      // Return full list for dropdowns, etc. (cached)
+      const userId = session.user?.id || 'anonymous'
+      const cacheKey = cacheKeys.clientesList(userId)
+
+      const clientes = await cache.getOrSet(
+        cacheKey,
+        async () => {
+          return prisma.cliente.findMany({
+            where: { ...userScopedWhere(session), ativo: true },
+            select: { id: true, nome: true, codigo: true },
+            orderBy: { nome: "asc" }
+          })
+        },
+        { ttl: 300, tags: [cacheTags.clientes] }
+      )
+      return NextResponse.json(clientes)
+    }
+
+    // Paginated response
+    const pagination = parsePaginationParams(searchParams)
+    const search = searchParams.get('search')
+    const ativo = searchParams.get('ativo')
+
+    // Build where clause
+    const baseWhere = userScopedWhere(session)
+    const searchWhere = buildSearchFilter(search, ['nome', 'codigo', 'email', 'telefone', 'cidade'])
+    const ativoWhere = ativo !== null ? { ativo: ativo === 'true' } : {}
+
+    const where = { ...baseWhere, ...searchWhere, ...ativoWhere }
+
+    // Execute queries in parallel
+    const [clientes, total] = await Promise.all([
+      prisma.cliente.findMany({
+        where,
+        select: clienteListSelect,
+        orderBy: { [pagination.sortBy || 'nome']: pagination.sortOrder || 'asc' },
+        skip: calculateSkip(pagination.page!, pagination.limit!),
+        take: pagination.limit
+      }),
+      prisma.cliente.count({ where })
+    ])
+
+    logger.debug('Clientes fetched', { count: clientes.length, total, page: pagination.page })
+
+    return NextResponse.json(buildPaginatedResponse(clientes, total, pagination))
   } catch (error) {
-    console.error("Error fetching clientes:", error)
+    if (error instanceof NextResponse) {
+      return error
+    }
+    logger.error("Error fetching clientes", { error: String(error) })
     return NextResponse.json({ error: "Erro ao buscar clientes" }, { status: 500 })
   }
 }
 
 export async function POST(request: Request) {
   try {
+    const session = await requirePermission(PERMISSIONS.CLIENTES_WRITE)
+
     const data = await request.json()
 
     if (!data.nome) {
@@ -42,13 +101,23 @@ export async function POST(request: Request) {
         codigoPostal: data.codigoPostal || null,
         latitude: data.latitude || null,
         longitude: data.longitude || null,
-        notas: data.notas || null
+        notas: data.notas || null,
+        userId: getEffectiveUserId(session)
       }
     })
 
+    // Invalidate caches
+    cache.invalidateByTag(cacheTags.clientes)
+    cache.invalidateByTag(cacheTags.dashboard)
+
+    logger.info('Cliente created', { clienteId: cliente.id, userId: session.user?.id })
+
     return NextResponse.json(cliente, { status: 201 })
   } catch (error) {
-    console.error("Error creating cliente:", error)
+    if (error instanceof NextResponse) {
+      return error
+    }
+    logger.error("Error creating cliente", { error: String(error) })
     return NextResponse.json({ error: "Erro ao criar cliente" }, { status: 500 })
   }
 }

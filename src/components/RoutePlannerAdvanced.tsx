@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { GoogleMap, useJsApiLoader, Marker, DirectionsRenderer, InfoWindow, Autocomplete } from "@react-google-maps/api"
+import { GOOGLE_MAPS_CONFIG } from "@/lib/google-maps"
 import Swal from "sweetalert2"
 
 interface RouteLocation {
@@ -99,7 +100,6 @@ const TOLL_COST_PER_KM = 0.085
 // Extract postal code from address string (Portuguese format: XXXX-XXX)
 const extractPostalCodeFromAddress = (morada: string | null): string | null => {
   if (!morada) return null
-  // Match Portuguese postal code format: 4 digits, optional dash/space, 3 digits
   const match = morada.match(/(\d{4})[-\s]?(\d{3})/)
   if (match) {
     return `${match[1]}-${match[2]}`
@@ -107,19 +107,16 @@ const extractPostalCodeFromAddress = (morada: string | null): string | null => {
   return null
 }
 
-// Extract city name from address (usually comes after the postal code)
+// Extract city name from address
 const extractCityFromAddress = (morada: string | null): string | null => {
   if (!morada) return null
-  // Match text after postal code (4 digits, dash/space, 3 digits)
   const match = morada.match(/\d{4}[-\s]?\d{3}\s+(.+?)(?:\s*$|\s*,|\s*-\s*[A-Z])/)
   if (match && match[1]) {
     return match[1].trim()
   }
-  // Try to get the last word as city name
   const parts = morada.split(/\s+/)
   if (parts.length > 0) {
     const lastPart = parts[parts.length - 1]
-    // If it's not a number or postal code, it might be a city
     if (!/^\d/.test(lastPart)) {
       return lastPart
     }
@@ -128,15 +125,11 @@ const extractCityFromAddress = (morada: string | null): string | null => {
 }
 
 // Portuguese postal code to district mapping
-// Format: first 4 digits of postal code -> district
-// Falls back to city name if postal code is not available
 const getDistrictFromPostalCode = (postalCode: string | null, cityFallback?: string | null): string => {
   if (!postalCode) {
-    // Fall back to city if no postal code
     return cityFallback || "Sem Localização"
   }
 
-  // Extract first 4 digits
   const code = postalCode.replace(/\D/g, "").substring(0, 4)
   const num = parseInt(code, 10)
 
@@ -146,26 +139,26 @@ const getDistrictFromPostalCode = (postalCode: string | null, cityFallback?: str
 
   // Lisboa
   if (num >= 1000 && num <= 1998) return "Lisboa"
-  if (num >= 2500 && num <= 2599) return "Leiria" // Caldas da Rainha
-  if (num >= 2600 && num <= 2699) return "Lisboa" // Vila Franca de Xira
-  if (num >= 2700 && num <= 2799) return "Lisboa" // Amadora
-  if (num >= 2800 && num <= 2829) return "Setúbal" // Almada
+  if (num >= 2500 && num <= 2599) return "Leiria"
+  if (num >= 2600 && num <= 2699) return "Lisboa"
+  if (num >= 2700 && num <= 2799) return "Lisboa"
+  if (num >= 2800 && num <= 2829) return "Setúbal"
   if (num >= 2830 && num <= 2999) return "Setúbal"
   if (num >= 2000 && num <= 2139) return "Santarém"
-  if (num >= 2140 && num <= 2199) return "Santarém" // Chamusca
-  if (num >= 2200 && num <= 2299) return "Santarém" // Abrantes
-  if (num >= 2300 && num <= 2399) return "Leiria" // Tomar area
+  if (num >= 2140 && num <= 2199) return "Santarém"
+  if (num >= 2200 && num <= 2299) return "Santarém"
+  if (num >= 2300 && num <= 2399) return "Leiria"
   if (num >= 2400 && num <= 2499) return "Leiria"
 
   // Coimbra, Aveiro, Viseu
   if (num >= 3000 && num <= 3099) return "Coimbra"
-  if (num >= 3100 && num <= 3199) return "Leiria" // Pombal
-  if (num >= 3200 && num <= 3299) return "Coimbra" // Lousã
-  if (num >= 3300 && num <= 3399) return "Coimbra" // Arganil
-  if (num >= 3400 && num <= 3499) return "Coimbra" // Oliveira do Hospital
+  if (num >= 3100 && num <= 3199) return "Leiria"
+  if (num >= 3200 && num <= 3299) return "Coimbra"
+  if (num >= 3300 && num <= 3399) return "Coimbra"
+  if (num >= 3400 && num <= 3499) return "Coimbra"
   if (num >= 3500 && num <= 3599) return "Viseu"
-  if (num >= 3600 && num <= 3699) return "Viseu" // Castro Daire
-  if (num >= 3700 && num <= 3799) return "Aveiro" // São João da Madeira
+  if (num >= 3600 && num <= 3699) return "Viseu"
+  if (num >= 3700 && num <= 3799) return "Aveiro"
   if (num >= 3800 && num <= 3899) return "Aveiro"
 
   // Porto, Braga, Viana, Vila Real, Bragança
@@ -173,33 +166,33 @@ const getDistrictFromPostalCode = (postalCode: string | null, cityFallback?: str
   if (num >= 4100 && num <= 4199) return "Porto"
   if (num >= 4200 && num <= 4299) return "Porto"
   if (num >= 4300 && num <= 4399) return "Porto"
-  if (num >= 4400 && num <= 4499) return "Porto" // Vila Nova de Gaia
-  if (num >= 4500 && num <= 4599) return "Aveiro" // Espinho
-  if (num >= 4600 && num <= 4699) return "Porto" // Amarante
+  if (num >= 4400 && num <= 4499) return "Porto"
+  if (num >= 4500 && num <= 4599) return "Aveiro"
+  if (num >= 4600 && num <= 4699) return "Porto"
   if (num >= 4700 && num <= 4799) return "Braga"
-  if (num >= 4800 && num <= 4899) return "Braga" // Guimarães
+  if (num >= 4800 && num <= 4899) return "Braga"
   if (num >= 4900 && num <= 4999) return "Viana do Castelo"
   if (num >= 5000 && num <= 5099) return "Vila Real"
-  if (num >= 5100 && num <= 5199) return "Viseu" // Lamego
-  if (num >= 5200 && num <= 5299) return "Bragança" // Mogadouro
+  if (num >= 5100 && num <= 5199) return "Viseu"
+  if (num >= 5200 && num <= 5299) return "Bragança"
   if (num >= 5300 && num <= 5399) return "Bragança"
-  if (num >= 5400 && num <= 5499) return "Vila Real" // Chaves
+  if (num >= 5400 && num <= 5499) return "Vila Real"
 
   // Castelo Branco, Guarda
   if (num >= 6000 && num <= 6099) return "Castelo Branco"
-  if (num >= 6100 && num <= 6199) return "Castelo Branco" // Sertã
-  if (num >= 6200 && num <= 6299) return "Castelo Branco" // Covilhã
+  if (num >= 6100 && num <= 6199) return "Castelo Branco"
+  if (num >= 6200 && num <= 6299) return "Castelo Branco"
   if (num >= 6300 && num <= 6399) return "Guarda"
 
   // Alentejo
   if (num >= 7000 && num <= 7099) return "Évora"
-  if (num >= 7100 && num <= 7199) return "Évora" // Estremoz
-  if (num >= 7200 && num <= 7299) return "Évora" // Reguengos
+  if (num >= 7100 && num <= 7199) return "Évora"
+  if (num >= 7200 && num <= 7299) return "Évora"
   if (num >= 7300 && num <= 7399) return "Portalegre"
-  if (num >= 7400 && num <= 7499) return "Portalegre" // Ponte de Sor
-  if (num >= 7500 && num <= 7599) return "Setúbal" // Santiago do Cacém
-  if (num >= 7600 && num <= 7699) return "Beja" // Aljustrel
-  if (num >= 7700 && num <= 7799) return "Beja" // Odemira
+  if (num >= 7400 && num <= 7499) return "Portalegre"
+  if (num >= 7500 && num <= 7599) return "Setúbal"
+  if (num >= 7600 && num <= 7699) return "Beja"
+  if (num >= 7700 && num <= 7799) return "Beja"
   if (num >= 7800 && num <= 7899) return "Beja"
 
   // Algarve
@@ -209,13 +202,11 @@ const getDistrictFromPostalCode = (postalCode: string | null, cityFallback?: str
   if (num >= 9000 && num <= 9499) return "Madeira"
   if (num >= 9500 && num <= 9999) return "Açores"
 
-  // Unknown postal code, fall back to city
   return cityFallback || "Sem Localização"
 }
 
-// Get route letter (A, B, C, etc.)
 const getRouteLetter = (index: number): string => {
-  return String.fromCharCode(65 + index) // A=65 in ASCII
+  return String.fromCharCode(65 + index)
 }
 
 const PIPELINE_STATES = [
@@ -303,11 +294,22 @@ export default function RoutePlannerAdvanced() {
   const [searchMarker, setSearchMarker] = useState<{ lat: number; lng: number; address: string } | null>(null)
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null)
 
-  const { isLoaded } = useJsApiLoader({
-    id: "google-map-script",
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-    libraries: ["places"]
-  })
+  // Collapsible panels state
+  const [expandedPanels, setExpandedPanels] = useState<Set<string>>(new Set(["origin", "locations"]))
+
+  const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_CONFIG)
+
+  const togglePanel = (panel: string) => {
+    setExpandedPanels(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(panel)) {
+        newSet.delete(panel)
+      } else {
+        newSet.add(panel)
+      }
+      return newSet
+    })
+  }
 
   const calculateFuelCost = useCallback((distanceStr: string, consumo: number, preco: number) => {
     const distanceKm = parseFloat(distanceStr.replace(/[^\d.]/g, ""))
@@ -404,11 +406,10 @@ export default function RoutePlannerAdvanced() {
     fetchSavedRoutes()
   }, [selectedDate])
 
-  // Get available districts from locations based on postal codes (fallback to city)
+  // Get available districts from locations
   const availableDistricts = useMemo(() => {
     const districts = new Set<string>()
     locations.forEach(loc => {
-      // Extract postal code from morada if not in dedicated field
       const postalCode = loc.codigoPostal || extractPostalCodeFromAddress(loc.morada)
       const city = loc.cidade || extractCityFromAddress(loc.morada)
       const district = getDistrictFromPostalCode(postalCode, city)
@@ -419,8 +420,6 @@ export default function RoutePlannerAdvanced() {
     return Array.from(districts).sort()
   }, [locations])
 
-  // Get location's district (or city as fallback)
-  // Extracts postal code from morada if codigoPostal field is empty
   const getLocationDistrict = useCallback((loc: RouteLocation): string => {
     const postalCode = loc.codigoPostal || extractPostalCodeFromAddress(loc.morada)
     const city = loc.cidade || extractCityFromAddress(loc.morada)
@@ -581,7 +580,6 @@ export default function RoutePlannerAdvanced() {
     }
   }
 
-  // Handle map click for pinpointing location
   const handleMapClick = useCallback(async (e: google.maps.MapMouseEvent) => {
     if (!pinpointingLocation || !e.latLng) return
 
@@ -589,10 +587,10 @@ export default function RoutePlannerAdvanced() {
     const lng = e.latLng.lng()
 
     try {
-      const endpoint = pinpointingLocation.tipo === "cliente" 
-        ? `/api/clientes/${pinpointingLocation.id}` 
+      const endpoint = pinpointingLocation.tipo === "cliente"
+        ? `/api/clientes/${pinpointingLocation.id}`
         : `/api/prospectos/${pinpointingLocation.id}`
-      
+
       await fetch(endpoint, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -602,7 +600,6 @@ export default function RoutePlannerAdvanced() {
         })
       })
 
-      // Update local state
       setLocations(prev => prev.map(loc =>
         loc.id === pinpointingLocation.id
           ? { ...loc, latitude: lat, longitude: lng }
@@ -636,7 +633,6 @@ export default function RoutePlannerAdvanced() {
     return locations.filter(loc => {
       if (filterType !== "all" && loc.tipo !== filterType) return false
 
-      // District filter based on postal code
       if (filterDistrict) {
         const locDistrict = getLocationDistrict(loc)
         if (locDistrict !== filterDistrict) return false
@@ -661,7 +657,7 @@ export default function RoutePlannerAdvanced() {
     return filteredLocations.filter(l => l.latitude && l.longitude)
   }, [filteredLocations])
 
-  // Group locations by district (from postal code)
+  // Group locations by district
   const locationsByDistrict = useMemo(() => {
     const grouped: Record<string, RouteLocation[]> = {}
     filteredLocations.forEach(loc => {
@@ -669,13 +665,11 @@ export default function RoutePlannerAdvanced() {
       if (!grouped[district]) grouped[district] = []
       grouped[district].push(loc)
     })
-    // Sort districts alphabetically
     return Object.fromEntries(
       Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b))
     )
   }, [filteredLocations, getLocationDistrict])
 
-  // Get the route index for a location (if selected and in optimized route)
   const getRouteIndex = useCallback((locationId: string): number => {
     return optimizedRoute.findIndex(loc => loc.id === locationId)
   }, [optimizedRoute])
@@ -928,7 +922,6 @@ export default function RoutePlannerAdvanced() {
     }
   }
 
-  // Handle address search result
   const onPlaceSelected = () => {
     if (searchAutocomplete) {
       const place = searchAutocomplete.getPlace()
@@ -1024,6 +1017,9 @@ export default function RoutePlannerAdvanced() {
 
   const routesForSelectedDate = savedRoutes.filter(r => r.data.split("T")[0] === selectedDate)
 
+  // Check if user can calculate route
+  const canCalculateRoute = startingPoint.latitude && startingPoint.longitude && selectedLocations.length > 0
+
   if (loading) {
     return (
       <div className="bg-card rounded-xl shadow-sm p-6">
@@ -1036,7 +1032,7 @@ export default function RoutePlannerAdvanced() {
   }
 
   return (
-    <div className={`space-y-4 ${optimizedRoute.length > 0 ? "pb-20 lg:pb-0" : ""}`}>
+    <div className={`space-y-3 ${optimizedRoute.length > 0 ? "pb-20 lg:pb-0" : ""}`}>
       {/* Geocode Status Banner */}
       {geocodeStatus && geocodeStatus.pendingGeocoding > 0 && (
         <div className="flex items-center justify-between gap-4 bg-amber-500 text-white rounded-xl px-4 py-3">
@@ -1045,10 +1041,7 @@ export default function RoutePlannerAdvanced() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
             </svg>
             <span className="text-sm font-medium">
-              <span className="font-bold">{geocodeStatus.pendingGeocoding}</span> clientes sem coordenadas
-              <span className="hidden sm:inline text-amber-100">
-                {" "}· Total: {geocodeStatus.total} · Com coordenadas: {geocodeStatus.withCoordinates}
-              </span>
+              <span className="font-bold">{geocodeStatus.pendingGeocoding}</span> sem coordenadas
             </span>
           </div>
           <button
@@ -1057,580 +1050,597 @@ export default function RoutePlannerAdvanced() {
             className="flex items-center gap-2 px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition disabled:opacity-50"
           >
             {batchGeocoding ? (
-              <>
-                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                <span className="hidden sm:inline">A geocodificar...</span>
-              </>
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
             ) : (
-              <>
-                <span>Geocodificar</span>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </>
+              <span>Geocodificar</span>
             )}
           </button>
         </div>
       )}
 
-      {/* Date Selector & Saved Routes */}
-      <div className="bg-card rounded-xl shadow-sm p-4">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="flex-1">
-            <label className="block text-xs text-muted-foreground mb-1">Data da Rota</label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full sm:w-auto px-3 py-2 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-
-          <div className="flex gap-2">
+      {/* Quick Stats Bar */}
+      <div className="bg-card rounded-xl shadow-sm p-3 flex flex-wrap items-center gap-3 border-l-4 border-emerald-500">
+        <div className="flex items-center gap-2 text-sm">
+          <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+          <span className="text-muted-foreground">Clientes:</span>
+          <span className="font-semibold">{locations.filter(l => l.tipo === "cliente").length}</span>
+        </div>
+        <div className="w-px h-4 bg-border"></div>
+        <div className="flex items-center gap-2 text-sm">
+          <span className="w-3 h-3 rounded-full bg-orange-500"></span>
+          <span className="text-muted-foreground">Prospectos:</span>
+          <span className="font-semibold">{locations.filter(l => l.tipo === "prospecto").length}</span>
+        </div>
+        <div className="w-px h-4 bg-border"></div>
+        <div className="flex items-center gap-2 text-sm">
+          <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          <span className="text-muted-foreground">Selecionados:</span>
+          <span className="font-semibold text-emerald-600">{selectedLocations.length}</span>
+        </div>
+        {savedRoutes.length > 0 && (
+          <>
+            <div className="w-px h-4 bg-border"></div>
             <button
               onClick={() => setShowSavedRoutes(!showSavedRoutes)}
-              className="flex items-center gap-2 px-4 py-2 bg-secondary text-foreground rounded-lg text-sm font-medium hover:bg-secondary/80 transition"
+              className="flex items-center gap-2 text-sm text-primary hover:underline"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              Rotas Guardadas ({savedRoutes.length})
+              {savedRoutes.length} rotas guardadas
             </button>
-          </div>
-        </div>
-
-        {routesForSelectedDate.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-border">
-            <p className="text-xs text-muted-foreground mb-2">Rotas para {selectedDate}:</p>
-            <div className="flex flex-wrap gap-2">
-              {routesForSelectedDate.map(route => (
-                <div key={route.id} className="flex items-center gap-1 bg-primary/10 text-primary px-2 py-1 rounded-lg text-sm">
-                  <button onClick={() => loadSavedRoute(route)} className="hover:underline">
-                    {route.nome || "Rota"} ({route.locais.length} locais)
-                    {route.custoTotal && <span className="ml-1 text-xs opacity-75">· €{Number(route.custoTotal).toFixed(2)}</span>}
-                  </button>
-                  <button onClick={() => deleteSavedRoute(route.id)} className="ml-1 text-red-500 hover:text-red-700">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {showSavedRoutes && (
-          <div className="mt-3 pt-3 border-t border-border max-h-48 overflow-y-auto">
-            {savedRoutes.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Nenhuma rota guardada</p>
-            ) : (
-              <div className="space-y-2">
-                {savedRoutes.map(route => (
-                  <div key={route.id} className="flex items-center justify-between p-2 bg-secondary/50 rounded-lg">
-                    <div>
-                      <p className="text-sm font-medium">{route.nome || "Rota sem nome"}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(route.data).toLocaleDateString("pt-PT")} · {route.locais.length} locais · {route.distanciaTotal}
-                        {route.custoTotal && <span className="ml-1 text-green-600 font-medium">· €{Number(route.custoTotal).toFixed(2)}</span>}
-                      </p>
-                    </div>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => loadSavedRoute(route)}
-                        className="p-1.5 bg-primary text-white rounded hover:bg-primary-hover"
-                        title="Carregar"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => deleteSavedRoute(route.id)}
-                        className="p-1.5 bg-red-500 text-white rounded hover:bg-red-600"
-                        title="Eliminar" aria-label="Eliminar"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          </>
         )}
       </div>
 
-      {/* Starting Point */}
-      <div className="bg-card rounded-xl shadow-sm p-4">
-        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-          <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          Ponto de Partida
-        </h3>
-
-        <div className="space-y-2">
-          <button
-            onClick={getCurrentLocation}
-            className={`w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium text-sm transition ${
-              startingPoint.type === "gps" && startingPoint.latitude
-                ? "bg-green-100 text-green-800 border-2 border-green-500"
-                : "bg-secondary text-foreground hover:bg-secondary/80"
-            }`}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3-1.343-3-3-3zm0 0V4m0 16v-4m-8-4H8m12 0h-4" />
-            </svg>
-            Usar Localização Atual
-          </button>
-
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Ou inserir morada..."
-              value={startingPoint.address}
-              onChange={(e) => setStartingPoint(prev => ({
-                ...prev,
-                type: "address",
-                address: e.target.value,
-                latitude: null,
-                longitude: null
-              }))}
-              className="flex-1 px-3 py-3 bg-secondary border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-            <button
-              onClick={geocodeStartingAddress}
-              disabled={!startingPoint.address.trim()}
-              className="px-4 py-3 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary-hover transition disabled:opacity-50"
-            >
-              <span className="hidden sm:inline">Localizar</span>
-              <svg className="w-5 h-5 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      {/* Saved Routes Dropdown */}
+      {showSavedRoutes && (
+        <div className="bg-card rounded-xl shadow-sm p-4 border border-primary/20">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-foreground">Rotas Guardadas</h3>
+            <button onClick={() => setShowSavedRoutes(false)} className="text-muted-foreground hover:text-foreground">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
-        </div>
-
-        {startingPoint.latitude && startingPoint.longitude && (
-          <p className="mt-2 text-xs text-green-600 flex items-center gap-1">
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            Ponto de partida definido
-          </p>
-        )}
-      </div>
-
-            {/* Filters - Full Width */}
-      <div className="bg-card rounded-xl shadow-sm p-3 sm:p-4 mb-4">
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-          {/* Type Filter */}
-          <div>
-            <label className="text-xs text-muted-foreground mb-1.5 block font-medium">Tipo</label>
-            <div className="flex gap-1">
-              {[
-                { value: "all", label: "Todos" },
-                { value: "cliente", label: "Clientes" },
-                { value: "prospecto", label: "Prosp." }
-              ].map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => setFilterType(opt.value as typeof filterType)}
-                  className={`px-2 py-1.5 rounded-lg text-xs font-medium transition ${
-                    filterType === opt.value
-                      ? "bg-primary text-white"
-                      : "bg-secondary text-foreground hover:bg-secondary/80"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Search */}
-          <div>
-            <label className="text-xs text-muted-foreground mb-1.5 block font-medium">Pesquisar</label>
+          <div className="flex items-center gap-2 mb-3">
             <input
-              type="text"
-              placeholder="Nome, morada..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-2 py-1.5 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="px-3 py-2 bg-secondary border border-border rounded-lg text-sm"
             />
           </div>
-
-          {/* District Filter */}
-          <div className="col-span-2 sm:col-span-2 lg:col-span-3">
-            <label className="text-xs text-muted-foreground mb-1.5 block font-medium">Distrito</label>
-            <div className="flex flex-wrap gap-1">
-              <button
-                onClick={() => setFilterDistrict("")}
-                className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
-                  filterDistrict === ""
-                    ? "bg-primary text-white"
-                    : "bg-secondary text-foreground hover:bg-secondary/80"
-                }`}
-              >
-                Todos
-              </button>
-              {availableDistricts.map(district => (
-                <button
-                  key={district}
-                  onClick={() => setFilterDistrict(filterDistrict === district ? "" : district)}
-                  className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
-                    filterDistrict === district
-                      ? "bg-primary text-white"
-                      : "bg-secondary text-foreground hover:bg-secondary/80"
-                  }`}
-                >
-                  {district}
-                </button>
+          {savedRoutes.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Nenhuma rota guardada</p>
+          ) : (
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {savedRoutes.map(route => (
+                <div key={route.id} className={`flex items-center justify-between p-3 rounded-lg transition ${
+                  route.data.split("T")[0] === selectedDate ? "bg-primary/10 border border-primary/30" : "bg-secondary/50 hover:bg-secondary"
+                }`}>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">{route.nome || "Rota sem nome"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(route.data).toLocaleDateString("pt-PT")} · {route.locais.length} locais · {route.distanciaTotal}
+                      {route.custoTotal && <span className="text-green-600 font-medium"> · €{Number(route.custoTotal).toFixed(2)}</span>}
+                    </p>
+                  </div>
+                  <div className="flex gap-1 ml-2">
+                    <button
+                      onClick={() => loadSavedRoute(route)}
+                      className="p-2 bg-primary text-white rounded-lg hover:bg-primary-hover"
+                      title="Carregar"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => deleteSavedRoute(route.id)}
+                      className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                      title="Eliminar"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               ))}
-            </div>
-          </div>
-
-          {/* Pipeline State Filter */}
-          {filterType !== "cliente" && (
-            <div className="col-span-2 sm:col-span-4 lg:col-span-6">
-              <label className="text-xs text-muted-foreground mb-1.5 block font-medium">Estado Pipeline</label>
-              <div className="flex flex-wrap gap-1">
-                {PIPELINE_STATES.map(state => (
-                  <button
-                    key={state.value}
-                    onClick={() => {
-                      setFilterStates(prev =>
-                        prev.includes(state.value)
-                          ? prev.filter(s => s !== state.value)
-                          : [...prev, state.value]
-                      )
-                    }}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition ${
-                      filterStates.includes(state.value)
-                        ? state.color + " ring-2 ring-offset-1 ring-gray-400"
-                        : "bg-secondary text-muted-foreground hover:bg-secondary/80"
-                    }`}
-                  >
-                    {state.label}
-                  </button>
-                ))}
-              </div>
             </div>
           )}
         </div>
-      </div>
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Filters & Location List */}
-        <div className="lg:col-span-1 space-y-3 lg:space-y-4 order-2 lg:order-1">
-          
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+        {/* Left Panel - Collapsible Steps */}
+        <div className="lg:col-span-4 xl:col-span-3 space-y-3 order-2 lg:order-1">
 
-          {/* Location List - Grouped by District */}
-          <div className="bg-card rounded-xl shadow-sm p-4 h-[400px] sm:h-[500px] lg:h-[550px] overflow-y-auto">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-foreground">
-                Locais ({filteredLocations.length})
-              </h3>
-              <span className="text-xs text-muted-foreground">
-                {selectedLocations.length} selecionados
-              </span>
-            </div>
+          {/* Step 1: Starting Point */}
+          <div className="bg-card rounded-xl shadow-sm overflow-hidden">
+            <button
+              onClick={() => togglePanel("origin")}
+              className="w-full flex items-center justify-between p-4 hover:bg-muted/30 transition"
+            >
+              <div className="flex items-center gap-3">
+                <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                  startingPoint.latitude ? "bg-green-500 text-white" : "bg-muted text-muted-foreground"
+                }`}>
+                  {startingPoint.latitude ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : "1"}
+                </span>
+                <div className="text-left">
+                  <h3 className="font-semibold text-foreground text-sm">Ponto de Partida</h3>
+                  {startingPoint.latitude && (
+                    <p className="text-xs text-green-600 truncate max-w-[180px]">{startingPoint.address || "GPS"}</p>
+                  )}
+                </div>
+              </div>
+              <svg className={`w-5 h-5 text-muted-foreground transition-transform ${expandedPanels.has("origin") ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
 
-            {Object.keys(locationsByDistrict).length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Nenhum local encontrado</p>
-            ) : (
-              <div className="space-y-3">
-                {Object.entries(locationsByDistrict).map(([district, locs]) => (
-                  <div key={district}>
-                    <div className="flex items-center justify-between mb-1.5 sticky top-0 bg-card py-1">
-                      <h4 className="text-xs font-semibold text-primary uppercase tracking-wide flex items-center gap-1.5">
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        </svg>
-                        {district}
-                        <span className="text-muted-foreground font-normal">({locs.length})</span>
-                      </h4>
-                      <button
-                        onClick={() => selectAllInDistrict(district)}
-                        className="text-xs text-primary hover:underline"
-                      >
-                        {locs.filter(l => l.latitude).every(l => selectedLocations.includes(l.id)) ? "Desmarcar" : "Selecionar"} todos
-                      </button>
-                    </div>
-                    <div className="space-y-1">
-                      {locs.map(loc => {
-                        const routeIndex = getRouteIndex(loc.id)
-                        const isInRoute = routeIndex >= 0
+            {expandedPanels.has("origin") && (
+              <div className="p-4 pt-0 space-y-3 border-t border-border">
+                <button
+                  onClick={getCurrentLocation}
+                  className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium text-sm transition ${
+                    startingPoint.type === "gps" && startingPoint.latitude
+                      ? "bg-green-100 text-green-800 border-2 border-green-500"
+                      : "bg-secondary text-foreground hover:bg-secondary/80"
+                  }`}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3-1.343-3-3-3zm0 0V4m0 16v-4m-8-4H8m12 0h-4" />
+                  </svg>
+                  Usar Localização Atual
+                </button>
 
-                        return (
-                          <div key={loc.id}>
-                            <label
-                              className={`flex items-start gap-2 p-2 rounded-lg cursor-pointer transition ${
-                                selectedLocations.includes(loc.id)
-                                  ? "bg-primary/10 border border-primary/30"
-                                  : loc.latitude ? "bg-secondary/50 hover:bg-secondary" : "bg-red-50 dark:bg-red-900/20"
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={selectedLocations.includes(loc.id)}
-                                onChange={() => loc.latitude ? toggleLocation(loc.id) : setEditingLocation(loc.id)}
-                                disabled={!loc.latitude && editingLocation !== loc.id}
-                                className="mt-0.5 rounded text-primary focus:ring-primary"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5">
-                                  {/* Route letter badge (starts from B since A is starting point) */}
-                                  {isInRoute && (
-                                    <span className="w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
-                                      {getRouteLetter(routeIndex + 1)}
-                                    </span>
-                                  )}
-                                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                                    loc.tipo === "cliente" ? "bg-blue-500" : "bg-orange-500"
-                                  }`} />
-                                  <span className="text-sm font-medium text-foreground truncate">{loc.nome}</span>
-                                </div>
-                                {loc.morada && (
-                                  <p className="text-xs text-muted-foreground truncate mt-0.5 ml-7">{loc.morada}</p>
-                                )}
-                                {loc.codigoPostal && (
-                                  <p className="text-xs text-muted-foreground/70 ml-7">{loc.codigoPostal} {loc.cidade && `· ${loc.cidade}`}</p>
-                                )}
-                                {loc.tipo === "prospecto" && loc.estado && (
-                                  <div className="mt-0.5 ml-7">{getStateBadge(loc.estado)}</div>
-                                )}
-                                {!loc.latitude && editingLocation !== loc.id && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.preventDefault()
-                                      setEditingLocation(loc.id)
-                                      setEditAddress({
-                                        morada: loc.morada || "",
-                                        cidade: loc.cidade || "",
-                                        codigoPostal: loc.codigoPostal || ""
-                                      })
-                                    }}
-                                    className="text-xs text-red-600 hover:underline mt-0.5"
-                                  >
-                                    + Adicionar morada
-                                  </button>
-                                )}
-                              </div>
-                            </label>
-
-                            {editingLocation === loc.id && (
-                              <div className="ml-6 mt-2 p-3 bg-secondary rounded-lg space-y-2">
-                                <input
-                                  type="text"
-                                  placeholder="Morada"
-                                  value={editAddress.morada}
-                                  onChange={(e) => setEditAddress(prev => ({ ...prev, morada: e.target.value }))}
-                                  className="w-full px-2 py-1.5 bg-card border border-border rounded text-sm"
-                                />
-                                <div className="flex gap-2">
-                                  <input
-                                    type="text"
-                                    placeholder="Cidade"
-                                    value={editAddress.cidade}
-                                    onChange={(e) => setEditAddress(prev => ({ ...prev, cidade: e.target.value }))}
-                                    className="flex-1 px-2 py-1.5 bg-card border border-border rounded text-sm"
-                                  />
-                                  <input
-                                    type="text"
-                                    placeholder="Cod. Postal"
-                                    value={editAddress.codigoPostal}
-                                    onChange={(e) => setEditAddress(prev => ({ ...prev, codigoPostal: e.target.value }))}
-                                    className="w-24 px-2 py-1.5 bg-card border border-border rounded text-sm"
-                                  />
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                  <button
-                                    onClick={() => geocodeInlineAddress(loc.id, loc.tipo)}
-                                    disabled={geocodingInline || (!editAddress.morada && !editAddress.cidade)}
-                                    className="flex-1 px-3 py-1.5 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700 disabled:opacity-50"
-                                  >
-                                    {geocodingInline ? "A localizar..." : "Localizar"}
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setPinpointingLocation({ id: loc.id, tipo: loc.tipo })
-                                      Swal.fire({
-                                        icon: "info",
-                                        title: "Marcar no mapa",
-                                        text: "Clique no mapa para definir a localização exacta",
-                                        confirmButtonColor: "#10b981",
-                                        timer: 3000
-                                      })
-                                    }}
-                                    className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700"
-                                  >
-                                    Marcar no mapa
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setEditingLocation(null)
-                                      setEditAddress({ morada: "", cidade: "", codigoPostal: "" })
-                                    }}
-                                    className="px-3 py-1.5 bg-secondary text-foreground rounded text-xs font-medium hover:bg-secondary/80"
-                                  >
-                                    Cancelar
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Ou inserir morada..."
+                    value={startingPoint.address}
+                    onChange={(e) => setStartingPoint(prev => ({
+                      ...prev,
+                      type: "address",
+                      address: e.target.value,
+                      latitude: null,
+                      longitude: null
+                    }))}
+                    className="flex-1 px-3 py-2.5 bg-secondary border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <button
+                    onClick={geocodeStartingAddress}
+                    disabled={!startingPoint.address.trim()}
+                    className="px-4 py-2.5 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary-hover transition disabled:opacity-50"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             )}
           </div>
+
+          {/* Step 2: Filter & Select Locations */}
+          <div className="bg-card rounded-xl shadow-sm overflow-hidden">
+            <button
+              onClick={() => togglePanel("locations")}
+              className="w-full flex items-center justify-between p-4 hover:bg-muted/30 transition"
+            >
+              <div className="flex items-center gap-3">
+                <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                  selectedLocations.length > 0 ? "bg-green-500 text-white" : "bg-muted text-muted-foreground"
+                }`}>
+                  {selectedLocations.length > 0 ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : "2"}
+                </span>
+                <div className="text-left">
+                  <h3 className="font-semibold text-foreground text-sm">Selecionar Destinos</h3>
+                  <p className="text-xs text-muted-foreground">{filteredLocations.length} locais disponíveis</p>
+                </div>
+              </div>
+              <svg className={`w-5 h-5 text-muted-foreground transition-transform ${expandedPanels.has("locations") ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {expandedPanels.has("locations") && (
+              <div className="border-t border-border">
+                {/* Compact Filters */}
+                <div className="p-3 border-b border-border bg-muted/30 space-y-2">
+                  {/* Search */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Pesquisar..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+
+                  {/* Filter Row */}
+                  <div className="flex gap-2">
+                    {/* Type Dropdown */}
+                    <select
+                      value={filterType}
+                      onChange={(e) => setFilterType(e.target.value as typeof filterType)}
+                      className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="all">Todos os tipos</option>
+                      <option value="cliente">Clientes</option>
+                      <option value="prospecto">Prospectos</option>
+                    </select>
+
+                    {/* District Dropdown */}
+                    <select
+                      value={filterDistrict}
+                      onChange={(e) => setFilterDistrict(e.target.value)}
+                      className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="">Todos os distritos</option>
+                      {availableDistricts.map(d => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Estado Filter for Prospectos */}
+                  {filterType !== "cliente" && (
+                    <div className="flex flex-wrap gap-1">
+                      {PIPELINE_STATES.map(state => (
+                        <button
+                          key={state.value}
+                          onClick={() => {
+                            setFilterStates(prev =>
+                              prev.includes(state.value)
+                                ? prev.filter(s => s !== state.value)
+                                : [...prev, state.value]
+                            )
+                          }}
+                          className={`px-2 py-1 rounded text-xs font-medium transition ${
+                            filterStates.includes(state.value)
+                              ? state.color + " ring-1 ring-offset-1 ring-gray-400"
+                              : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
+                          }`}
+                        >
+                          {state.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Location List */}
+                <div className="max-h-[350px] overflow-y-auto">
+                  {Object.keys(locationsByDistrict).length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-6">Nenhum local encontrado</p>
+                  ) : (
+                    <div className="divide-y divide-border">
+                      {Object.entries(locationsByDistrict).map(([district, locs]) => (
+                        <div key={district}>
+                          <div className="flex items-center justify-between px-3 py-2 bg-muted/50 sticky top-0">
+                            <h4 className="text-xs font-semibold text-primary uppercase tracking-wide flex items-center gap-1.5">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                              </svg>
+                              {district}
+                              <span className="text-muted-foreground font-normal">({locs.length})</span>
+                            </h4>
+                            <button
+                              onClick={() => selectAllInDistrict(district)}
+                              className="text-xs text-primary hover:underline font-medium"
+                            >
+                              {locs.filter(l => l.latitude).every(l => selectedLocations.includes(l.id)) ? "Desmarcar" : "Todos"}
+                            </button>
+                          </div>
+                          <div className="divide-y divide-border/50">
+                            {locs.map(loc => {
+                              const routeIndex = getRouteIndex(loc.id)
+                              const isInRoute = routeIndex >= 0
+
+                              return (
+                                <div key={loc.id}>
+                                  <label
+                                    className={`flex items-start gap-2 p-3 cursor-pointer transition ${
+                                      selectedLocations.includes(loc.id)
+                                        ? "bg-primary/5"
+                                        : loc.latitude ? "hover:bg-muted/30" : "bg-red-50/50 dark:bg-red-900/10"
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedLocations.includes(loc.id)}
+                                      onChange={() => loc.latitude ? toggleLocation(loc.id) : setEditingLocation(loc.id)}
+                                      disabled={!loc.latitude && editingLocation !== loc.id}
+                                      className="mt-0.5 rounded text-primary focus:ring-primary"
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-1.5">
+                                        {isInRoute && (
+                                          <span className="w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                                            {getRouteLetter(routeIndex + 1)}
+                                          </span>
+                                        )}
+                                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                          loc.tipo === "cliente" ? "bg-blue-500" : "bg-orange-500"
+                                        }`} />
+                                        <span className="text-sm font-medium text-foreground truncate">{loc.nome}</span>
+                                      </div>
+                                      {loc.morada && (
+                                        <p className="text-xs text-muted-foreground truncate mt-0.5">{loc.morada}</p>
+                                      )}
+                                      {loc.tipo === "prospecto" && loc.estado && (
+                                        <div className="mt-1">{getStateBadge(loc.estado)}</div>
+                                      )}
+                                      {!loc.latitude && editingLocation !== loc.id && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.preventDefault()
+                                            setEditingLocation(loc.id)
+                                            setEditAddress({
+                                              morada: loc.morada || "",
+                                              cidade: loc.cidade || "",
+                                              codigoPostal: loc.codigoPostal || ""
+                                            })
+                                          }}
+                                          className="text-xs text-red-600 hover:underline mt-1"
+                                        >
+                                          + Adicionar morada
+                                        </button>
+                                      )}
+                                    </div>
+                                  </label>
+
+                                  {editingLocation === loc.id && (
+                                    <div className="p-3 bg-secondary/50 space-y-2">
+                                      <input
+                                        type="text"
+                                        placeholder="Morada"
+                                        value={editAddress.morada}
+                                        onChange={(e) => setEditAddress(prev => ({ ...prev, morada: e.target.value }))}
+                                        className="w-full px-2 py-1.5 bg-card border border-border rounded text-sm"
+                                      />
+                                      <div className="flex gap-2">
+                                        <input
+                                          type="text"
+                                          placeholder="Cidade"
+                                          value={editAddress.cidade}
+                                          onChange={(e) => setEditAddress(prev => ({ ...prev, cidade: e.target.value }))}
+                                          className="flex-1 px-2 py-1.5 bg-card border border-border rounded text-sm"
+                                        />
+                                        <input
+                                          type="text"
+                                          placeholder="Cod. Postal"
+                                          value={editAddress.codigoPostal}
+                                          onChange={(e) => setEditAddress(prev => ({ ...prev, codigoPostal: e.target.value }))}
+                                          className="w-24 px-2 py-1.5 bg-card border border-border rounded text-sm"
+                                        />
+                                      </div>
+                                      <div className="flex gap-2">
+                                        <button
+                                          onClick={() => geocodeInlineAddress(loc.id, loc.tipo)}
+                                          disabled={geocodingInline || (!editAddress.morada && !editAddress.cidade)}
+                                          className="flex-1 px-3 py-1.5 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700 disabled:opacity-50"
+                                        >
+                                          {geocodingInline ? "..." : "Localizar"}
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            setPinpointingLocation({ id: loc.id, tipo: loc.tipo })
+                                            Swal.fire({
+                                              icon: "info",
+                                              title: "Marcar no mapa",
+                                              text: "Clique no mapa para definir a localização",
+                                              confirmButtonColor: "#10b981",
+                                              timer: 3000
+                                            })
+                                          }}
+                                          className="px-3 py-1.5 bg-primary text-white rounded text-xs font-medium hover:bg-primary-hover"
+                                        >
+                                          Mapa
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            setEditingLocation(null)
+                                            setEditAddress({ morada: "", cidade: "", codigoPostal: "" })
+                                          }}
+                                          className="px-3 py-1.5 bg-secondary text-foreground rounded text-xs"
+                                        >
+                                          X
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Step 3: Calculate - Always visible as CTA */}
+          <button
+            onClick={() => {
+              if (!startingPoint.latitude && !startingPoint.longitude) {
+                Swal.fire({
+                  icon: "warning",
+                  title: "Ponto de partida",
+                  text: "Define o ponto de partida primeiro (Passo 1)",
+                  confirmButtonColor: "#10b981"
+                })
+                setExpandedPanels(prev => new Set([...prev, "origin"]))
+                return
+              }
+              if (selectedLocations.length === 0) {
+                Swal.fire({
+                  icon: "info",
+                  title: "Sem destinos",
+                  text: "Seleciona pelo menos um destino (Passo 2)",
+                  confirmButtonColor: "#10b981"
+                })
+                setExpandedPanels(prev => new Set([...prev, "locations"]))
+                return
+              }
+              calculateRoute()
+            }}
+            disabled={calculatingRoute}
+            className={`w-full flex items-center justify-center gap-3 px-5 py-4 rounded-xl font-bold text-lg transition shadow-lg ${
+              canCalculateRoute
+                ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {calculatingRoute ? (
+              <>
+                <svg className="w-6 h-6 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                A calcular...
+              </>
+            ) : (
+              <>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+                Calcular Rota
+              </>
+            )}
+          </button>
         </div>
 
-        {/* Map & Route */}
-        <div className="lg:col-span-2 space-y-3 lg:space-y-4 order-1 lg:order-2">
-          {/* Actions */}
-          <div className="bg-card rounded-xl shadow-sm p-4">
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => {
-                  if (!startingPoint.latitude && !startingPoint.longitude) {
-                    Swal.fire({
-                      icon: "warning",
-                      title: "Ponto de partida não definido",
-                      text: "Defina o ponto de partida antes de calcular a rota",
-                      confirmButtonColor: "#10b981"
-                    })
-                    return
-                  }
-                  if (selectedLocations.length === 0) {
-                    Swal.fire({
-                      icon: "info",
-                      title: "Nenhum local selecionado",
-                      text: "Selecione pelo menos um local para calcular a rota",
-                      confirmButtonColor: "#10b981"
-                    })
-                    return
-                  }
-                  calculateRoute()
-                }}
-                disabled={calculatingRoute}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition disabled:opacity-50 shadow-lg"
-              >
-                {calculatingRoute ? (
-                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                ) : (
+        {/* Right Panel - Map & Route */}
+        <div className="lg:col-span-8 xl:col-span-9 space-y-3 order-1 lg:order-2">
+          {/* Route Results Summary */}
+          {totalDistance && (
+            <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl shadow-lg p-4">
+              <div className="flex flex-wrap items-center gap-4 mb-3">
+                <div className="flex items-center gap-2">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                   </svg>
+                  <div>
+                    <p className="text-xs text-emerald-100">Distância</p>
+                    <p className="font-bold text-lg">{totalDistance}</p>
+                  </div>
+                </div>
+                <div className="w-px h-10 bg-emerald-400/50"></div>
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-xs text-emerald-100">Duração</p>
+                    <p className="font-bold text-lg">{totalDuration}</p>
+                  </div>
+                </div>
+                {costs.custoTotal && costs.custoTotal > 0 && (
+                  <>
+                    <div className="w-px h-10 bg-emerald-400/50"></div>
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div>
+                        <p className="text-xs text-emerald-100">Custo Est.</p>
+                        <p className="font-bold text-lg">€{costs.custoTotal.toFixed(2)}</p>
+                      </div>
+                    </div>
+                  </>
                 )}
-                Calcular Rota
-              </button>
-
-              {optimizedRoute.length > 0 && (
-                <>
+                <div className="flex-1"></div>
+                <div className="flex gap-2">
                   <button
                     onClick={() => setShowCostPanel(!showCostPanel)}
-                    className="flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition"
+                    className="flex items-center gap-1 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                     </svg>
                     Custos
                   </button>
                   <button
                     onClick={clearRoute}
-                    className="flex items-center justify-center gap-2 px-4 py-3 bg-secondary text-foreground rounded-xl font-medium hover:bg-secondary/80 transition"
+                    className="flex items-center gap-1 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                     Limpar
                   </button>
-                </>
-              )}
-            </div>
-
-            {totalDistance && (
-              <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                <div className="flex flex-wrap items-center gap-4 mb-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Distância</p>
-                    <p className="font-bold text-foreground">{totalDistance}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Duração</p>
-                    <p className="font-bold text-foreground">{totalDuration}</p>
-                  </div>
-                  {costs.numPortagens && costs.numPortagens > 0 && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Portagens</p>
-                      <p className="font-bold text-amber-600">{costs.numPortagens} · €{(costs.custoPortagens || 0).toFixed(2)}</p>
-                    </div>
-                  )}
-                  {costs.custoTotal && costs.custoTotal > 0 && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Custo Est.</p>
-                      <p className="font-bold text-green-600">€{costs.custoTotal.toFixed(2)}</p>
-                    </div>
-                  )}
-                  {parkingStops.length > 0 && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Paragens</p>
-                      <p className="font-bold text-blue-600">{parkingStops.length}</p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-2 pt-3 border-t border-green-200 dark:border-green-800">
-                  <input
-                    type="text"
-                    placeholder="Nome da rota (opcional)"
-                    value={routeName}
-                    onChange={(e) => setRouteName(e.target.value)}
-                    className="flex-1 px-3 py-2 bg-card border border-border rounded-lg text-sm"
-                  />
-                  <button
-                    onClick={saveRoute}
-                    disabled={savingRoute}
-                    className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
-                  >
-                    {savingRoute ? "A guardar..." : "Guardar Rota"}
-                  </button>
                 </div>
               </div>
-            )}
-          </div>
+
+              <div className="flex flex-col sm:flex-row gap-2 pt-3 border-t border-emerald-400/30">
+                <input
+                  type="text"
+                  placeholder="Nome da rota (opcional)"
+                  value={routeName}
+                  onChange={(e) => setRouteName(e.target.value)}
+                  className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-sm placeholder-emerald-200 focus:outline-none focus:ring-2 focus:ring-white/30"
+                />
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
+                />
+                <button
+                  onClick={saveRoute}
+                  disabled={savingRoute}
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-white text-emerald-600 rounded-lg text-sm font-bold hover:bg-emerald-50 disabled:opacity-50 transition"
+                >
+                  {savingRoute ? "..." : "Guardar Rota"}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Cost Panel */}
           {showCostPanel && optimizedRoute.length > 0 && (
             <div className="bg-card rounded-xl shadow-sm p-4">
-              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Estimativa de Custos
-                {costs.numPortagens && costs.numPortagens > 0 && (
-                  <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full ml-2">
-                    {costs.numPortagens} portagen{costs.numPortagens > 1 ? "s" : ""} detetada{costs.numPortagens > 1 ? "s" : ""}
-                  </span>
-                )}
-              </h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-foreground flex items-center gap-2">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Estimativa de Custos
+                </h3>
+                <button onClick={() => setShowCostPanel(false)} className="text-muted-foreground hover:text-foreground">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 <div>
                   <label className="text-xs text-muted-foreground block mb-1">Portagens (€)</label>
                   <input
@@ -1649,18 +1659,6 @@ export default function RoutePlannerAdvanced() {
                     className="w-full px-2 py-1.5 bg-secondary border border-border rounded-lg text-sm"
                   />
                 </div>
-
-                <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Nº Portagens</label>
-                  <input
-                    type="number"
-                    placeholder="0"
-                    value={costs.numPortagens || ""}
-                    onChange={(e) => setCosts(prev => ({ ...prev, numPortagens: e.target.value ? parseInt(e.target.value) : null }))}
-                    className="w-full px-2 py-1.5 bg-secondary border border-border rounded-lg text-sm"
-                  />
-                </div>
-
                 <div>
                   <label className="text-xs text-muted-foreground block mb-1">Consumo (L/100km)</label>
                   <input
@@ -1671,7 +1669,6 @@ export default function RoutePlannerAdvanced() {
                     className="w-full px-2 py-1.5 bg-secondary border border-border rounded-lg text-sm"
                   />
                 </div>
-
                 <div>
                   <label className="text-xs text-muted-foreground block mb-1">Preço GPL (€/L)</label>
                   <input
@@ -1682,25 +1679,16 @@ export default function RoutePlannerAdvanced() {
                     className="w-full px-2 py-1.5 bg-secondary border border-border rounded-lg text-sm"
                   />
                 </div>
-
                 <div>
                   <label className="text-xs text-muted-foreground block mb-1">Combustível (€)</label>
                   <input
                     type="number"
                     step="0.01"
                     value={costs.custoCombuistivel?.toFixed(2) || ""}
-                    onChange={(e) => {
-                      const val = e.target.value ? parseFloat(e.target.value) : null
-                      setCosts(prev => ({
-                        ...prev,
-                        custoCombuistivel: val,
-                        custoTotal: (prev.custoPortagens || 0) + (val || 0) + (prev.custoEstacionamento || 0) || null
-                      }))
-                    }}
-                    className="w-full px-2 py-1.5 bg-secondary border border-border rounded-lg text-sm"
+                    readOnly
+                    className="w-full px-2 py-1.5 bg-muted border border-border rounded-lg text-sm"
                   />
                 </div>
-
                 <div>
                   <label className="text-xs text-muted-foreground block mb-1">Estacionamento (€)</label>
                   <input
@@ -1718,10 +1706,15 @@ export default function RoutePlannerAdvanced() {
                     className="w-full px-2 py-1.5 bg-secondary border border-border rounded-lg text-sm"
                   />
                 </div>
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Total</label>
+                  <div className="px-2 py-1.5 bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700 rounded-lg text-sm font-bold text-green-700 dark:text-green-400">
+                    €{(costs.custoTotal || 0).toFixed(2)}
+                  </div>
+                </div>
               </div>
 
               <div className="mt-3">
-                <label className="text-xs text-muted-foreground block mb-1">Notas</label>
                 <input
                   type="text"
                   placeholder="Notas sobre custos..."
@@ -1729,11 +1722,6 @@ export default function RoutePlannerAdvanced() {
                   onChange={(e) => setCosts(prev => ({ ...prev, notasCustos: e.target.value }))}
                   className="w-full px-2 py-1.5 bg-secondary border border-border rounded-lg text-sm"
                 />
-              </div>
-
-              <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
-                <span className="font-medium text-foreground">Total Estimado:</span>
-                <span className="text-xl font-bold text-green-600">€{(costs.custoTotal || 0).toFixed(2)}</span>
               </div>
             </div>
           )}
@@ -1745,34 +1733,29 @@ export default function RoutePlannerAdvanced() {
                 <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
-                Paragens de Estacionamento ({parkingStops.length})
+                Paragens ({parkingStops.length})
               </h3>
-              <div className="space-y-2">
+              <div className="flex flex-wrap gap-2">
                 {parkingStops.map((parking, i) => (
-                  <div key={i} className="flex items-center gap-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <span className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">P</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{parking.nome}</p>
-                      {parking.endereco && <p className="text-xs text-muted-foreground truncate">{parking.endereco}</p>}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        step="0.50"
-                        placeholder="€"
-                        value={parking.custoEstimado || ""}
-                        onChange={(e) => updateParkingCost(i, e.target.value ? parseFloat(e.target.value) : null)}
-                        className="w-16 px-2 py-1 bg-card border border-border rounded text-xs text-center"
-                      />
-                      <button
-                        onClick={() => removeParkingStop(i)}
-                        className="p-1 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
+                  <div key={i} className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <span className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">P</span>
+                    <span className="text-sm font-medium text-foreground">{parking.nome}</span>
+                    <input
+                      type="number"
+                      step="0.50"
+                      placeholder="€"
+                      value={parking.custoEstimado || ""}
+                      onChange={(e) => updateParkingCost(i, e.target.value ? parseFloat(e.target.value) : null)}
+                      className="w-14 px-2 py-1 bg-card border border-border rounded text-xs text-center"
+                    />
+                    <button
+                      onClick={() => removeParkingStop(i)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   </div>
                 ))}
               </div>
@@ -1781,19 +1764,16 @@ export default function RoutePlannerAdvanced() {
 
           {/* Pinpointing Mode Indicator */}
           {pinpointingLocation && (
-            <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded-xl p-3 mb-2 flex items-center justify-between">
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <svg className="w-5 h-5 text-blue-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                  Clique no mapa para marcar a localização
-                </span>
+                <span className="text-sm font-medium text-blue-600">Clique no mapa para marcar a localização</span>
               </div>
               <button
                 onClick={() => setPinpointingLocation(null)}
-                className="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700"
+                className="px-3 py-1 bg-primary text-white rounded-lg text-xs font-medium"
               >
                 Cancelar
               </button>
@@ -1802,41 +1782,33 @@ export default function RoutePlannerAdvanced() {
 
           {/* Address Search Bar */}
           {isLoaded && (
-            <div className="mb-3">
-              <div className="relative">
-                <Autocomplete
-                  onLoad={(autocomplete) => setSearchAutocomplete(autocomplete)}
-                  onPlaceChanged={onPlaceSelected}
-                  options={{
-                    componentRestrictions: { country: "pt" },
-                    fields: ["formatted_address", "geometry", "name"],
-                  }}
-                >
-                  <input
-                    type="text"
-                    placeholder="Pesquisar endereco no mapa..."
-                    className="w-full pl-10 pr-10 py-2.5 border border-border rounded-xl bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-primary"
-                  />
-                </Autocomplete>
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                {searchMarker && (
-                  <button
-                    onClick={() => setSearchMarker(null)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
-                    title="Limpar pesquisa"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                )}
-              </div>
+            <div className="relative">
+              <Autocomplete
+                onLoad={(autocomplete) => setSearchAutocomplete(autocomplete)}
+                onPlaceChanged={onPlaceSelected}
+                options={{
+                  componentRestrictions: { country: "pt" },
+                  fields: ["formatted_address", "geometry", "name"],
+                }}
+              >
+                <input
+                  type="text"
+                  placeholder="Pesquisar endereço no mapa..."
+                  className="w-full pl-10 pr-10 py-3 border border-border rounded-xl bg-card text-foreground focus:ring-2 focus:ring-primary focus:border-primary"
+                />
+              </Autocomplete>
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
               {searchMarker && (
-                <p className="text-xs text-muted-foreground mt-1 ml-1">
-                  {searchMarker.address}
-                </p>
+                <button
+                  onClick={() => setSearchMarker(null)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               )}
             </div>
           )}
@@ -1873,7 +1845,6 @@ export default function RoutePlannerAdvanced() {
                   />
                 )}
 
-                {/* Search Result Marker */}
                 {searchMarker && (
                   <Marker
                     position={{ lat: searchMarker.lat, lng: searchMarker.lng }}
@@ -1949,9 +1920,6 @@ export default function RoutePlannerAdvanced() {
                       {selectedMarker.morada && (
                         <p className="text-xs text-gray-500 mt-1">{selectedMarker.morada}</p>
                       )}
-                      {selectedMarker.codigoPostal && (
-                        <p className="text-xs text-gray-500">{selectedMarker.codigoPostal} {selectedMarker.cidade}</p>
-                      )}
                       {selectedMarker.telefone && (
                         <a href={`tel:${selectedMarker.telefone}`} className="text-xs text-blue-600 mt-1 block hover:underline">
                           {selectedMarker.telefone}
@@ -1972,11 +1940,11 @@ export default function RoutePlannerAdvanced() {
           {optimizedRoute.length > 0 && (
             <div className="bg-card rounded-xl shadow-sm p-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-foreground">Ordem Otimizada</h3>
+                <h3 className="font-semibold text-foreground">Ordem Otimizada ({optimizedRoute.length} paragens)</h3>
                 <div className="hidden lg:flex gap-2">
                   <button
                     onClick={() => openNavigation("google")}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-medium hover:bg-primary-hover"
                   >
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
@@ -1997,12 +1965,9 @@ export default function RoutePlannerAdvanced() {
 
               <div className="space-y-2">
                 <div className="flex items-center gap-3 p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <span className="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                    </svg>
-                  </span>
+                  <span className="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold">A</span>
                   <span className="text-sm font-medium text-foreground">Ponto de Partida</span>
+                  <span className="text-xs text-muted-foreground truncate flex-1">{startingPoint.address || "GPS"}</span>
                 </div>
 
                 {optimizedRoute.map((loc, i) => (
@@ -2012,21 +1977,21 @@ export default function RoutePlannerAdvanced() {
                         {getRouteLetter(i + 1)}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium text-foreground">{loc.nome}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-foreground truncate">{loc.nome}</span>
+                          <span className={`w-2 h-2 rounded-full ${loc.tipo === "cliente" ? "bg-blue-500" : "bg-orange-500"}`} />
+                        </div>
                         {loc.morada && (
                           <p className="text-xs text-muted-foreground truncate">{loc.morada}</p>
                         )}
                       </div>
-                      <span className={`w-2 h-2 rounded-full ${
-                        loc.tipo === "cliente" ? "bg-blue-500" : "bg-orange-500"
-                      }`} />
                     </div>
 
                     {i < optimizedRoute.length - 1 && (
                       <div className="flex gap-2 ml-9 my-2">
                         <button
                           onClick={() => findNearbyPlaces(loc.latitude!, loc.longitude!, "parking", i)}
-                          className="text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 px-2 py-1.5 rounded-lg flex items-center gap-1.5 transition"
+                          className="text-xs text-blue-600 bg-blue-500/10 hover:bg-blue-500/20 px-2 py-1.5 rounded-lg flex items-center gap-1.5 transition"
                         >
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -2035,7 +2000,7 @@ export default function RoutePlannerAdvanced() {
                         </button>
                         <button
                           onClick={() => findNearbyPlaces(loc.latitude!, loc.longitude!, "gas_station", i)}
-                          className="text-xs text-amber-600 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 px-2 py-1.5 rounded-lg flex items-center gap-1.5 transition"
+                          className="text-xs text-amber-600 bg-amber-500/10 hover:bg-amber-500/20 px-2 py-1.5 rounded-lg flex items-center gap-1.5 transition"
                         >
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -2088,7 +2053,7 @@ export default function RoutePlannerAdvanced() {
                 <div className="space-y-3">
                   {nearbyPlaces.map(place => (
                     <div key={place.id} className="bg-secondary/50 rounded-lg p-3">
-                      <div className="flex-1 min-w-0 mb-2">
+                      <div className="mb-2">
                         <h4 className="text-sm font-medium text-foreground">{place.name}</h4>
                         {place.address && (
                           <p className="text-xs text-muted-foreground mt-0.5">{place.address}</p>
@@ -2119,20 +2084,14 @@ export default function RoutePlannerAdvanced() {
                         )}
                         <button
                           onClick={() => navigateToPlace(place, "google")}
-                          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+                          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover"
                         >
-                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-                          </svg>
                           Maps
                         </button>
                         <button
                           onClick={() => navigateToPlace(place, "waze")}
                           className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-[#33ccff] text-white rounded-lg text-sm font-medium hover:bg-[#2ab8e6]"
                         >
-                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                          </svg>
                           Waze
                         </button>
                       </div>
@@ -2151,7 +2110,7 @@ export default function RoutePlannerAdvanced() {
           <div className="flex gap-2">
             <button
               onClick={() => openNavigation("google")}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary-hover"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>

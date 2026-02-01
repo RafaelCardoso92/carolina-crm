@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create or update agreement (upsert)
+// POST - Create new agreement
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -105,18 +105,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Use upsert to handle unique constraint
-    const acordo = await prisma.acordoParceria.upsert({
-      where: { clienteId },
-      update: {
-        valorAnual,
-        ano,
-        notas,
-        ativo: true,
-        dataInicio: new Date(),
-        dataFim: null
-      },
-      create: {
+    // Check for existing active agreement
+    const existing = await prisma.acordoParceria.findFirst({
+      where: { clienteId, ativo: true }
+    })
+
+    if (existing) {
+      // Deactivate old agreement
+      await prisma.acordoParceria.update({
+        where: { id: existing.id },
+        data: { ativo: false, dataFim: new Date() }
+      })
+    }
+
+    const acordo = await prisma.acordoParceria.create({
+      data: {
         clienteId,
         valorAnual,
         ano,

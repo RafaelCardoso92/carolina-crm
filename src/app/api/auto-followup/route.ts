@@ -150,18 +150,31 @@ export async function POST() {
     const currentMonth = now.getMonth() + 1
     const currentQuarter = Math.ceil(currentMonth / 3)
 
-    for (const acordo of acordosAtivos) {
-      // Calculate YTD progress
-      const vendas = await prisma.venda.findMany({
-        where: {
-          clienteId: acordo.clienteId,
-          ano: acordo.ano,
-          mes: { lte: currentMonth }
-        },
-        select: { total: true }
-      })
+    // Batch fetch all vendas for acordos to avoid N+1 queries
+    const acordoYears = [...new Set(acordosAtivos.map(a => a.ano))]
+    const acordoClienteIds = [...new Set(acordosAtivos.map(a => a.clienteId))]
 
-      const yearToDateActual = vendas.reduce((sum, v) => sum + Number(v.total), 0)
+    const allVendas = await prisma.venda.findMany({
+      where: {
+        clienteId: { in: acordoClienteIds },
+        ano: { in: acordoYears },
+        mes: { lte: currentMonth }
+      },
+      select: { clienteId: true, ano: true, total: true }
+    })
+
+    // Create a map for O(1) lookups: key = "clienteId:ano"
+    const vendasByClienteYear = new Map<string, number>()
+    for (const venda of allVendas) {
+      const key = `${venda.clienteId}:${venda.ano}`
+      const current = vendasByClienteYear.get(key) || 0
+      vendasByClienteYear.set(key, current + Number(venda.total))
+    }
+
+    for (const acordo of acordosAtivos) {
+      // Calculate YTD progress using pre-fetched data
+      const key = `${acordo.clienteId}:${acordo.ano}`
+      const yearToDateActual = vendasByClienteYear.get(key) || 0
       const quarterlyTarget = Number(acordo.valorAnual) / 4
       const completedQuarters = currentQuarter - 1
       const currentQuarterMonths = [1, 2, 3].map(m => (currentQuarter - 1) * 3 + m)

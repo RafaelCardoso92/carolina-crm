@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { requireAuth, getEffectiveUserId } from "@/lib/api-auth"
 
 // Get today's date in YYYY-MM-DD format
 function getToday() {
@@ -20,17 +21,20 @@ function getLast7Days() {
 
 export async function GET() {
   try {
+    const session = await requireAuth()
+    const userId = getEffectiveUserId(session)
     const today = getToday()
     const last7Days = getLast7Days()
 
-    // Get today's mood
+    // Get today's mood for this user
     const todayMood = await prisma.moodEntry.findUnique({
-      where: { date: today }
+      where: { userId_date: { userId, date: today } }
     })
 
-    // Get last 7 days of moods
+    // Get last 7 days of moods for this user
     const weekMoods = await prisma.moodEntry.findMany({
       where: {
+        userId,
         date: { in: last7Days }
       },
       orderBy: { date: "asc" }
@@ -45,7 +49,7 @@ export async function GET() {
 
     // Calculate weekly average
     const ratings = weekMoods.map(m => m.rating)
-    const weeklyAverage = ratings.length > 0 
+    const weeklyAverage = ratings.length > 0
       ? Math.round(ratings.reduce((a, b) => a + b, 0) / ratings.length * 10) / 10
       : null
 
@@ -57,6 +61,9 @@ export async function GET() {
       daysTracked: ratings.length
     })
   } catch (error) {
+    if (error instanceof NextResponse) {
+      return error
+    }
     console.error("Error fetching mood:", error)
     return NextResponse.json({ error: "Erro ao carregar humor" }, { status: 500 })
   }
@@ -64,6 +71,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const session = await requireAuth()
+    const userId = getEffectiveUserId(session)
     const { rating } = await request.json()
     const today = getToday()
 
@@ -73,7 +82,7 @@ export async function POST(request: Request) {
 
     // Check if already voted today
     const existing = await prisma.moodEntry.findUnique({
-      where: { date: today }
+      where: { userId_date: { userId, date: today } }
     })
 
     if (existing) {
@@ -83,6 +92,7 @@ export async function POST(request: Request) {
     // Create new mood entry
     const mood = await prisma.moodEntry.create({
       data: {
+        userId,
         date: today,
         rating
       }
@@ -90,6 +100,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, mood })
   } catch (error) {
+    if (error instanceof NextResponse) {
+      return error
+    }
     console.error("Error saving mood:", error)
     return NextResponse.json({ error: "Erro ao guardar humor" }, { status: 500 })
   }

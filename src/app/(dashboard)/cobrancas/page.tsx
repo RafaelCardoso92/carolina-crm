@@ -3,6 +3,12 @@ import { prisma } from "@/lib/prisma"
 export const dynamic = 'force-dynamic'
 import CobrancasView from "./CobrancasView"
 
+// Helper to serialize Decimal to number
+function serializeDecimal(value: unknown): number | null {
+  if (value === null || value === undefined) return null
+  return Number(value)
+}
+
 async function getCobrancasData(ano: number | null) {
   const whereClause = ano ? {
     dataEmissao: {
@@ -28,11 +34,23 @@ async function getCobrancasData(ano: number | null) {
     })
   ])
 
+  // Serialize Decimal values for client component
+  const serializedCobrancas = cobrancas.map(c => ({
+    ...c,
+    valor: serializeDecimal(c.valor),
+    valorSemIva: serializeDecimal(c.valorSemIva),
+    comissao: serializeDecimal(c.comissao),
+    parcelas: c.parcelas.map(p => ({
+      ...p,
+      valor: serializeDecimal(p.valor)
+    }))
+  }))
+
   const pendentes = cobrancas.filter(c => !c.pago)
   const totalPendente = pendentes.reduce((sum, c) => sum + Number(c.valor), 0)
   const totalComissao = pendentes.reduce((sum, c) => sum + Number(c.comissao || 0), 0)
 
-  return { cobrancas, clientes, totalPendente, totalComissao }
+  return { cobrancas: serializedCobrancas, clientes, totalPendente, totalComissao }
 }
 
 export default async function CobrancasPage({
@@ -46,13 +64,19 @@ export default async function CobrancasPage({
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Cobrancas</h1>
-        <p className="text-gray-500">Gestao de faturas e pagamentos</p>
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Cobranças</h1>
+        <p className="text-muted-foreground flex items-center gap-2 mt-1">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          </svg>
+          Gestão de faturas e pagamentos
+        </p>
       </div>
 
+      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <CobrancasView
-        cobrancas={data.cobrancas}
+        cobrancas={data.cobrancas as any}
         clientes={data.clientes}
         totalPendente={data.totalPendente}
         totalComissao={data.totalComissao}

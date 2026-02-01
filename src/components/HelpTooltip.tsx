@@ -11,7 +11,7 @@ interface HelpTooltipProps {
 export default function HelpTooltip({ text, position = "top", size = "sm" }: HelpTooltipProps) {
   const [isVisible, setIsVisible] = useState(false)
   const [actualPosition, setActualPosition] = useState(position)
-  const tooltipRef = useRef<HTMLDivElement>(null)
+  const tooltipRef = useRef<HTMLSpanElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
 
   // Adjust position if tooltip would overflow viewport
@@ -52,7 +52,7 @@ export default function HelpTooltip({ text, position = "top", size = "sm" }: Hel
   const sizeClasses = size === "sm" ? "w-4 h-4 text-[10px]" : "w-5 h-5 text-xs"
 
   return (
-    <div className="relative inline-flex items-center">
+    <span className="relative inline-flex items-center">
       <button
         ref={buttonRef}
         type="button"
@@ -67,20 +67,20 @@ export default function HelpTooltip({ text, position = "top", size = "sm" }: Hel
       </button>
 
       {isVisible && (
-        <div
+        <span
           ref={tooltipRef}
           role="tooltip"
           className={`absolute z-50 ${positionClasses[actualPosition]} pointer-events-none`}
         >
-          <div className="bg-gray-800 dark:bg-gray-700 text-white text-xs rounded-lg px-3 py-2 min-w-[180px] max-w-sm shadow-lg whitespace-normal">
+          <span className="block bg-gray-800 dark:bg-gray-700 text-white text-xs rounded-lg px-3 py-2 min-w-[180px] max-w-sm shadow-lg whitespace-normal">
             {text}
-          </div>
-          <div
+          </span>
+          <span
             className={`absolute w-0 h-0 border-4 ${arrowClasses[actualPosition]}`}
           />
-        </div>
+        </span>
       )}
-    </div>
+    </span>
   )
 }
 

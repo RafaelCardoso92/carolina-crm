@@ -52,7 +52,7 @@ export async function GET(request: Request) {
           "Data": v.createdAt.toLocaleDateString("pt-PT"),
           "Mes": meses[v.mes],
           "Cliente": v.cliente.nome,
-          "Código Cliente": v.cliente.codigo || "",
+          "Codigo Cliente": v.cliente.codigo || "",
           "Valor 1": v.valor1 ? Number(v.valor1).toFixed(2) : "",
           "Valor 2": v.valor2 ? Number(v.valor2).toFixed(2) : "",
           "Total c/IVA": total.toFixed(2),
@@ -69,7 +69,7 @@ export async function GET(request: Request) {
         { wch: 12 }, // Data
         { wch: 12 }, // Mes
         { wch: 25 }, // Cliente
-        { wch: 15 }, // Código
+        { wch: 15 }, // Codigo
         { wch: 12 }, // Valor 1
         { wch: 12 }, // Valor 2
         { wch: 14 }, // Total
@@ -209,7 +209,7 @@ export async function GET(request: Request) {
           return {
             "Ranking": index + 1,
             "Cliente": c.nome,
-            "Código": c.codigo,
+            "Codigo": c.codigo,
             "Nº Vendas": c.count,
             "Total c/IVA": c.vendas.toFixed(2),
             "Sem IVA": semIVA.toFixed(2),

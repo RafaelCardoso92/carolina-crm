@@ -2,87 +2,141 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { signOut } from "next-auth/react"
+import { signOut, useSession } from "next-auth/react"
 import { useTheme } from "./ThemeProvider"
+import { UserRole } from "@prisma/client"
 
-const menuItems = [
-  { href: "/", label: "Dashboard", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
-  { href: "/clientes", label: "Clientes", icon: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" },
-  { href: "/prospectos", label: "Prospectos", icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" },
-  { href: "/rotas", label: "Rotas", icon: "M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" },
-  { href: "/vendas", label: "Vendas", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
-  { href: "/reconciliacao", label: "Reconciliacao", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" },
-  { href: "/cobrancas", label: "Cobrancas", icon: "M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" },
-  { href: "/tarefas", label: "Tarefas", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" },
-  { href: "/definicoes", label: "Definicoes", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z" },
+interface MenuItem {
+  href: string
+  label: string
+  icon: string
+  roles?: UserRole[]
+}
+
+interface MenuGroup {
+  label: string
+  items: MenuItem[]
+}
+
+// Organized menu structure with groups
+const menuGroups: MenuGroup[] = [
+  {
+    label: "Principal",
+    items: [
+      {
+        href: "/",
+        label: "Dashboard",
+        icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+      },
+      {
+        href: "/tarefas",
+        label: "Tarefas",
+        icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+      },
+    ]
+  },
+  {
+    label: "Comercial",
+    items: [
+      {
+        href: "/clientes",
+        label: "Clientes",
+        icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+      },
+      {
+        href: "/prospectos",
+        label: "Prospectos",
+        icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+      },
+      {
+        href: "/vendas",
+        label: "Vendas",
+        icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+      },
+      {
+        href: "/orcamentos",
+        label: "Orcamentos",
+        icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+      },
+    ]
+  },
+  {
+    label: "Financeiro",
+    items: [
+      {
+        href: "/cobrancas",
+        label: "Cobrancas",
+        icon: "M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+      },
+      {
+        href: "/reconciliacao",
+        label: "Reconciliacao",
+        icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+      },
+    ]
+  },
+  {
+    label: "Operacional",
+    items: [
+      {
+        href: "/rotas",
+        label: "Rotas",
+        icon: "M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+      },
+      {
+        href: "/produtos",
+        label: "Produtos",
+        icon: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+      },
+      {
+        href: "/campanhas",
+        label: "Campanhas",
+        icon: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"
+      },
+    ]
+  },
+  {
+    label: "Sistema",
+    items: [
+      {
+        href: "/admin/usuarios",
+        label: "Usuarios",
+        icon: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z",
+        roles: ["MASTERADMIN"]
+      },
+      {
+        href: "/definicoes",
+        label: "Definicoes",
+        icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+      },
+    ]
+  },
 ]
-
-// Mood emojis from worst to best
-const MOOD_EMOJIS = ["😢", "😔", "😐", "😊", "😄"]
-const MOOD_LABELS = ["Muito mal", "Mal", "Normal", "Bem", "Muito bem"]
-const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"]
-
-interface Quote {
-  text: string
-  author: string
-}
-
-interface MoodData {
-  today: number | null
-  todayDate: string
-  weekMoods: Record<string, number | null>
-  weeklyAverage: number | null
-  daysTracked: number
-}
 
 export default function Sidebar() {
   const pathname = usePathname()
-  const { theme, setTheme, resolvedTheme } = useTheme()
+  const { data: session } = useSession()
+  const { theme, setTheme } = useTheme()
   const [isOpen, setIsOpen] = useState(false)
-  const [quote, setQuote] = useState<Quote | null>(null)
-  const [moodData, setMoodData] = useState<MoodData | null>(null)
-  const [savingMood, setSavingMood] = useState(false)
+  const userRole = session?.user?.role
 
-  const isDark = resolvedTheme === "dark"
-
-  // Fetch quote and mood data
-  useEffect(() => {
-    fetch("/api/quote")
-      .then(res => res.json())
-      .then(data => setQuote(data))
-      .catch(() => setQuote({ text: "Tu consegues!", author: "" }))
-
-    fetch("/api/mood")
-      .then(res => res.json())
-      .then(data => setMoodData(data))
-      .catch(() => {})
-  }, [])
-
-  const saveMood = async (rating: number) => {
-    if (savingMood || moodData?.today) return
-    setSavingMood(true)
-    try {
-      const res = await fetch("/api/mood", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rating })
-      })
-      if (res.ok) {
-        setMoodData(prev => prev ? { ...prev, today: rating } : null)
-      }
-    } catch (error) {
-      console.error("Error saving mood:", error)
-    }
-    setSavingMood(false)
-  }
+  // Filter menu groups based on user role
+  const filteredGroups = menuGroups.map(group => ({
+    ...group,
+    items: group.items.filter(item => {
+      if (!item.roles) return true
+      if (!userRole) return false
+      return item.roles.includes(userRole)
+    })
+  })).filter(group => group.items.length > 0)
 
   // Close sidebar when route changes
   useEffect(() => {
     setIsOpen(false)
   }, [pathname])
 
+  // Close sidebar on escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") setIsOpen(false)
@@ -91,13 +145,16 @@ export default function Sidebar() {
     return () => document.removeEventListener("keydown", handleEscape)
   }, [])
 
+  // Prevent body scroll when sidebar is open on mobile
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden"
     } else {
       document.body.style.overflow = ""
     }
-    return () => { document.body.style.overflow = "" }
+    return () => {
+      document.body.style.overflow = ""
+    }
   }, [isOpen])
 
   const cycleTheme = () => {
@@ -115,163 +172,143 @@ export default function Sidebar() {
   const themeLabel = theme === "light" ? "Claro" : theme === "dark" ? "Escuro" : "Sistema"
 
   const sidebarContent = (
-    <>
-      {/* Header */}
-      <div className="p-5 border-b border-sidebar-border">
-        <Link href="/" className="flex items-center justify-center">
-          <Image src="/babor-logo.png" alt="BABOR" width={140} height={62} className={isDark ? "opacity-90" : "brightness-0 invert"} priority />
+    <div className="flex flex-col h-full">
+      {/* Header with Logo */}
+      <div className="flex-shrink-0 px-5 py-5 border-b border-white/10">
+        <Link href="/" className="block">
+          <span className="text-xl font-bold text-white tracking-tight block">Baborete</span>
+          <p className="text-[10px] text-white/50 font-medium mt-0.5">CRM Professional</p>
         </Link>
-        <p className="text-center text-[10px] text-sidebar-foreground/50 mt-2 tracking-[0.3em] uppercase">Carolina CRM</p>
       </div>
 
-      {/* Navigation */}
-      <nav className="py-4 px-3">
-        <ul className="space-y-0.5">
-          {menuItems.map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))
-            return (
-              <li key={item.href}>
-                <Link href={item.href} className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group ${isActive ? "bg-sidebar-active-bg text-sidebar-active font-medium" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-hover"}`}>
-                  <svg className={`w-5 h-5 flex-shrink-0 transition-colors ${isActive ? "text-sidebar-active" : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground/80"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={item.icon} />
-                  </svg>
-                  <span className="text-sm">{item.label}</span>
-                  {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-sidebar-active"></span>}
-                </Link>
-              </li>
-            )
-          })}
-        </ul>
+      {/* Navigation - Scrollable */}
+      <nav className="flex-1 overflow-y-auto px-3 py-4">
+        {filteredGroups.map((group, groupIndex) => (
+          <div key={group.label} className={groupIndex > 0 ? "mt-6" : ""}>
+            <span className="block px-3 mb-1.5 text-[9px] font-medium uppercase tracking-wider text-white/30">
+              {group.label}
+            </span>
+            <ul className="space-y-1">
+              {group.items.map((item) => {
+                const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
+                        isActive
+                          ? "bg-white/10 text-white font-medium"
+                          : "text-white/60 hover:text-white hover:bg-white/5"
+                      }`}
+                    >
+                      <svg
+                        className={`w-5 h-5 flex-shrink-0 ${isActive ? "text-white" : "text-white/50 group-hover:text-white/70"}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={item.icon} />
+                      </svg>
+                      <span className="text-sm">{item.label}</span>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        ))}
       </nav>
 
-      {/* Bottom Actions */}
-      <div className="px-3 pb-3 space-y-1">
-        <button onClick={cycleTheme} className="flex items-center gap-3 px-4 py-3 w-full text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-hover rounded-lg transition-all duration-200">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={themeIcon} />
-          </svg>
-          <span className="text-sm">{themeLabel}</span>
-        </button>
-        <button onClick={() => signOut({ callbackUrl: "/login" })} className="flex items-center gap-3 px-4 py-3 w-full text-sidebar-foreground/70 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all duration-200">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-          <span className="text-sm">Sair</span>
-        </button>
-      </div>
-
-      {/* Mood Tracker */}
-      <div className="px-3 pb-3">
-        <div className="bg-sidebar-hover/50 rounded-xl p-3">
-          <p className="text-xs font-semibold text-sidebar-foreground/70 mb-2 text-center">Como te sentes hoje?</p>
-          
-          {/* Mood Selector */}
-          <div className="flex justify-center gap-1 mb-3">
-            {MOOD_EMOJIS.map((emoji, index) => {
-              const rating = index + 1
-              const isSelected = moodData?.today === rating
-              const isDisabled = moodData?.today !== null && !isSelected
-              return (
-                <button
-                  key={rating}
-                  onClick={() => saveMood(rating)}
-                  disabled={savingMood || isDisabled}
-                  title={MOOD_LABELS[index]}
-                  className={`text-xl p-1.5 rounded-lg transition-all ${
-                    isSelected 
-                      ? "bg-purple-500/30 scale-125 ring-2 ring-purple-400" 
-                      : isDisabled
-                        ? "opacity-30 cursor-not-allowed"
-                        : "hover:bg-sidebar-hover hover:scale-110"
-                  }`}
-                >
-                  {emoji}
-                </button>
-              )
-            })}
-          </div>
-
-          {moodData?.today && (
-            <p className="text-[10px] text-center text-sidebar-foreground/50 mb-2">
-              Registado: {MOOD_LABELS[moodData.today - 1]}
-            </p>
-          )}
-
-          {/* Weekly View */}
-          {moodData && (
-            <div className="border-t border-sidebar-border/50 pt-2 mt-2">
-              <p className="text-[10px] text-sidebar-foreground/50 mb-1.5 text-center">Esta semana</p>
-              <div className="flex justify-between gap-0.5">
-                {Object.entries(moodData.weekMoods).map(([date, rating]) => {
-                  const dayIndex = new Date(date).getDay()
-                  const isToday = date === moodData.todayDate
-                  return (
-                    <div key={date} className="flex flex-col items-center">
-                      <span className={`text-[9px] ${isToday ? "text-purple-400 font-bold" : "text-sidebar-foreground/40"}`}>
-                        {DAY_NAMES[dayIndex]}
-                      </span>
-                      <span className={`text-sm ${isToday ? "" : "opacity-70"}`}>
-                        {rating ? MOOD_EMOJIS[rating - 1] : "·"}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-              {moodData.weeklyAverage && moodData.daysTracked >= 3 && (
-                <p className="text-[10px] text-center text-sidebar-foreground/50 mt-2">
-                  Media: {MOOD_EMOJIS[Math.round(moodData.weeklyAverage) - 1]} ({moodData.weeklyAverage.toFixed(1)})
-                </p>
-              )}
+      {/* Bottom Section */}
+      <div className="flex-shrink-0 p-3 border-t border-white/10">
+        {/* User Card */}
+        {session?.user && (
+          <div className="flex items-center gap-3 px-3 py-2.5 mb-2 rounded-lg bg-white/5">
+            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white text-xs font-semibold">
+              {(session.user.name || session.user.email || "U")[0].toUpperCase()}
             </div>
-          )}
-        </div>
-      </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">
+                {session.user.name || session.user.email}
+              </p>
+              <p className="text-[10px] text-white/50">
+                {session.user.role === "MASTERADMIN" ? "Master Admin" :
+                 session.user.role === "ADMIN" ? "Admin" : "Vendedor"}
+              </p>
+            </div>
+          </div>
+        )}
 
-      {/* Quote */}
-      {quote && (
-        <div className="p-3 mx-3 mb-3 bg-sidebar-hover/50 rounded-xl">
-          <div className="flex gap-2">
-            <svg className="w-4 h-4 text-sidebar-foreground/40 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/>
+        {/* Action buttons */}
+        <div className="flex gap-2">
+          <button
+            onClick={cycleTheme}
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200"
+            title={themeLabel}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={themeIcon} />
             </svg>
-            <div>
-              <p className="text-xs text-sidebar-foreground/70 italic leading-relaxed">{quote.text}</p>
-              {quote.author && quote.author !== "Desconhecido" && (
-                <p className="text-[10px] text-sidebar-foreground/50 mt-1">— {quote.author}</p>
-              )}
-            </div>
-          </div>
+            <span className="text-xs font-medium">{themeLabel}</span>
+          </button>
+
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="flex items-center justify-center px-3 py-2 text-white/60 hover:text-red-400 hover:bg-white/5 rounded-lg transition-all duration-200"
+            title="Sair"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+          </button>
         </div>
-      )}
-    </>
+      </div>
+    </div>
   )
 
   return (
     <>
-      {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-sidebar border-b border-sidebar-border">
+      {/* Mobile Header Bar */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-sidebar border-b border-white/10">
         <div className="flex items-center justify-between px-4 py-3">
           <Link href="/" className="flex items-center">
-            <Image src="/babor-logo.png" alt="BABOR" width={100} height={44} className={isDark ? "opacity-90" : "brightness-0 invert"} priority />
+            <span className="text-lg font-bold text-white">Baborete</span>
           </Link>
-          <button onClick={() => setIsOpen(!isOpen)} className="p-2 rounded-lg text-sidebar-foreground hover:bg-sidebar-hover transition" aria-label="Toggle menu">
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition"
+            aria-label="Toggle menu"
+          >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {isOpen ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /> : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />}
+              {isOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
             </svg>
           </button>
         </div>
       </div>
 
       {/* Mobile Overlay */}
-      {isOpen && <div className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40" onClick={() => setIsOpen(false)} />}
+      {isOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
 
       {/* Mobile Sidebar */}
-      <aside className={`lg:hidden fixed top-0 left-0 h-full w-72 bg-sidebar z-50 transform transition-transform duration-300 ease-out flex flex-col shadow-2xl overflow-y-auto ${isOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      <aside
+        className={`lg:hidden fixed top-0 left-0 h-full w-64 bg-sidebar z-50 transform transition-transform duration-300 ease-out shadow-2xl ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
         {sidebarContent}
       </aside>
 
-      {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex w-64 bg-sidebar min-h-screen flex-col border-r border-sidebar-border overflow-y-auto">
+      {/* Desktop Sidebar - Fixed to viewport height */}
+      <aside className="hidden lg:block w-56 bg-sidebar h-screen sticky top-0 border-r border-sidebar-border">
         {sidebarContent}
       </aside>
     </>

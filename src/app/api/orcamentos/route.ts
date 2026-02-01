@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { requirePermission, userScopedWhere, getEffectiveUserId } from "@/lib/api-auth"
+import { PERMISSIONS } from "@/lib/permissions"
 
 // GET - List quotations
 export async function GET(request: NextRequest) {
   try {
+    const session = await requirePermission(PERMISSIONS.ORCAMENTOS_READ)
+
     const { searchParams } = new URL(request.url)
     const prospectoId = searchParams.get("prospectoId")
     const clienteId = searchParams.get("clienteId")
     const estado = searchParams.get("estado")
 
-    const where: Record<string, unknown> = {}
+    const where: Record<string, unknown> = { ...userScopedWhere(session) }
     if (prospectoId) where.prospectoId = prospectoId
     if (clienteId) where.clienteId = clienteId
     if (estado) where.estado = estado
@@ -29,6 +33,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(orcamentos)
   } catch (error) {
+    if (error instanceof NextResponse) return error
     console.error("Error fetching orcamentos:", error)
     return NextResponse.json({ error: "Erro ao carregar orcamentos" }, { status: 500 })
   }
@@ -37,6 +42,8 @@ export async function GET(request: NextRequest) {
 // POST - Create quotation
 export async function POST(request: NextRequest) {
   try {
+    const session = await requirePermission(PERMISSIONS.ORCAMENTOS_WRITE)
+
     const body = await request.json()
     const { prospectoId, clienteId, titulo, introducao, condicoes, validadeDias, itens } = body
 
@@ -76,6 +83,7 @@ export async function POST(request: NextRequest) {
     const orcamento = await prisma.orcamento.create({
       data: {
         numero,
+        userId: getEffectiveUserId(session),
         prospectoId: prospectoId || null,
         clienteId: clienteId || null,
         titulo,
@@ -98,6 +106,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(orcamento, { status: 201 })
   } catch (error) {
+    if (error instanceof NextResponse) return error
     console.error("Error creating orcamento:", error)
     return NextResponse.json({ error: "Erro ao criar orcamento" }, { status: 500 })
   }

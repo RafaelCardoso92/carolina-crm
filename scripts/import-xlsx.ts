@@ -1,13 +1,7 @@
 import { PrismaClient } from "@prisma/client"
-import { PrismaPg } from "@prisma/adapter-pg"
-import { Pool } from "pg"
 import * as XLSX from 'xlsx'
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
-})
-const adapter = new PrismaPg(pool)
-const prisma = new PrismaClient({ adapter })
+const prisma = new PrismaClient()
 
 // Client name normalization map
 const clientNameMap: Record<string, string> = {
@@ -334,5 +328,4 @@ main()
   .catch(console.error)
   .finally(() => {
     prisma.$disconnect()
-    pool.end()
   })

@@ -117,8 +117,8 @@ export function TarefasWidget() {
                         <span className="bg-secondary px-2 py-0.5 rounded">{tarefa.tipo}</span>
                       )}
                       <span className={`px-2 py-0.5 rounded ${
-                        tarefa.prioridade === "URGENTE" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
-                        tarefa.prioridade === "ALTA" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" :
+                        tarefa.prioridade === "URGENTE" ? "bg-red-500/10 text-red-600 dark:text-red-400" :
+                        tarefa.prioridade === "ALTA" ? "bg-warning/10 text-warning" :
                         "bg-secondary"
                       }`}>
                         {prioridadeLabels[tarefa.prioridade]}
@@ -215,8 +215,8 @@ export function FollowUpWidget() {
                     : `${cliente.diasSemContacto} dias sem contacto`}
                   {cliente.segmento && (
                     <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                      cliente.segmento.segmento === "A" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
-                      cliente.segmento.segmento === "B" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" :
+                      cliente.segmento.segmento === "A" ? "bg-success/10 text-success" :
+                      cliente.segmento.segmento === "B" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400" :
                       "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
                     }`}>
                       Segmento {cliente.segmento.segmento}

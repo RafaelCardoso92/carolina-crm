@@ -99,17 +99,17 @@ export function NotificationsWidget() {
   const getTypeColor = (tipo: string) => {
     switch (tipo) {
       case "PAGAMENTO_ATRASADO":
-        return "text-red-500 bg-red-50 dark:bg-red-900/20"
+        return "text-red-500 bg-red-500/10"
       case "TAREFA_VENCIDA":
-        return "text-orange-500 bg-orange-50 dark:bg-orange-900/20"
+        return "text-orange-500 bg-orange-500/10"
       case "TAREFA_HOJE":
-        return "text-blue-500 bg-blue-50 dark:bg-blue-900/20"
+        return "text-blue-500 bg-blue-500/10"
       case "LEAD_PARADO":
-        return "text-amber-500 bg-amber-50 dark:bg-amber-900/20"
+        return "text-amber-500 bg-amber-500/10"
       case "CLIENTE_SEM_CONTACTO":
-        return "text-purple-500 bg-purple-50 dark:bg-purple-900/20"
+        return "text-purple-500 bg-purple-500/10"
       default:
-        return "text-gray-500 bg-gray-50 dark:bg-gray-900/20"
+        return "text-gray-500 bg-gray-500/10"
     }
   }
 
@@ -368,7 +368,7 @@ export function HealthScoresWidget() {
               <Link
                 key={client.clienteId}
                 href={`/clientes/${client.clienteId}`}
-                className="flex items-center justify-between p-2 bg-red-50 dark:bg-red-900/20 rounded text-sm hover:bg-red-100 dark:hover:bg-red-900/30 transition"
+                className="flex items-center justify-between p-2 bg-secondary rounded text-sm hover:bg-muted transition"
               >
                 <span className="text-foreground">Score: {client.scoreGeral}</span>
                 <span className={`text-xs ${
@@ -623,7 +623,7 @@ export function AcordosWidget() {
               <Link
                 key={client.clienteId}
                 href={`/clientes/${client.clienteId}`}
-                className="flex items-center justify-between p-2 bg-red-50 dark:bg-red-900/20 rounded text-sm hover:bg-red-100 dark:hover:bg-red-900/30 transition"
+                className="flex items-center justify-between p-2 bg-secondary rounded text-sm hover:bg-muted transition"
               >
                 <span className="text-foreground truncate">{client.clienteNome}</span>
                 <span className="text-red-500 font-medium whitespace-nowrap ml-2">
@@ -731,7 +731,7 @@ export function BulkActionsPanel({
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => { setAction("create-tasks"); setShowForm(true) }}
-            className="px-3 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition flex items-center gap-1"
+            className="px-3 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover transition flex items-center gap-1"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react"
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Circle } from "@react-google-maps/api"
+import { GOOGLE_MAPS_CONFIG } from "@/lib/google-maps"
 import Link from "next/link"
 
 const ESTADOS_PIPELINE = [
@@ -60,9 +61,7 @@ export default function ProspectosMap() {
   const [geocodingId, setGeocodingId] = useState<string | null>(null)
   const [showWithoutCoords, setShowWithoutCoords] = useState(true)
 
-  const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-  })
+  const { isLoaded, loadError } = useJsApiLoader(GOOGLE_MAPS_CONFIG)
 
   // Get user's current location
   useEffect(() => {
@@ -94,10 +93,12 @@ export default function ProspectosMap() {
       if (filtroEstado) params.set("estado", filtroEstado)
       params.set("ativo", "true")
 
+      params.set("limit", "1000")
       const res = await fetch(`/api/prospectos?${params}`)
       if (res.ok) {
         const data = await res.json()
-        setProspectos(data)
+        const list = Array.isArray(data) ? data : (data?.data || [])
+        setProspectos(list)
       }
     } catch (error) {
       console.error("Error fetching prospectos:", error)
@@ -428,17 +429,17 @@ export default function ProspectosMap() {
           </button>
 
           {showWithoutCoords && (
-            <div className="bg-orange-50 dark:bg-orange-950/20 rounded-xl border border-orange-200 dark:border-orange-800 overflow-hidden">
-              <div className="p-3 bg-orange-100 dark:bg-orange-900/30 border-b border-orange-200 dark:border-orange-800">
-                <p className="text-xs text-orange-800 dark:text-orange-200">
+            <div className="bg-white dark:bg-card rounded-xl border border-border overflow-hidden">
+              <div className="p-3 bg-secondary border-b border-border">
+                <p className="text-xs text-foreground">
                   Estes prospectos não aparecem no mapa porque não têm coordenadas. Clique em &quot;Localizar&quot; para obter automaticamente.
                 </p>
               </div>
-              <div className="divide-y divide-orange-200 dark:divide-orange-800 max-h-64 overflow-y-auto">
+              <div className="divide-y divide-border max-h-64 overflow-y-auto">
                 {prospectosWithoutCoords.map((prospecto) => (
                   <div
                     key={prospecto.id}
-                    className="p-3 flex items-center justify-between gap-3 hover:bg-orange-100/50 dark:hover:bg-orange-900/20"
+                    className="p-3 flex items-center justify-between gap-3 hover:bg-muted"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">

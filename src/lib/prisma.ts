@@ -1,19 +1,30 @@
 import { PrismaClient } from '@prisma/client'
-import { PrismaPg } from '@prisma/adapter-pg'
-import { Pool } from 'pg'
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-function createPrismaClient() {
-  const pool = new Pool({
-    connectionString: process.env.DATABASE_URL
+// Configure Prisma with optimized settings
+const prismaClientSingleton = () => {
+  return new PrismaClient({
+    log: process.env.NODE_ENV === 'development'
+      ? ['query', 'error', 'warn']
+      : ['error'],
+    // Connection pool configuration via datasource URL params
+    // Add ?connection_limit=10&pool_timeout=30 to DATABASE_URL for production
   })
-  const adapter = new PrismaPg(pool)
-  return new PrismaClient({ adapter })
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient()
+export const prisma = globalForPrisma.prisma ?? prismaClientSingleton()
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+
+// Graceful shutdown
+async function handleShutdown() {
+  await prisma.$disconnect()
+}
+
+// Only register in Node.js environment (not Edge runtime)
+if (typeof process !== 'undefined' && process.on) {
+  process.on('beforeExit', handleShutdown)
+}
