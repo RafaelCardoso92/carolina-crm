@@ -122,19 +122,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "O total deve ser maior que zero" }, { status: 400 })
     }
 
-    // Check if venda already exists for this client/month/year
-    const existing = await prisma.venda.findFirst({
-      where: {
-        clienteId: data.clienteId,
-        mes: data.mes,
-        ano: data.ano
-      }
-    })
-
-    if (existing) {
-      return NextResponse.json({ error: "Ja existe uma venda para este cliente neste mes" }, { status: 400 })
-    }
-
     // Create venda with items in a transaction
     // Support both old format (campanhaIds: string[]) and new format (campanhas: {id, quantidade}[])
     const campanhas: { id: string; quantidade: number }[] = data.campanhas ||

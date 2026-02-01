@@ -38,7 +38,22 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(node -e:*)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(docker image prune:*)",
+      "Bash(ss:*)",
+      "Bash(jq:*)",
+      "Bash(kubectl get:*)",
+      "Bash(sudo kubectl get pods:*)",
+      "Bash(sudo kubectl get:*)",
+      "Bash(docker tag:*)",
+      "Bash(docker push:*)",
+      "Bash(sudo kubectl rollout:*)",
+      "Bash(sudo kubectl rollout status:*)",
+      "Bash(sudo kubectl logs:*)",
+      "Bash(sudo kubectl exec:*)",
+      "Bash(DATABASE_URL=\"postgresql://carolina:carolina123@localhost:5438/carolina_crm?schema=public\" npx prisma db push:*)",
+      "Bash(sudo kubectl patch:*)",
+      "Bash(grep:*)"
     ]
   }
 }

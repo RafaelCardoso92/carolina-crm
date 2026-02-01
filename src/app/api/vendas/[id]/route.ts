@@ -140,20 +140,6 @@ export async function PUT(
       return NextResponse.json({ error: "O total deve ser maior que zero" }, { status: 400 })
     }
 
-    // Check if another venda exists for this client/month/year
-    const existing = await prisma.venda.findFirst({
-      where: {
-        clienteId: data.clienteId,
-        mes: data.mes,
-        ano: data.ano,
-        NOT: { id }
-      }
-    })
-
-    if (existing) {
-      return NextResponse.json({ error: "Ja existe outra venda para este cliente neste mes" }, { status: 400 })
-    }
-
     // Check if venda already has a cobranca
     const existingCobranca = await prisma.cobranca.findUnique({
       where: { vendaId: id }
