@@ -242,6 +242,7 @@ export async function POST(request: NextRequest) {
       where: { mes, ano },
       include: {
         cliente: true,
+        objetivoVario: true,
         devolucoes: {
           select: {
             totalDevolvido: true,
@@ -251,19 +252,45 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Calculate system total (net of returns)
+    // Group sales by client code and sum totals
+    // A client can have multiple sales in a month
+    type ClientSalesData = {
+      clienteId: string
+      clienteNome: string
+      vendas: typeof vendasSistema
+      totalLiquido: number
+      totalObjetivoVario: number
+    }
+    const vendasByClientCode: Map<string, ClientSalesData> = new Map()
     let totalSistema = 0
-    const vendasByClientCode: Map<string, { venda: typeof vendasSistema[0]; totalLiquido: number }> = new Map()
 
     for (const venda of vendasSistema) {
       const devolvido = venda.devolucoes.reduce((sum, d) => sum + Number(d.totalDevolvido), 0)
       const substituido = venda.devolucoes.reduce((sum, d) => sum + Number(d.totalSubstituido), 0)
-      const totalLiquido = Number(venda.total) - devolvido + substituido
+      const vendaLiquido = Number(venda.total) - devolvido + substituido
+      const objetivoVarioValor = Number(venda.objetivoVarioValor || 0)
 
-      totalSistema += totalLiquido
+      // The PDF includes objetivo vario values in the total
+      const totalComObjetivo = vendaLiquido + objetivoVarioValor
+      totalSistema += totalComObjetivo
 
       if (venda.cliente.codigo) {
-        vendasByClientCode.set(venda.cliente.codigo, { venda, totalLiquido })
+        const existing = vendasByClientCode.get(venda.cliente.codigo)
+        if (existing) {
+          // Add to existing client totals
+          existing.vendas.push(venda)
+          existing.totalLiquido += totalComObjetivo
+          existing.totalObjetivoVario += objetivoVarioValor
+        } else {
+          // First sale for this client
+          vendasByClientCode.set(venda.cliente.codigo, {
+            clienteId: venda.cliente.id,
+            clienteNome: venda.cliente.nome,
+            vendas: [venda],
+            totalLiquido: totalComObjetivo,
+            totalObjetivoVario: objetivoVarioValor
+          })
+        }
       }
     }
 
@@ -273,7 +300,7 @@ export async function POST(request: NextRequest) {
     let itensComProblema = 0
 
     for (const clientePdf of parsed.clientes) {
-      const vendaSistema = vendasByClientCode.get(clientePdf.codigo)
+      const clienteSistema = vendasByClientCode.get(clientePdf.codigo)
 
       // Find client by code
       const cliente = await prisma.cliente.findUnique({
@@ -281,7 +308,7 @@ export async function POST(request: NextRequest) {
       })
 
       let corresponde = false
-      let tipoDiscrepancia: "VALOR_DIFERENTE" | "CLIENTE_NAO_EXISTE" | "VENDA_NAO_EXISTE" | null = null
+      let tipoDiscrepancia: "VALOR_DIFERENTE" | "CLIENTE_NAO_EXISTE" | "VENDA_NAO_EXISTE" | "OBJETIVO_VARIO" | null = null
       let diferencaValor: number | null = null
       let valorSistema: number | null = null
 
@@ -289,13 +316,13 @@ export async function POST(request: NextRequest) {
         // Client doesn't exist in system
         tipoDiscrepancia = "CLIENTE_NAO_EXISTE"
         itensComProblema++
-      } else if (!vendaSistema) {
+      } else if (!clienteSistema) {
         // Client exists but no sale recorded
         tipoDiscrepancia = "VENDA_NAO_EXISTE"
         itensComProblema++
       } else {
-        // Compare values
-        valorSistema = vendaSistema.totalLiquido
+        // Compare values (system total already includes objetivo vario)
+        valorSistema = clienteSistema.totalLiquido
         diferencaValor = clientePdf.valorLiquido - valorSistema
 
         // Allow 1 cent tolerance for rounding
@@ -309,6 +336,9 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Use first venda ID for reference (there may be multiple)
+      const primeiraVendaId = clienteSistema?.vendas[0]?.id || null
+
       itensToCreate.push({
         codigoClientePdf: clientePdf.codigo,
         nomeClientePdf: clientePdf.nome,
@@ -316,7 +346,7 @@ export async function POST(request: NextRequest) {
         descontoPdf: clientePdf.desconto,
         valorLiquidoPdf: clientePdf.valorLiquido,
         clienteId: cliente?.id || null,
-        vendaId: vendaSistema?.venda.id || null,
+        vendaId: primeiraVendaId,
         valorSistema,
         corresponde,
         tipoDiscrepancia,
@@ -324,25 +354,25 @@ export async function POST(request: NextRequest) {
       })
 
       // Remove from map to track extras
-      if (vendaSistema) {
+      if (clienteSistema) {
         vendasByClientCode.delete(clientePdf.codigo)
       }
     }
 
     // Add sales in system but not in PDF (VENDA_EXTRA)
-    for (const [codigo, { venda, totalLiquido }] of vendasByClientCode) {
+    for (const [codigo, clienteData] of vendasByClientCode) {
       itensToCreate.push({
         codigoClientePdf: codigo,
-        nomeClientePdf: venda.cliente.nome,
+        nomeClientePdf: clienteData.clienteNome,
         valorBrutoPdf: 0,
         descontoPdf: 0,
         valorLiquidoPdf: 0,
-        clienteId: venda.cliente.id,
-        vendaId: venda.id,
-        valorSistema: totalLiquido,
+        clienteId: clienteData.clienteId,
+        vendaId: clienteData.vendas[0]?.id || null,
+        valorSistema: clienteData.totalLiquido,
         corresponde: false,
         tipoDiscrepancia: "VENDA_EXTRA" as const,
-        diferencaValor: -totalLiquido
+        diferencaValor: -clienteData.totalLiquido
       })
       itensComProblema++
     }
