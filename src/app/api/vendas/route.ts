@@ -24,6 +24,13 @@ export async function GET(request: Request) {
       include: {
         cliente: true,
         objetivoVario: true,
+        cobranca: {
+          select: {
+            id: true,
+            valor: true,
+            pago: true
+          }
+        },
         campanhas: {
           include: {
             campanha: true
@@ -139,7 +146,7 @@ export async function POST(request: Request) {
         data: {
           clienteId: data.clienteId,
           objetivoVarioId: data.objetivoVarioId || null,
-          objetivoVarioQuantidade: data.objetivoVarioQuantidade || null,
+          objetivoVarioValor: data.objetivoVarioValor || null,
           valor1: data.valor1 || null,
           valor2: data.valor2 || null,
           total,
@@ -180,13 +187,17 @@ export async function POST(request: Request) {
           ? new Date(data.cobranca.dataEmissao)
           : new Date()
 
+        // Cobranca value includes objetivo vario value (which is NOT part of sale total)
+        const objetivoVarioValor = data.objetivoVarioValor ? parseFloat(data.objetivoVarioValor) : 0
+        const cobrancaValor = total + objetivoVarioValor
+
         // Create the cobrança
         const cobranca = await tx.cobranca.create({
           data: {
             clienteId: data.clienteId,
             vendaId: newVenda.id,
-            valor: total, // Total sem IVA
-            valorSemIva: total,
+            valor: cobrancaValor, // Total + objetivo vario
+            valorSemIva: cobrancaValor,
             dataEmissao,
             dataInicioVencimento: dataEmissao, // Use emission date as first due date
             numeroParcelas,
@@ -196,7 +207,7 @@ export async function POST(request: Request) {
 
         // Create parcelas if more than 1
         if (numeroParcelas > 1) {
-          const valorParcela = total / numeroParcelas
+          const valorParcela = cobrancaValor / numeroParcelas
           const parcelas = []
 
           for (let i = 0; i < numeroParcelas; i++) {
@@ -216,12 +227,19 @@ export async function POST(request: Request) {
         }
       }
 
-      // Return venda with items, client, objetivoVario, campanhas, and devolucoes
+      // Return venda with items, client, objetivoVario, campanhas, cobranca, and devolucoes
       return tx.venda.findUnique({
         where: { id: newVenda.id },
         include: {
           cliente: true,
           objetivoVario: true,
+          cobranca: {
+            select: {
+              id: true,
+              valor: true,
+              pago: true
+            }
+          },
           campanhas: {
             include: {
               campanha: true

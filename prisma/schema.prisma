@@ -98,19 +98,19 @@ model Cliente {
 }
 
 model Venda {
-  id                      String              @id @default(cuid())
-  clienteId               String
-  valor1                  Decimal?            @db.Decimal(10, 2)
-  valor2                  Decimal?            @db.Decimal(10, 2)
-  total                   Decimal             @db.Decimal(10, 2)
-  mes                     Int
-  ano                     Int
-  notas                   String?
-  createdAt               DateTime            @default(now())
-  updatedAt               DateTime            @updatedAt
-  objetivoVarioId         String?
-  objetivoVarioQuantidade Int?
-  campanhas               CampanhaVenda[]
+  id                  String              @id @default(cuid())
+  clienteId           String
+  valor1              Decimal?            @db.Decimal(10, 2)
+  valor2              Decimal?            @db.Decimal(10, 2)
+  total               Decimal             @db.Decimal(10, 2)
+  mes                 Int
+  ano                 Int
+  notas               String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  objetivoVarioId     String?
+  objetivoVarioValor  Decimal?            @db.Decimal(10, 2)
+  campanhas           CampanhaVenda[]
   cobranca                Cobranca?
   devolucoes              Devolucao[]
   itensReconciliacao      ItemReconciliacao[]

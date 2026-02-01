@@ -47,7 +47,7 @@ type Venda = {
   id: string
   clienteId: string
   objetivoVarioId: string | null
-  objetivoVarioQuantidade: number | null
+  objetivoVarioValor: number | null
   valor1: unknown
   valor2: unknown
   total: unknown
@@ -73,6 +73,11 @@ type Venda = {
   }[]
   itens?: ItemVenda[]
   devolucoes?: DevolucaoWithRelations[]
+  cobranca?: {
+    id: string
+    valor: number
+    pago: boolean
+  } | null
 }
 
 type Cliente = {
@@ -136,7 +141,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivosVarios
   const [loading, setLoading] = useState(false)
   const [selectedClienteId, setSelectedClienteId] = useState<string>("")
   const [selectedObjetivoVarioId, setSelectedObjetivoVarioId] = useState<string>("")
-  const [objetivoVarioQuantidade, setObjetivoVarioQuantidade] = useState<number>(1)
+  const [objetivoVarioValor, setObjetivoVarioValor] = useState<string>("")
   const [selectedCampanhas, setSelectedCampanhas] = useState<{ id: string; quantidade: number }[]>([])
   const [formItems, setFormItems] = useState<FormItem[]>([])
   const [useItems, setUseItems] = useState(true) // Default to items mode
@@ -237,7 +242,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivosVarios
   function resetForm() {
     setSelectedClienteId("")
     setSelectedObjetivoVarioId("")
-    setObjetivoVarioQuantidade(1)
+    setObjetivoVarioValor("")
     setSelectedCampanhas([])
     setFormItems([])
     setUseItems(true)
@@ -265,7 +270,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivosVarios
     setEditingId(venda.id)
     setSelectedClienteId(venda.clienteId)
     setSelectedObjetivoVarioId(venda.objetivoVarioId || "")
-    setObjetivoVarioQuantidade(venda.objetivoVarioQuantidade || 1)
+    setObjetivoVarioValor(venda.objetivoVarioValor ? String(venda.objetivoVarioValor) : "")
     setSelectedCampanhas(venda.campanhas?.map(c => ({ id: c.campanha.id, quantidade: c.quantidade || 1 })) || [])
     setNotas(venda.notas || "")
 
@@ -348,7 +353,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivosVarios
     const data = {
       clienteId: selectedClienteId,
       objetivoVarioId: selectedObjetivoVarioId || null,
-      objetivoVarioQuantidade: selectedObjetivoVarioId ? objetivoVarioQuantidade : null,
+      objetivoVarioValor: selectedObjetivoVarioId && objetivoVarioValor ? parseFloat(objetivoVarioValor) : null,
       campanhas: selectedCampanhas.length > 0 ? selectedCampanhas : null,
       valor1: !useItems && valor1 ? parseFloat(valor1) : null,
       valor2: !useItems && valor2 ? parseFloat(valor2) : null,
@@ -356,11 +361,12 @@ export default function VendasView({ vendas, clientes, produtos, objetivosVarios
       itens,
       mes,
       ano,
-      // Cobranca data
+      // Cobranca data - include objetivo vario value in cobranca
       criarCobranca: criarCobranca && !editingId, // Only for new vendas
       cobranca: criarCobranca && !editingId ? {
         numeroParcelas: parseInt(cobrancaParcelas) || 1,
-        dataEmissao: cobrancaDataEmissao || null
+        dataEmissao: cobrancaDataEmissao || null,
+        incluirObjetivoVario: selectedObjetivoVarioId && objetivoVarioValor ? true : false
       } : null
     }
 
@@ -683,8 +689,8 @@ export default function VendasView({ vendas, clientes, produtos, objetivosVarios
                           <div className="mt-1">
                             <span className="px-2 py-0.5 text-xs font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-full">
                               {venda.objetivoVario.titulo}
-                              {venda.objetivoVarioQuantidade && venda.objetivoVarioQuantidade > 1 && (
-                                <span className="ml-1 font-bold">x{venda.objetivoVarioQuantidade}</span>
+                              {venda.objetivoVarioValor && (
+                                <span className="ml-1 font-bold">{formatCurrency(venda.objetivoVarioValor)} EUR</span>
                               )}
                             </span>
                           </div>
@@ -893,8 +899,8 @@ export default function VendasView({ vendas, clientes, produtos, objetivosVarios
                     {venda.objetivoVario && (
                       <span className="px-2.5 py-1 text-xs font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 rounded-lg">
                         {venda.objetivoVario.titulo}
-                        {venda.objetivoVarioQuantidade && venda.objetivoVarioQuantidade > 1 && (
-                          <span className="ml-1">x{venda.objetivoVarioQuantidade}</span>
+                        {venda.objetivoVarioValor && (
+                          <span className="ml-1">{formatCurrency(venda.objetivoVarioValor)} EUR</span>
                         )}
                       </span>
                     )}
@@ -1226,118 +1232,124 @@ export default function VendasView({ vendas, clientes, produtos, objetivosVarios
                 </div>
               </div>
 
-              {/* Campanhas & Objetivos Section - Always Visible */}
-              {(campanhas.length > 0 || objetivosVarios.length > 0) && (
-                <div className="bg-gradient-to-r from-purple-50 to-emerald-50 dark:from-purple-900/20 dark:to-emerald-900/20 rounded-xl p-4 border border-purple-200 dark:border-purple-800">
-                  <h3 className="text-sm font-bold text-foreground uppercase tracking-wide mb-4 flex items-center gap-2">
-                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+              {/* Campanhas Section */}
+              {campanhas.length > 0 && (
+                <div className="bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-xl p-4 border border-emerald-200 dark:border-emerald-800">
+                  <h3 className="text-sm font-bold text-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
                     </svg>
-                    Campanhas & Objetivos
+                    Campanhas
+                    <span className="text-xs font-normal text-emerald-600 dark:text-emerald-400">(adiciona ao total da venda)</span>
                   </h3>
+                  <div className="space-y-2">
+                    {campanhas.map((c) => {
+                      const selectedCampanha = selectedCampanhas.find(sc => sc.id === c.id)
+                      const isSelected = !!selectedCampanha
+                      return (
+                        <div key={c.id} className="flex flex-col sm:flex-row sm:items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (isSelected) {
+                                setSelectedCampanhas(selectedCampanhas.filter(sc => sc.id !== c.id))
+                              } else {
+                                setSelectedCampanhas([...selectedCampanhas, { id: c.id, quantidade: 1 }])
+                              }
+                            }}
+                            className={`flex-1 px-4 py-3 rounded-xl text-sm font-semibold transition text-left flex items-center gap-2 ${
+                              isSelected
+                                ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30"
+                                : "bg-white dark:bg-card border-2 border-emerald-200 dark:border-emerald-700 text-foreground hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
+                            }`}
+                          >
+                            {isSelected ? (
+                              <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            ) : (
+                              <svg className="w-5 h-5 flex-shrink-0 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                              </svg>
+                            )}
+                            {c.titulo}
+                          </button>
+                          {isSelected && (
+                            <div className="flex items-center gap-2 bg-emerald-100 dark:bg-emerald-900/50 px-3 py-2 rounded-xl sm:w-auto w-fit">
+                              <label className="text-sm font-medium text-emerald-700 dark:text-emerald-300 whitespace-nowrap">Qtd:</label>
+                              <input
+                                type="number"
+                                min="1"
+                                value={selectedCampanha.quantidade}
+                                onChange={(e) => {
+                                  const newQtd = Math.max(1, parseInt(e.target.value) || 1)
+                                  setSelectedCampanhas(selectedCampanhas.map(sc =>
+                                    sc.id === c.id ? { ...sc, quantidade: newQtd } : sc
+                                  ))
+                                }}
+                                className="w-16 px-2 py-1.5 border-2 border-emerald-300 dark:border-emerald-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-foreground font-bold bg-card text-center"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
 
-                  {/* Objetivo Vario */}
-                  {objetivosVarios.length > 0 && (
-                    <div className="mb-4">
-                      <label className="block text-sm font-semibold text-purple-700 dark:text-purple-300 mb-2">
-                        Objetivo Vario
-                      </label>
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <select
-                          value={selectedObjetivoVarioId}
-                          onChange={(e) => {
-                            setSelectedObjetivoVarioId(e.target.value)
-                            if (!e.target.value) setObjetivoVarioQuantidade(1)
-                          }}
-                          className="flex-1 px-4 py-3 border-2 border-purple-200 dark:border-purple-700 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium bg-card"
-                        >
-                          <option value="">Selecionar objetivo...</option>
-                          {objetivosVarios.map((o) => (
-                            <option key={o.id} value={o.id}>{o.titulo}</option>
-                          ))}
-                        </select>
-                        {selectedObjetivoVarioId && (
-                          <div className="flex items-center gap-2 bg-purple-100 dark:bg-purple-900/50 px-3 py-2 rounded-xl">
-                            <label className="text-sm font-medium text-purple-700 dark:text-purple-300 whitespace-nowrap">Quantidade:</label>
-                            <input
-                              type="number"
-                              min="1"
-                              value={objetivoVarioQuantidade}
-                              onChange={(e) => setObjetivoVarioQuantidade(Math.max(1, parseInt(e.target.value) || 1))}
-                              className="w-16 px-2 py-1.5 border-2 border-purple-300 dark:border-purple-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-bold bg-card text-center"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Campanhas */}
-                  {campanhas.length > 0 && (
-                    <div>
-                      <label className="block text-sm font-semibold text-emerald-700 dark:text-emerald-300 mb-2">
-                        Campanhas
-                        {selectedCampanhas.length > 0 && (
-                          <span className="ml-2 px-2 py-0.5 bg-emerald-200 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200 rounded-full text-xs">
-                            {selectedCampanhas.length} selecionada{selectedCampanhas.length > 1 ? 's' : ''}
+              {/* Objetivos Varios Section - Separate from Campanhas */}
+              {objetivosVarios.length > 0 && (
+                <div className="bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 rounded-xl p-4 border border-purple-200 dark:border-purple-800">
+                  <h3 className="text-sm font-bold text-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
+                    Objetivos Varios
+                  </h3>
+                  <p className="text-xs text-purple-600 dark:text-purple-400 mb-3 flex items-center gap-1">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    O valor vai para a cobranca, NAO para o total da venda
+                  </p>
+                  <div className="flex flex-col gap-3">
+                    <select
+                      value={selectedObjetivoVarioId}
+                      onChange={(e) => {
+                        setSelectedObjetivoVarioId(e.target.value)
+                        if (!e.target.value) setObjetivoVarioValor("")
+                      }}
+                      className="w-full px-4 py-3 border-2 border-purple-200 dark:border-purple-700 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium bg-card"
+                    >
+                      <option value="">Selecionar objetivo...</option>
+                      {objetivosVarios.map((o) => (
+                        <option key={o.id} value={o.id}>{o.titulo}</option>
+                      ))}
+                    </select>
+                    {selectedObjetivoVarioId && (
+                      <div className="flex items-center gap-3 bg-purple-100 dark:bg-purple-900/50 p-3 rounded-xl">
+                        <label className="text-sm font-semibold text-purple-700 dark:text-purple-300 whitespace-nowrap">Valor (EUR):</label>
+                        <div className="relative flex-1">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={objetivoVarioValor}
+                            onChange={(e) => setObjetivoVarioValor(e.target.value)}
+                            placeholder="0.00"
+                            className="w-full px-4 py-2.5 border-2 border-purple-300 dark:border-purple-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-bold bg-card"
+                          />
+                        </div>
+                        {objetivoVarioValor && parseFloat(objetivoVarioValor) > 0 && (
+                          <span className="text-sm font-bold text-purple-700 dark:text-purple-300 whitespace-nowrap">
+                            + {formatCurrency(parseFloat(objetivoVarioValor))} na cobranca
                           </span>
                         )}
-                      </label>
-                      <div className="space-y-2">
-                        {campanhas.map((c) => {
-                          const selectedCampanha = selectedCampanhas.find(sc => sc.id === c.id)
-                          const isSelected = !!selectedCampanha
-                          return (
-                            <div key={c.id} className="flex flex-col sm:flex-row sm:items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (isSelected) {
-                                    setSelectedCampanhas(selectedCampanhas.filter(sc => sc.id !== c.id))
-                                  } else {
-                                    setSelectedCampanhas([...selectedCampanhas, { id: c.id, quantidade: 1 }])
-                                  }
-                                }}
-                                className={`flex-1 px-4 py-3 rounded-xl text-sm font-semibold transition text-left flex items-center gap-2 ${
-                                  isSelected
-                                    ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30"
-                                    : "bg-white dark:bg-card border-2 border-emerald-200 dark:border-emerald-700 text-foreground hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
-                                }`}
-                              >
-                                {isSelected ? (
-                                  <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                  </svg>
-                                ) : (
-                                  <svg className="w-5 h-5 flex-shrink-0 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                  </svg>
-                                )}
-                                {c.titulo}
-                              </button>
-                              {isSelected && (
-                                <div className="flex items-center gap-2 bg-emerald-100 dark:bg-emerald-900/50 px-3 py-2 rounded-xl sm:w-auto w-fit">
-                                  <label className="text-sm font-medium text-emerald-700 dark:text-emerald-300 whitespace-nowrap">Qtd:</label>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    value={selectedCampanha.quantidade}
-                                    onChange={(e) => {
-                                      const newQtd = Math.max(1, parseInt(e.target.value) || 1)
-                                      setSelectedCampanhas(selectedCampanhas.map(sc =>
-                                        sc.id === c.id ? { ...sc, quantidade: newQtd } : sc
-                                      ))
-                                    }}
-                                    className="w-16 px-2 py-1.5 border-2 border-emerald-300 dark:border-emerald-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-foreground font-bold bg-card text-center"
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          )
-                        })}
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1356,46 +1368,111 @@ export default function VendasView({ vendas, clientes, produtos, objetivosVarios
                   />
                 </div>
 
-                {/* Cobranca - Only for new sales */}
-                {!editingId && (
-                  <div className="border-t border-border pt-4">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={criarCobranca}
-                        onChange={(e) => setCriarCobranca(e.target.checked)}
-                        className="w-5 h-5 text-primary rounded border-border focus:ring-primary"
-                      />
-                      <span className="text-sm font-bold text-foreground">Criar cobranca para esta venda</span>
-                    </label>
+                {/* Cobranca Section */}
+                <div className="border-t border-border pt-4">
+                  <h3 className="text-sm font-bold text-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    Cobranca
+                  </h3>
 
-                    {criarCobranca && (
-                      <div className="mt-4 grid grid-cols-2 gap-4 p-4 bg-secondary/50 rounded-xl">
+                  {/* Show existing cobranca when editing */}
+                  {editingId && vendas.find(v => v.id === editingId)?.cobranca ? (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                      <div className="flex items-center justify-between">
                         <div>
-                          <label className="block text-sm font-medium text-foreground mb-2">Parcelas</label>
-                          <select
-                            value={cobrancaParcelas}
-                            onChange={(e) => setCobrancaParcelas(e.target.value)}
-                            className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
-                          >
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => (
-                              <option key={n} value={n}>{n}x</option>
-                            ))}
-                          </select>
+                          <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                            Cobranca existente
+                          </p>
+                          <p className="text-lg font-bold text-blue-900 dark:text-blue-100">
+                            {formatCurrency(Number(vendas.find(v => v.id === editingId)?.cobranca?.valor || 0))} EUR
+                          </p>
                         </div>
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                          vendas.find(v => v.id === editingId)?.cobranca?.pago
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200"
+                            : "bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200"
+                        }`}>
+                          {vendas.find(v => v.id === editingId)?.cobranca?.pago ? "Paga" : "Pendente"}
+                        </span>
+                      </div>
+                      <Link
+                        href="/cobrancas"
+                        className="mt-3 inline-flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        Ver detalhes da cobranca
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </Link>
+                    </div>
+                  ) : editingId ? (
+                    /* Show option to create cobranca when editing and no cobranca exists */
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+                      <div className="flex items-start gap-3">
+                        <svg className="w-5 h-5 text-amber-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
                         <div>
-                          <label className="block text-sm font-medium text-foreground mb-2">Data Emissao</label>
-                          <input
-                            type="date"
-                            value={cobrancaDataEmissao}
-                            onChange={(e) => setCobrancaDataEmissao(e.target.value)}
-                            className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
-                          />
+                          <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                            Esta venda nao tem cobranca associada
+                          </p>
+                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                            Para criar uma cobranca, va a pagina de Cobrancas
+                          </p>
                         </div>
                       </div>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  ) : (
+                    /* New sale - option to create cobranca */
+                    <>
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={criarCobranca}
+                          onChange={(e) => setCriarCobranca(e.target.checked)}
+                          className="w-5 h-5 text-primary rounded border-border focus:ring-primary"
+                        />
+                        <span className="text-sm font-medium text-foreground">Criar cobranca para esta venda</span>
+                      </label>
+
+                      {criarCobranca && (
+                        <div className="mt-4 grid grid-cols-2 gap-4 p-4 bg-secondary/50 rounded-xl">
+                          <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">Parcelas</label>
+                            <select
+                              value={cobrancaParcelas}
+                              onChange={(e) => setCobrancaParcelas(e.target.value)}
+                              className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
+                            >
+                              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => (
+                                <option key={n} value={n}>{n}x</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">Data Emissao</label>
+                            <input
+                              type="date"
+                              value={cobrancaDataEmissao}
+                              onChange={(e) => setCobrancaDataEmissao(e.target.value)}
+                              className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
+                            />
+                          </div>
+                          {/* Show objetivo vario value will be included */}
+                          {selectedObjetivoVarioId && objetivoVarioValor && parseFloat(objetivoVarioValor) > 0 && (
+                            <div className="col-span-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
+                              <p className="text-sm text-purple-700 dark:text-purple-300">
+                                <span className="font-medium">Nota:</span> O valor do objetivo vario ({formatCurrency(parseFloat(objetivoVarioValor))} EUR) sera incluido na cobranca
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Modal Footer */}

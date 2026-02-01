@@ -55,6 +55,13 @@ export async function GET(
       include: {
         cliente: true,
         objetivoVario: true,
+        cobranca: {
+          select: {
+            id: true,
+            valor: true,
+            pago: true
+          }
+        },
         campanhas: {
           include: { campanha: true }
         },
@@ -169,7 +176,7 @@ export async function PUT(
         data: {
           clienteId: data.clienteId,
           objetivoVarioId: data.objetivoVarioId || null,
-          objetivoVarioQuantidade: data.objetivoVarioQuantidade || null,
+          objetivoVarioValor: data.objetivoVarioValor || null,
           valor1: data.valor1 || null,
           valor2: data.valor2 || null,
           total,
@@ -201,12 +208,19 @@ export async function PUT(
         })
       }
 
-      // Return venda with items, client, objetivoVario, and campanhas
+      // Return venda with items, client, objetivoVario, campanhas, and cobranca
       return tx.venda.findUnique({
         where: { id },
         include: {
           cliente: true,
           objetivoVario: true,
+          cobranca: {
+            select: {
+              id: true,
+              valor: true,
+              pago: true
+            }
+          },
           campanhas: {
             include: { campanha: true }
           },

@@ -38,7 +38,8 @@ export async function GET(request: Request) {
       totalProdutos: o.produtos.length,
       totalValor: o.produtos.reduce((sum, p) => sum + Number(p.precoSemIva) * p.quantidade, 0),
       totalVendas: o.vendas.length,
-      totalVendido: o.vendas.reduce((sum, v) => sum + (v.objetivoVarioQuantidade || 1), 0),
+      totalVendido: o.vendas.length, // Count of vendas with this objetivo
+      totalObjetivoValor: o.vendas.reduce((sum, v) => sum + Number(v.objetivoVarioValor || 0), 0), // Sum of objetivo values
       totalValorVendido: o.vendas.reduce((sum, v) => sum + Number(v.total), 0)
     }))
 
