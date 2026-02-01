@@ -3,13 +3,16 @@ import { prisma } from "@/lib/prisma"
 import { writeFile, mkdir } from "fs/promises"
 import { join } from "path"
 import { randomUUID } from "crypto"
-import { PDFParse } from "pdf-parse"
+import { exec } from "child_process"
+import { promisify } from "util"
 import type {
   ReconciliacaoResponse,
   ReconciliacaoListResponse,
   ParsedMapaPdf,
   PdfClienteLine
 } from "@/types/reconciliacao"
+
+const execAsync = promisify(exec)
 
 const UPLOADS_DIR = process.env.UPLOADS_DIR || "/uploads"
 
@@ -216,11 +219,8 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes)
     await writeFile(fullPath, buffer)
 
-    // Parse PDF using PDFParse class
-    const parser = new PDFParse({ data: new Uint8Array(buffer) })
-    const textResult = await parser.getText()
-    const text = textResult.text
-    await parser.destroy()
+    // Extract text from PDF using pdftotext command
+    const { stdout: text } = await execAsync(`pdftotext -layout "${fullPath}" -`)
 
     const parsed = parseMapaPdfText(text)
 

@@ -34,7 +34,11 @@
       "Bash(docker run:*)",
       "Bash(docker network:*)",
       "Bash(git -C /home/ubuntu/carolina-crm.backup remote -v)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(node -e:*)",
+      "Bash(npm ls:*)"
     ]
   }
 }

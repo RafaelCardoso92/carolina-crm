@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@napi-rs/canvas": "^0.1.89",
     "@prisma/client": "^5.22.0",
     "@react-google-maps/api": "^2.20.8",
     "bcryptjs": "^3.0.3",
