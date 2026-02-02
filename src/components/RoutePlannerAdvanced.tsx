@@ -1103,17 +1103,52 @@ export default function RoutePlannerAdvanced() {
     const service = new google.maps.places.PlacesService(mapInstance)
     const radius = type === "gas_station" ? 10000 : 5000
 
-    const request: google.maps.places.PlaceSearchRequest = {
-      location: new google.maps.LatLng(lat, lng),
-      radius: radius,
-      type: type === "parking" ? "parking" : "gas_station"
-    }
+    // For GPL, use text search with keyword; for parking use nearby search
+    if (type === "gas_station") {
+      // Search specifically for GPL/AutoGás stations
+      const textRequest: google.maps.places.TextSearchRequest = {
+        location: new google.maps.LatLng(lat, lng),
+        radius: radius,
+        query: "GPL posto combustivel"
+      }
+      
+      service.textSearch(textRequest, (results, status) => {
+        processResults(results, status, lat, lng, type)
+      })
+    } else {
+      const request: google.maps.places.PlaceSearchRequest = {
+        location: new google.maps.LatLng(lat, lng),
+        radius: radius,
+        type: "parking"
+      }
 
-    service.nearbySearch(request, (results, status) => {
+      service.nearbySearch(request, (results, status) => {
+        processResults(results, status, lat, lng, type)
+      })
+    }
+  }
+
+  const processResults = (
+    results: google.maps.places.PlaceResult[] | null,
+    status: google.maps.places.PlacesServiceStatus,
+    lat: number,
+    lng: number,
+    type: "parking" | "gas_station"
+  ) => {
       setLoadingNearby(false)
 
-      if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-        const places = results.map(place => {
+    setLoadingNearby(false)
+
+    if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+      // Filter GPL stations - only show ones with GPL in name
+      const filteredResults = type === "gas_station" 
+        ? results.filter(p => {
+            const name = (p.name || "").toLowerCase()
+            return name.includes("gpl") || name.includes("autogás") || name.includes("autogas") || name.includes("glp")
+          })
+        : results
+
+      const places = filteredResults.map(place => {
           // Calculate distance
           const R = 6371e3
           const phi1 = lat * Math.PI / 180
@@ -1142,14 +1177,13 @@ export default function RoutePlannerAdvanced() {
 
         // Sort by distance
         places.sort((a, b) => a.distance - b.distance)
-        setNearbyPlaces(places)
-      } else if (status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
-        setNearbyPlaces([])
-      } else {
-        console.error("Places search failed:", status)
-        setNearbyPlaces([])
-      }
-    })
+      setNearbyPlaces(places)
+    } else if (status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+      setNearbyPlaces([])
+    } else {
+      console.error("Places search failed:", status)
+      setNearbyPlaces([])
+    }
   }
 
   const onPlaceSelected = () => {
@@ -2302,12 +2336,24 @@ export default function RoutePlannerAdvanced() {
                       </div>
                       <div className="flex gap-2">
                         {nearbyType === "parking" && nearbySearchPoint && (
-                          <button
-                            onClick={() => addParkingToRoute(place, nearbySearchPoint.index)}
-                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700"
-                          >
-                            + Adicionar
-                          </button>
+                          parkingStops.some(p => p.lat === place.latitude && p.lng === place.longitude) ? (
+                            <button
+                              onClick={() => {
+                                const idx = parkingStops.findIndex(p => p.lat === place.latitude && p.lng === place.longitude)
+                                if (idx !== -1) removeParkingStop(idx)
+                              }}
+                              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700"
+                            >
+                              ✓ Remover
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => addParkingToRoute(place, nearbySearchPoint.index)}
+                              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700"
+                            >
+                              + Adicionar
+                            </button>
+                          )
                         )}
                         <button
                           onClick={() => navigateToPlace(place, "google")}
