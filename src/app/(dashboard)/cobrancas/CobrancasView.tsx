@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Swal from "sweetalert2"
@@ -64,13 +64,43 @@ function formatDate(dateVal: Date | string): string {
   return date.toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric" })
 }
 
-export default function CobrancasView({ cobrancas, clientes, totalPendente, totalComissao, ano }: Props) {
+export default function CobrancasView({ cobrancas: initialCobrancas, clientes, totalPendente: initialTotalPendente, totalComissao: initialTotalComissao, ano }: Props) {
   const router = useRouter()
+  // Local state for cobrancas to ensure immediate UI updates
+  const [cobrancas, setCobrancas] = useState(initialCobrancas)
+  const [totalPendente, setTotalPendente] = useState(initialTotalPendente)
+  const [totalComissao, setTotalComissao] = useState(initialTotalComissao)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState<"all" | "pending" | "paid" | "overdue">("pending")
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+
+  // Sync local state when props change (e.g., year navigation)
+  useEffect(() => {
+    setCobrancas(initialCobrancas)
+    setTotalPendente(initialTotalPendente)
+    setTotalComissao(initialTotalComissao)
+  }, [initialCobrancas, initialTotalPendente, initialTotalComissao])
+
+  // Refetch cobrancas from API
+  async function refetchCobrancas() {
+    try {
+      const url = ano ? `/api/cobrancas?ano=${ano}` : "/api/cobrancas"
+      const res = await fetch(url)
+      if (res.ok) {
+        const data = await res.json()
+        setCobrancas(data)
+        // Recalculate totals
+        const pendentes = data.filter((c: Cobranca) => !c.pago)
+        setTotalPendente(pendentes.reduce((sum: number, c: Cobranca) => sum + Number(c.valor), 0))
+        setTotalComissao(pendentes.reduce((sum: number, c: Cobranca) => sum + Number(c.comissao || 0), 0))
+      }
+    } catch (err) {
+      console.error("Error refetching cobrancas:", err)
+    }
+    refetchCobrancas() // Backup sync
+  }
 
   // Form state for installments
   const [tipoParcelado, setTipoParcelado] = useState(false)
@@ -150,7 +180,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
         setShowForm(false)
         setEditingId(null)
         resetForm()
-        router.refresh()
+        refetchCobrancas()
       } else {
         const error = await res.json()
         Swal.fire({
@@ -197,7 +227,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
         })
       })
       if (res.ok) {
-        router.refresh()
+        refetchCobrancas()
       }
     } catch {
       Swal.fire({
@@ -231,7 +261,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
         body: JSON.stringify({ pago: !pago })
       })
       if (res.ok) {
-        router.refresh()
+        refetchCobrancas()
       }
     } catch {
       Swal.fire({
@@ -260,7 +290,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
     try {
       const res = await fetch(`/api/cobrancas/${id}`, { method: "DELETE" })
       if (res.ok) {
-        router.refresh()
+        refetchCobrancas()
       } else {
         Swal.fire({
           icon: "error",

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Swal from "sweetalert2"
 import type { ReconciliacaoWithRelations, ItemReconciliacaoWithRelations, EstadoReconciliacao, TipoDiscrepancia } from "@/types/reconciliacao"
@@ -32,9 +32,12 @@ const discrepanciaLabels: Record<TipoDiscrepancia, string> = {
   VENDA_EXTRA: "Venda extra no sistema"
 }
 
-export default function ReconciliacaoView({ reconciliacoes, meses, anosDisponiveis }: Props) {
+export default function ReconciliacaoView({ reconciliacoes: initialReconciliacoes, meses, anosDisponiveis }: Props) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Local state for reconciliacoes to ensure immediate UI updates
+  const [reconciliacoes, setReconciliacoes] = useState(initialReconciliacoes)
 
   const [showUpload, setShowUpload] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -44,6 +47,27 @@ export default function ReconciliacaoView({ reconciliacoes, meses, anosDisponive
 
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [filterProblemas, setFilterProblemas] = useState(false)
+
+  // Sync local state when props change
+  useEffect(() => {
+    setReconciliacoes(initialReconciliacoes)
+  }, [initialReconciliacoes])
+
+  // Refetch reconciliacoes from API
+  async function refetchReconciliacoes() {
+    try {
+      const res = await fetch("/api/reconciliacao")
+      if (res.ok) {
+        const data = await res.json()
+        if (data.success && data.reconciliacoes) {
+          setReconciliacoes(data.reconciliacoes)
+        }
+      }
+    } catch (err) {
+      console.error("Error refetching reconciliacoes:", err)
+    }
+    refetchReconciliacoes() // Backup sync
+  }
 
   const formatCurrency = (value: number | unknown) =>
     new Intl.NumberFormat("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value))
@@ -96,7 +120,7 @@ export default function ReconciliacaoView({ reconciliacoes, meses, anosDisponive
 
       setShowUpload(false)
       setSelectedFile(null)
-      router.refresh()
+      refetchReconciliacoes()
     } catch (err) {
       Swal.fire({
         icon: "error",
@@ -126,7 +150,7 @@ export default function ReconciliacaoView({ reconciliacoes, meses, anosDisponive
     try {
       const res = await fetch(`/api/reconciliacao/${id}`, { method: "DELETE" })
       if (res.ok) {
-        router.refresh()
+        refetchReconciliacoes()
       }
     } catch (err) {
       console.error("Error deleting:", err)
@@ -142,7 +166,7 @@ export default function ReconciliacaoView({ reconciliacoes, meses, anosDisponive
       })
 
       if (res.ok) {
-        router.refresh()
+        refetchReconciliacoes()
       }
     } catch (err) {
       console.error("Error updating item:", err)

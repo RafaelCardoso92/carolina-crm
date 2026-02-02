@@ -134,11 +134,18 @@ function calcularTotalLiquido(venda: Venda): number {
   return vendaTotal - totalDevolvido + totalSubstituido
 }
 
-export default function VendasView({ vendas, clientes, produtos, objetivosVarios, campanhas, objetivo, total, mes, ano, meses }: Props) {
+export default function VendasView({ vendas: initialVendas, clientes, produtos, objetivosVarios, campanhas, objetivo, total, mes, ano, meses }: Props) {
   const router = useRouter()
+  // Local state for vendas to ensure immediate UI updates
+  const [vendas, setVendas] = useState(initialVendas)
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  // Sync local state when props change (e.g., month navigation)
+  useEffect(() => {
+    setVendas(initialVendas)
+  }, [initialVendas])
   const [selectedClienteId, setSelectedClienteId] = useState<string>("")
   const [selectedObjetivoVarioId, setSelectedObjetivoVarioId] = useState<string>("")
   const [objetivoVarioValor, setObjetivoVarioValor] = useState<string>("")
@@ -381,8 +388,15 @@ export default function VendasView({ vendas, clientes, produtos, objetivosVarios
       })
 
       if (res.ok) {
+        const updatedVenda = await res.json()
+        // Update local state immediately
+        if (editingId) {
+          setVendas(prev => prev.map(v => v.id === editingId ? updatedVenda : v))
+        } else {
+          setVendas(prev => [...prev, updatedVenda])
+        }
         closeModal()
-        router.refresh()
+        router.refresh() // Backup sync with server
         Swal.fire({
           icon: "success",
           title: editingId ? "Venda atualizada" : "Venda criada",
@@ -428,7 +442,16 @@ export default function VendasView({ vendas, clientes, produtos, objetivosVarios
     try {
       const res = await fetch(`/api/vendas/${id}`, { method: "DELETE" })
       if (res.ok) {
-        router.refresh()
+        // Update local state immediately
+        setVendas(prev => prev.filter(v => v.id !== id))
+        router.refresh() // Backup sync with server
+        Swal.fire({
+          icon: "success",
+          title: "Venda eliminada",
+          text: "A venda foi eliminada com sucesso.",
+          confirmButtonColor: "#b8860b",
+          timer: 2000
+        })
       } else {
         Swal.fire({
           icon: "error",
@@ -458,9 +481,23 @@ export default function VendasView({ vendas, clientes, produtos, objetivosVarios
     setShowDevolucaoForm(false)
   }
 
+  // Refetch vendas from API (for complex updates like devolucoes)
+  async function refetchVendas() {
+    try {
+      const res = await fetch(`/api/vendas?mes=${mes}&ano=${ano}`)
+      if (res.ok) {
+        const data = await res.json()
+        setVendas(data)
+      }
+    } catch (err) {
+      console.error("Error refetching vendas:", err)
+    }
+    router.refresh() // Backup sync
+  }
+
   function handleDevolucaoSuccess() {
     closeDevolucaoForm()
-    router.refresh()
+    refetchVendas()
     Swal.fire({
       icon: "success",
       title: "Devolucao registada",
@@ -478,7 +515,7 @@ export default function VendasView({ vendas, clientes, produtos, objetivosVarios
         body: JSON.stringify({ estado })
       })
       if (res.ok) {
-        router.refresh()
+        refetchVendas()
       }
     } catch (err) {
       console.error("Error updating devolucao status:", err)
@@ -502,7 +539,14 @@ export default function VendasView({ vendas, clientes, produtos, objetivosVarios
     try {
       const res = await fetch(`/api/devolucoes/${devolucaoId}`, { method: "DELETE" })
       if (res.ok) {
-        router.refresh()
+        refetchVendas()
+        Swal.fire({
+          icon: "success",
+          title: "Devolucao eliminada",
+          text: "A devolucao foi eliminada com sucesso.",
+          confirmButtonColor: "#b8860b",
+          timer: 2000
+        })
       }
     } catch (err) {
       console.error("Error deleting devolucao:", err)
