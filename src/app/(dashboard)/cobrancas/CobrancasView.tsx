@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Swal from "sweetalert2"
@@ -51,6 +51,9 @@ type Props = {
   ano: number | null
 }
 
+type SortField = "cliente" | "valor" | "dataEmissao" | "fatura"
+type SortOrder = "asc" | "desc"
+
 function isParcelaAtrasada(parcela: Parcela): boolean {
   if (parcela.pago) return false
   const vencimento = parcela.dataVencimento instanceof Date
@@ -72,6 +75,12 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
   const [filter, setFilter] = useState<"all" | "pending" | "paid" | "overdue">("pending")
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
 
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedCliente, setSelectedCliente] = useState<string>("")
+  const [sortField, setSortField] = useState<SortField>("cliente")
+  const [sortOrder, setSortOrder] = useState<SortOrder>("asc")
+
   // Form state for installments
   const [tipoParcelado, setTipoParcelado] = useState(false)
   const [numeroParcelas, setNumeroParcelas] = useState(2)
@@ -81,15 +90,61 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
   // Modal state
   const [showModal, setShowModal] = useState(false)
 
-  const filtered = cobrancas.filter(c => {
-    if (filter === "pending") return !c.pago
-    if (filter === "paid") return c.pago
-    if (filter === "overdue") {
-      // Has at least one overdue parcela
-      return c.parcelas.some(p => isParcelaAtrasada(p))
+  // Get unique clients from cobrancas for filter dropdown
+  const clientesComCobrancas = useMemo(() => {
+    const clienteIds = new Set(cobrancas.map(c => c.clienteId))
+    return clientes.filter(c => clienteIds.has(c.id)).sort((a, b) => a.nome.localeCompare(b.nome))
+  }, [cobrancas, clientes])
+
+  // Filter and sort cobrancas
+  const filtered = useMemo(() => {
+    let result = cobrancas
+
+    // Status filter
+    if (filter === "pending") result = result.filter(c => !c.pago)
+    else if (filter === "paid") result = result.filter(c => c.pago)
+    else if (filter === "overdue") result = result.filter(c => c.parcelas.some(p => isParcelaAtrasada(p)))
+
+    // Client filter
+    if (selectedCliente) {
+      result = result.filter(c => c.clienteId === selectedCliente)
     }
-    return true
-  })
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim()
+      result = result.filter(c => 
+        c.cliente.nome.toLowerCase().includes(query) ||
+        (c.cliente.codigo && c.cliente.codigo.toLowerCase().includes(query)) ||
+        (c.fatura && c.fatura.toLowerCase().includes(query)) ||
+        (c.notas && c.notas.toLowerCase().includes(query))
+      )
+    }
+
+    // Sort
+    result = [...result].sort((a, b) => {
+      let comparison = 0
+      switch (sortField) {
+        case "cliente":
+          comparison = a.cliente.nome.localeCompare(b.cliente.nome)
+          break
+        case "valor":
+          comparison = Number(a.valor) - Number(b.valor)
+          break
+        case "dataEmissao":
+          const dateA = a.dataEmissao ? new Date(a.dataEmissao).getTime() : 0
+          const dateB = b.dataEmissao ? new Date(b.dataEmissao).getTime() : 0
+          comparison = dateA - dateB
+          break
+        case "fatura":
+          comparison = (a.fatura || "").localeCompare(b.fatura || "")
+          break
+      }
+      return sortOrder === "asc" ? comparison : -comparison
+    })
+
+    return result
+  }, [cobrancas, filter, selectedCliente, searchQuery, sortField, sortOrder])
 
   // Count overdue parcelas
   const totalAtrasadas = cobrancas.reduce((acc, c) => {
@@ -122,29 +177,45 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
     resetForm()
   }
 
+  function handleSort(field: SortField) {
+    if (sortField === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc")
+    } else {
+      setSortField(field)
+      setSortOrder("asc")
+    }
+  }
+
+  function clearFilters() {
+    setSearchQuery("")
+    setSelectedCliente("")
+    setSortField("cliente")
+    setSortOrder("asc")
+    setFilter("pending")
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
 
     const formData = new FormData(e.currentTarget)
     const valor = parseFloat(formData.get("valor") as string)
-    const comissaoPercent = 3.5 // Default commission percentage
+    const comissaoPercent = 3.5
 
     const data: Record<string, unknown> = {
       clienteId: formData.get("clienteId") as string,
       fatura: formData.get("fatura") as string || null,
       valor,
-      valorSemIva: valor / 1.23, // Assuming 23% VAT
+      valorSemIva: valor / 1.23,
       comissao: (valor / 1.23) * (comissaoPercent / 100),
       dataEmissao: formData.get("dataEmissao") as string || null,
       notas: formData.get("notas") as string || null
     }
 
-    // Add installment data if parcelado mode
     if (tipoParcelado) {
       data.numeroParcelas = numeroParcelas
       data.dataInicioVencimento = dataInicioVencimento
-      data.updateParcelas = true // Flag to tell backend to regenerate parcelas
+      data.updateParcelas = true
     }
 
     try {
@@ -291,7 +362,6 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
   function startEdit(cobranca: Cobranca) {
     setEditingId(cobranca.id)
     setValorTotal(String(cobranca.valor))
-    // Set parcela data if it has parcelas
     if (cobranca.parcelas.length > 0) {
       setTipoParcelado(true)
       setNumeroParcelas(cobranca.numeroParcelas || cobranca.parcelas.length)
@@ -313,7 +383,6 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
 
   const editingCobranca = editingId ? cobrancas.find(c => c.id === editingId) : null
 
-  // Generate preview of installments
   const installmentPreview = tipoParcelado && valorTotal && dataInicioVencimento ?
     Array.from({ length: numeroParcelas }, (_, i) => {
       const date = new Date(dataInicioVencimento)
@@ -325,11 +394,15 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       }
     }) : []
 
-  // Get parcelas status string
   function getParcelasStatus(cobranca: Cobranca): string {
     if (cobranca.parcelas.length === 0) return "-"
     const pagas = cobranca.parcelas.filter(p => p.pago).length
     return `${pagas}/${cobranca.parcelas.length}`
+  }
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <span className="text-muted-foreground/50 ml-1">↕</span>
+    return <span className="text-primary ml-1">{sortOrder === "asc" ? "↑" : "↓"}</span>
   }
 
   return (
@@ -381,7 +454,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
             </div>
-            <h3 className="text-xs md:text-sm font-bold text-muted-foreground uppercase tracking-wide">Comissão</h3>
+            <h3 className="text-xs md:text-sm font-bold text-muted-foreground uppercase tracking-wide">Comissao</h3>
           </div>
           <p className="text-xl md:text-3xl font-bold text-primary">{formatCurrency(totalComissao)} €</p>
           <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden md:block">3.5% pendentes</p>
@@ -402,41 +475,123 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
         )}
       </div>
 
-      {/* Filter and Add Button */}
-      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 md:gap-4 mb-4 md:mb-6">
-        <div className="flex gap-1.5 md:gap-2 flex-wrap">
-          {[
-            { value: "pending", label: "Pendentes", shortLabel: "Pend.", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
-            { value: "paid", label: "Pagas", shortLabel: "Pagas", icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" },
-            { value: "overdue", label: "Atrasadas", shortLabel: "Atras.", icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" },
-            { value: "all", label: "Todas", shortLabel: "Todas", icon: "M4 6h16M4 10h16M4 14h16M4 18h16" }
-          ].map((f) => (
+      {/* Search, Filter, Sort Controls */}
+      <div className="bg-card rounded-xl shadow-sm p-4 mb-4 border border-border space-y-3">
+        {/* Search Bar */}
+        <div className="relative">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Pesquisar por cliente, fatura ou notas..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 border border-border rounded-xl bg-card text-foreground focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+          />
+          {searchQuery && (
             <button
-              key={f.value}
-              onClick={() => setFilter(f.value as typeof filter)}
-              className={`flex items-center gap-1.5 md:gap-2 px-2.5 md:px-4 py-2 md:py-2.5 rounded-xl font-semibold transition text-xs md:text-base ${
-                filter === f.value
-                  ? f.value === "overdue"
-                    ? "bg-red-600 text-white shadow-lg"
-                    : "bg-primary text-primary-foreground shadow-lg"
-                  : "bg-card text-foreground hover:bg-secondary border-2 border-border"
-              }`}
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
-              <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={f.icon} />
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
-              <span className="hidden sm:inline">{f.label}</span>
-              <span className="sm:hidden">{f.shortLabel}</span>
-              {f.value === "overdue" && totalAtrasadas > 0 && (
-                <span className={`text-xs px-1.5 md:px-2 py-0.5 rounded-full ${
-                  filter === "overdue" ? "bg-white/20" : "bg-red-100 text-red-700"
-                }`}>
-                  {totalAtrasadas}
-                </span>
-              )}
             </button>
-          ))}
+          )}
         </div>
+
+        {/* Filters Row */}
+        <div className="flex flex-wrap gap-2 items-center">
+          {/* Status Filter */}
+          <div className="flex gap-1 flex-wrap">
+            {[
+              { value: "pending", label: "Pendentes", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
+              { value: "paid", label: "Pagas", icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" },
+              { value: "overdue", label: "Atrasadas", icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" },
+              { value: "all", label: "Todas", icon: "M4 6h16M4 10h16M4 14h16M4 18h16" }
+            ].map((f) => (
+              <button
+                key={f.value}
+                onClick={() => setFilter(f.value as typeof filter)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition text-sm ${
+                  filter === f.value
+                    ? f.value === "overdue"
+                      ? "bg-red-600 text-white"
+                      : "bg-primary text-primary-foreground"
+                    : "bg-secondary text-foreground hover:bg-muted"
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={f.icon} />
+                </svg>
+                {f.label}
+                {f.value === "overdue" && totalAtrasadas > 0 && (
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    filter === "overdue" ? "bg-white/20" : "bg-red-100 text-red-700"
+                  }`}>
+                    {totalAtrasadas}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          <div className="h-6 w-px bg-border hidden sm:block" />
+
+          {/* Client Filter */}
+          <select
+            value={selectedCliente}
+            onChange={(e) => setSelectedCliente(e.target.value)}
+            className="px-3 py-1.5 border border-border rounded-lg bg-card text-sm focus:ring-2 focus:ring-primary outline-none"
+          >
+            <option value="">Todos os clientes</option>
+            {clientesComCobrancas.map((c) => (
+              <option key={c.id} value={c.id}>{c.nome}</option>
+            ))}
+          </select>
+
+          {/* Sort Dropdown */}
+          <select
+            value={`${sortField}-${sortOrder}`}
+            onChange={(e) => {
+              const [field, order] = e.target.value.split("-") as [SortField, SortOrder]
+              setSortField(field)
+              setSortOrder(order)
+            }}
+            className="px-3 py-1.5 border border-border rounded-lg bg-card text-sm focus:ring-2 focus:ring-primary outline-none"
+          >
+            <option value="cliente-asc">Cliente A-Z</option>
+            <option value="cliente-desc">Cliente Z-A</option>
+            <option value="valor-desc">Valor (maior)</option>
+            <option value="valor-asc">Valor (menor)</option>
+            <option value="dataEmissao-desc">Data (recente)</option>
+            <option value="dataEmissao-asc">Data (antiga)</option>
+            <option value="fatura-asc">Fatura A-Z</option>
+          </select>
+
+          {/* Clear Filters */}
+          {(searchQuery || selectedCliente || filter !== "pending" || sortField !== "cliente") && (
+            <button
+              onClick={clearFilters}
+              className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Limpar
+            </button>
+          )}
+
+          {/* Results count */}
+          <span className="text-sm text-muted-foreground ml-auto">
+            {filtered.length} {filtered.length === 1 ? "resultado" : "resultados"}
+          </span>
+        </div>
+      </div>
+
+      {/* Add Button */}
+      <div className="flex justify-end mb-4">
         <button
           onClick={() => { setShowForm(true); setEditingId(null); resetForm(); setShowModal(false); }}
           className="bg-primary text-white px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold hover:bg-primary-hover transition flex items-center justify-center gap-2 shadow-lg shadow-primary/20 text-sm md:text-base"
@@ -524,91 +679,88 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
             </div>
 
             {/* Installment Options */}
-            {(
-              <div className="border-t-2 border-border pt-4 mt-4">
-                <label className="block text-sm font-bold text-foreground mb-3">Tipo de Pagamento</label>
-                <div className="flex gap-4 mb-4">
-                  <button
-                    type="button"
-                    onClick={() => setTipoParcelado(false)}
-                    className={`flex-1 py-3 px-4 rounded-xl font-semibold transition border-2 ${
-                      !tipoParcelado
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-card text-foreground border-border hover:bg-secondary"
-                    }`}
-                  >
-                    <div className="flex items-center justify-center gap-2">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                      </svg>
-                      Pagamento Unico
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTipoParcelado(true)}
-                    className={`flex-1 py-3 px-4 rounded-xl font-semibold transition border-2 ${
-                      tipoParcelado
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-card text-foreground border-border hover:bg-secondary"
-                    }`}
-                  >
-                    <div className="flex items-center justify-center gap-2">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                      </svg>
-                      Parcelado
-                    </div>
-                  </button>
-                </div>
-
-                {tipoParcelado && (
-                  <div className="bg-secondary/50 rounded-xl p-4 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-bold text-foreground mb-2">Numero de Parcelas *</label>
-                        <select
-                          value={numeroParcelas}
-                          onChange={(e) => setNumeroParcelas(parseInt(e.target.value))}
-                          className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
-                        >
-                          {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
-                            <option key={n} value={n}>{n} parcelas</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-bold text-foreground mb-2">Data da 1ª Parcela *</label>
-                        <input
-                          type="date"
-                          value={dataInicioVencimento}
-                          onChange={(e) => setDataInicioVencimento(e.target.value)}
-                          required={tipoParcelado}
-                          className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Installment Preview */}
-                    {installmentPreview.length > 0 && (
-                      <div className="mt-4">
-                        <h4 className="text-sm font-bold text-foreground mb-2">Resumo das Parcelas:</h4>
-                        <div className="bg-card rounded-lg p-3 space-y-2 max-h-48 overflow-y-auto">
-                          {installmentPreview.map((p) => (
-                            <div key={p.numero} className="flex justify-between items-center text-sm py-1 border-b border-border last:border-0">
-                              <span className="font-medium text-foreground">Parcela {p.numero}</span>
-                              <span className="text-muted-foreground">
-                                {formatCurrency(p.valor)} € - {p.dataVencimento.toLocaleDateString("pt-PT")}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+            <div className="border-t-2 border-border pt-4 mt-4">
+              <label className="block text-sm font-bold text-foreground mb-3">Tipo de Pagamento</label>
+              <div className="flex gap-4 mb-4">
+                <button
+                  type="button"
+                  onClick={() => setTipoParcelado(false)}
+                  className={`flex-1 py-3 px-4 rounded-xl font-semibold transition border-2 ${
+                    !tipoParcelado
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-card text-foreground border-border hover:bg-secondary"
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                    </svg>
+                    Pagamento Unico
                   </div>
-                )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTipoParcelado(true)}
+                  className={`flex-1 py-3 px-4 rounded-xl font-semibold transition border-2 ${
+                    tipoParcelado
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-card text-foreground border-border hover:bg-secondary"
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    Parcelado
+                  </div>
+                </button>
               </div>
-            )}
+
+              {tipoParcelado && (
+                <div className="bg-secondary/50 rounded-xl p-4 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-foreground mb-2">Numero de Parcelas *</label>
+                      <select
+                        value={numeroParcelas}
+                        onChange={(e) => setNumeroParcelas(parseInt(e.target.value))}
+                        className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
+                      >
+                        {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
+                          <option key={n} value={n}>{n} parcelas</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-foreground mb-2">Data da 1ª Parcela *</label>
+                      <input
+                        type="date"
+                        value={dataInicioVencimento}
+                        onChange={(e) => setDataInicioVencimento(e.target.value)}
+                        required={tipoParcelado}
+                        className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
+                      />
+                    </div>
+                  </div>
+
+                  {installmentPreview.length > 0 && (
+                    <div className="mt-4">
+                      <h4 className="text-sm font-bold text-foreground mb-2">Resumo das Parcelas:</h4>
+                      <div className="bg-card rounded-lg p-3 space-y-2 max-h-48 overflow-y-auto">
+                        {installmentPreview.map((p) => (
+                          <div key={p.numero} className="flex justify-between items-center text-sm py-1 border-b border-border last:border-0">
+                            <span className="font-medium text-foreground">Parcela {p.numero}</span>
+                            <span className="text-muted-foreground">
+                              {formatCurrency(p.valor)} € - {p.dataVencimento.toLocaleDateString("pt-PT")}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             <div className="flex gap-3 pt-4">
               <button
@@ -773,7 +925,6 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
 
                 {tipoParcelado && (
                   <div className="bg-secondary/50 rounded-xl p-4 space-y-4">
-                    {/* Current parcelas info */}
                     {editingCobranca.parcelas.length > 0 && (
                       <div className="bg-orange-100 dark:bg-orange-900/20 border border-orange-300 dark:border-orange-700 rounded-lg p-3 mb-4">
                         <p className="text-sm text-black dark:text-white font-medium">
@@ -809,7 +960,6 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                       </div>
                     </div>
 
-                    {/* Preview of new parcelas */}
                     {valorTotal && dataInicioVencimento && (
                       <div className="mt-4">
                         <h4 className="text-sm font-bold text-foreground mb-2">Pre-visualizacao das Parcelas:</h4>
@@ -879,9 +1029,24 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
             <thead className="bg-secondary border-b-2 border-border">
               <tr>
                 <th className="px-2 py-4 text-left text-sm font-bold text-foreground w-8"></th>
-                <th className="px-4 py-4 text-left text-sm font-bold text-foreground">Cliente</th>
-                <th className="px-4 py-4 text-left text-sm font-bold text-foreground">Fatura</th>
-                <th className="px-4 py-4 text-right text-sm font-bold text-foreground">Valor c/IVA</th>
+                <th 
+                  className="px-4 py-4 text-left text-sm font-bold text-foreground cursor-pointer hover:text-primary"
+                  onClick={() => handleSort("cliente")}
+                >
+                  Cliente <SortIcon field="cliente" />
+                </th>
+                <th 
+                  className="px-4 py-4 text-left text-sm font-bold text-foreground cursor-pointer hover:text-primary"
+                  onClick={() => handleSort("fatura")}
+                >
+                  Fatura <SortIcon field="fatura" />
+                </th>
+                <th 
+                  className="px-4 py-4 text-right text-sm font-bold text-foreground cursor-pointer hover:text-primary"
+                  onClick={() => handleSort("valor")}
+                >
+                  Valor c/IVA <SortIcon field="valor" />
+                </th>
                 <th className="px-4 py-4 text-right text-sm font-bold text-foreground">Sem IVA</th>
                 <th className="px-4 py-4 text-right text-sm font-bold text-primary">Comissao</th>
                 <th className="px-4 py-4 text-center text-sm font-bold text-foreground">Parcelas</th>
@@ -1091,8 +1256,17 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
             <svg className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <p className="text-muted-foreground text-lg font-medium">Nenhuma cobranca encontrada</p>
-            <p className="text-muted-foreground/70 mt-1">Clique em &quot;Adicionar Cobranca&quot; para comecar</p>
+            <p className="text-muted-foreground text-lg font-medium">
+              {searchQuery || selectedCliente ? "Nenhuma cobranca encontrada com esses filtros" : "Nenhuma cobranca encontrada"}
+            </p>
+            {(searchQuery || selectedCliente) && (
+              <button
+                onClick={clearFilters}
+                className="mt-2 text-primary hover:underline text-sm"
+              >
+                Limpar filtros
+              </button>
+            )}
           </div>
         )}
       </div>
