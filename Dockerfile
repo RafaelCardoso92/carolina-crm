@@ -14,9 +14,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build args for NEXT_PUBLIC env vars (needed at build time)
-ARG NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=$NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+# Copy .env file for NEXT_PUBLIC_ variables (baked into bundle at build time)
+# This ensures client-side env vars like NEXT_PUBLIC_GOOGLE_MAPS_API_KEY are available
+COPY .env .env
 
 # Generate Prisma client
 RUN npx prisma generate
