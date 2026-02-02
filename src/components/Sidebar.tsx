@@ -171,6 +171,8 @@ export default function Sidebar() {
 
   const themeLabel = theme === "light" ? "Claro" : theme === "dark" ? "Escuro" : "Sistema"
 
+  const isImpersonating = session?.user?.impersonating
+
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Header with Logo */}
@@ -253,7 +255,13 @@ export default function Sidebar() {
           </button>
 
           <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={() => {
+              // Clear service worker cache before signing out
+              if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({ type: "CLEAR_CACHE" })
+              }
+              signOut({ callbackUrl: "/login" })
+            }}
             className="flex items-center justify-center px-3 py-2 text-white/60 hover:text-red-400 hover:bg-white/5 rounded-lg transition-all duration-200"
             title="Sair"
           >
@@ -269,7 +277,7 @@ export default function Sidebar() {
   return (
     <>
       {/* Mobile Header Bar */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-sidebar border-b border-white/10">
+      <div className={`lg:hidden fixed left-0 right-0 z-40 bg-sidebar border-b border-white/10 ${isImpersonating ? "top-11" : "top-0"}`}>
         <div className="flex items-center justify-between px-4 py-3">
           <Link href="/" className="flex items-center">
             <span className="text-lg font-bold text-white">Baborete</span>
@@ -300,15 +308,15 @@ export default function Sidebar() {
 
       {/* Mobile Sidebar */}
       <aside
-        className={`lg:hidden fixed top-0 left-0 h-full w-64 bg-sidebar z-50 transform transition-transform duration-300 ease-out shadow-2xl ${
+        className={`lg:hidden fixed left-0 w-64 bg-sidebar z-50 transform transition-transform duration-300 ease-out shadow-2xl ${
           isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        } ${isImpersonating ? "top-11 h-[calc(100%-2.75rem)]" : "top-0 h-full"}`}
       >
         {sidebarContent}
       </aside>
 
       {/* Desktop Sidebar - Fixed to viewport height */}
-      <aside className="hidden lg:block w-56 bg-sidebar h-screen sticky top-0 border-r border-sidebar-border">
+      <aside className={`hidden lg:block w-56 bg-sidebar sticky border-r border-sidebar-border ${isImpersonating ? "top-11 h-[calc(100vh-2.75rem)]" : "top-0 h-screen"}`}>
         {sidebarContent}
       </aside>
     </>
