@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
 
     // Determine provider
     let provider = await getAIProvider()
-    if (requestedProvider && (requestedProvider === "gemini" || requestedProvider === "openai")) {
+    if (requestedProvider === "openai") {
       provider = requestedProvider
     }
 
@@ -244,7 +244,7 @@ export async function POST(request: NextRequest) {
       .replace("{instagram}", prospecto.instagram || "Nao disponivel")
 
     // Get AI response
-    const aiResponse = await generateAIResponse(prompt, provider)
+    const aiResponse = await generateAIResponse(prompt)
 
     // Parse JSON response
     let tactics: ProspectoTactics

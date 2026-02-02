@@ -57,7 +57,11 @@
       "Bash(pdftotext:*)",
       "Bash(find:*)",
       "Bash(sudo pkill:*)",
-      "Bash(kubectl rollout:*)"
+      "Bash(kubectl rollout:*)",
+      "Bash(sudo apt-get update:*)",
+      "Bash(sudo apt-get install:*)",
+      "Bash(convert:*)",
+      "Bash(sudo kubectl describe:*)"
     ]
   }
 }

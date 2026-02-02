@@ -1,6 +1,6 @@
 export interface ProspectoTacticsRequest {
   prospectoId: string
-  provider?: "gemini" | "openai"  // Optional: override default provider
+  provider?: "openai"  // Optional: override default provider
 }
 
 export interface TacticaItem {
@@ -33,7 +33,7 @@ export interface ProspectoTacticsResponse {
 
 export interface ClienteInsightsRequest {
   clienteId: string
-  provider?: "gemini" | "openai"  // Optional: override default provider
+  provider?: "openai"  // Optional: override default provider
 }
 
 export interface UpsellRecomendacao {
@@ -69,7 +69,7 @@ export interface ClienteInsightsResponse {
 }
 
 export interface AISettingsResponse {
-  currentProvider: "gemini" | "openai"
+  currentProvider: "openai"
   availableProviders: {
     gemini: boolean
     openai: boolean

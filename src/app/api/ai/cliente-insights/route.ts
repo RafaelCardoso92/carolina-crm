@@ -233,7 +233,7 @@ export async function POST(request: NextRequest) {
 
     // Determine provider
     let provider = await getAIProvider()
-    if (requestedProvider && (requestedProvider === "gemini" || requestedProvider === "openai")) {
+    if (requestedProvider === "openai") {
       provider = requestedProvider
     }
 
@@ -253,7 +253,7 @@ export async function POST(request: NextRequest) {
       .replace("{produtosUnicos}", produtosComprados.size.toString())
 
     // Get AI response
-    const aiResponse = await generateAIResponse(prompt, provider)
+    const aiResponse = await generateAIResponse(prompt)
 
     // Parse JSON response
     let insights: ClienteInsights

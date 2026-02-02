@@ -19,8 +19,8 @@ export default function ClienteAIInsights({ clienteId }: Props) {
   const [isExpanded, setIsExpanded] = useState(true)
 
   // AI Settings state
-  const [currentProvider, setCurrentProvider] = useState<"gemini" | "openai">("openai")
-  const [availableProviders, setAvailableProviders] = useState({ gemini: false, openai: false })
+  const [currentProvider, setCurrentProvider] = useState<"openai">("openai")
+  const [availableProviders, setAvailableProviders] = useState({ openai: false })
   const [switchingProvider, setSwitchingProvider] = useState(false)
 
   // Fetch AI settings and saved insights on mount
@@ -55,7 +55,7 @@ export default function ClienteAIInsights({ clienteId }: Props) {
     fetchInitialData()
   }, [clienteId])
 
-  async function switchProvider(provider: "gemini" | "openai") {
+  async function switchProvider(provider: "openai") {
     setSwitchingProvider(true)
     try {
       const res = await fetch("/api/ai/settings", {
@@ -132,7 +132,7 @@ export default function ClienteAIInsights({ clienteId }: Props) {
     }
   }
 
-  const providerLabel = (p: string) => p === "openai" ? "GPT-5.1" : "Gemini"
+  const providerLabel = (p: string) => "ChatGPT"
   const providerColor = (p: string) => p === "openai" ? "text-green-600" : "text-blue-600"
   const providerBg = (p: string) => p === "openai" ? "bg-green-500/10" : "bg-blue-500/10"
 
@@ -193,17 +193,6 @@ export default function ClienteAIInsights({ clienteId }: Props) {
               } ${!availableProviders.openai ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               GPT-5.1
-            </button>
-            <button
-              onClick={() => switchProvider("gemini")}
-              disabled={!availableProviders.gemini || switchingProvider}
-              className={`px-3 py-1 text-xs font-medium transition ${
-                currentProvider === "gemini"
-                  ? "bg-primary text-white"
-                  : "bg-secondary text-muted-foreground hover:bg-secondary/80"
-              } ${!availableProviders.gemini ? "opacity-50 cursor-not-allowed" : ""}`}
-            >
-              Gemini
             </button>
           </div>
           <span className={`text-xs font-medium ${providerColor(currentProvider)}`}>

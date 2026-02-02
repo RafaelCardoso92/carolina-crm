@@ -1,66 +1,37 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getAIProvider, setAIProvider, getAvailableProviders, AIProvider } from "@/lib/ai"
-import type { AISettingsResponse } from "@/types/ai"
+import { getAvailableProviders } from "@/lib/ai"
 
-// GET - Get current AI settings
+// GET - Return current settings and available providers
 export async function GET() {
   try {
-    const currentProvider = await getAIProvider()
-    const availableProviders = getAvailableProviders()
+    const available = getAvailableProviders()
 
-    return NextResponse.json<AISettingsResponse>({
-      currentProvider,
-      availableProviders,
+    return NextResponse.json({
+      success: true,
+      provider: "openai",
+      available
     })
   } catch (error) {
-    console.error("Error getting AI settings:", error)
+    console.error("Error fetching AI settings:", error)
     return NextResponse.json(
-      { error: "Erro ao obter definicoes de IA" },
+      { success: false, error: "Erro ao carregar definições de IA" },
       { status: 500 }
     )
   }
 }
 
-// POST - Update AI provider
-export async function POST(request: NextRequest) {
+// POST - Only OpenAI is available now
+export async function POST() {
   try {
-    const body = await request.json()
-    const { provider } = body
-
-    if (!provider || (provider !== "gemini" && provider !== "openai")) {
-      return NextResponse.json(
-        { error: "Fornecedor invalido. Use 'gemini' ou 'openai'" },
-        { status: 400 }
-      )
-    }
-
-    const availableProviders = getAvailableProviders()
-
-    if (provider === "gemini" && !availableProviders.gemini) {
-      return NextResponse.json(
-        { error: "Gemini nao esta configurado. Adicione GEMINI_API_KEY." },
-        { status: 400 }
-      )
-    }
-
-    if (provider === "openai" && !availableProviders.openai) {
-      return NextResponse.json(
-        { error: "OpenAI nao esta configurado. Adicione OPENAI_API_KEY." },
-        { status: 400 }
-      )
-    }
-
-    await setAIProvider(provider as AIProvider)
-
     return NextResponse.json({
       success: true,
-      provider,
-      message: `Fornecedor de IA alterado para ${provider === "openai" ? "GPT-4" : "Gemini"}`
+      provider: "openai",
+      message: "ChatGPT selecionado"
     })
   } catch (error) {
-    console.error("Error setting AI provider:", error)
+    console.error("Error updating AI settings:", error)
     return NextResponse.json(
-      { error: "Erro ao alterar fornecedor de IA" },
+      { success: false, error: "Erro ao atualizar definições de IA" },
       { status: 500 }
     )
   }
