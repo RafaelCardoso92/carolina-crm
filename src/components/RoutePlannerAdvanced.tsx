@@ -1093,20 +1093,63 @@ export default function RoutePlannerAdvanced() {
     setNearbySearchPoint({ lat, lng, index })
     setNearbyType(type)
 
-    try {
-      const response = await fetch("/api/rotas/nearby", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lat, lng, type, radius: type === "gas_station" ? 10000 : 5000 })
-      })
-      const data = await response.json()
-      setNearbyPlaces(data.places || [])
-    } catch (error) {
-      console.error("Nearby places error:", error)
-      alert("Erro ao procurar locais próximos")
-    } finally {
+    // Use Google Places Service directly (client-side) to avoid API key restrictions
+    if (!mapInstance) {
       setLoadingNearby(false)
+      alert("Mapa não carregado")
+      return
     }
+
+    const service = new google.maps.places.PlacesService(mapInstance)
+    const radius = type === "gas_station" ? 10000 : 5000
+
+    const request: google.maps.places.PlaceSearchRequest = {
+      location: new google.maps.LatLng(lat, lng),
+      radius: radius,
+      type: type === "parking" ? "parking" : "gas_station"
+    }
+
+    service.nearbySearch(request, (results, status) => {
+      setLoadingNearby(false)
+
+      if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+        const places = results.map(place => {
+          // Calculate distance
+          const R = 6371e3
+          const phi1 = lat * Math.PI / 180
+          const phi2 = (place.geometry?.location?.lat() || 0) * Math.PI / 180
+          const deltaPhi = ((place.geometry?.location?.lat() || 0) - lat) * Math.PI / 180
+          const deltaLambda = ((place.geometry?.location?.lng() || 0) - lng) * Math.PI / 180
+
+          const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+                    Math.cos(phi1) * Math.cos(phi2) *
+                    Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2)
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+          const distance = Math.round(R * c)
+
+          return {
+            id: place.place_id || "",
+            name: place.name || "",
+            address: place.vicinity || null,
+            latitude: place.geometry?.location?.lat() || 0,
+            longitude: place.geometry?.location?.lng() || 0,
+            distance,
+            type,
+            rating: place.rating,
+            openNow: place.opening_hours?.isOpen?.()
+          }
+        })
+
+        // Sort by distance
+        places.sort((a, b) => a.distance - b.distance)
+        setNearbyPlaces(places)
+      } else if (status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+        setNearbyPlaces([])
+      } else {
+        console.error("Places search failed:", status)
+        setNearbyPlaces([])
+      }
+    })
   }
 
   const onPlaceSelected = () => {
