@@ -5,6 +5,8 @@ import SalesCharts from "./SalesCharts"
 import { TarefasWidget, FollowUpWidget } from "@/components/DashboardWidgets"
 import { NotificationsWidget, ForecastWidget, HealthScoresWidget, QuickStatsWidget, AcordosWidget } from "@/components/EnhancedDashboardWidgets"
 import { formatCurrency } from "@/lib/utils"
+import MoodTracker from "@/components/MoodTracker"
+import DailyQuote from "@/components/DailyQuote"
 
 const meses = [
   "", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
@@ -187,6 +189,12 @@ export default function DashboardView() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Daily Inspiration */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <DailyQuote />
+        <MoodTracker />
       </div>
 
       {/* Quick Stats */}
