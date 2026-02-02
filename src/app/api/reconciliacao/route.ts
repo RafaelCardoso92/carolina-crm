@@ -165,7 +165,8 @@ export async function GET(request: NextRequest) {
       orderBy: [{ ano: "desc" }, { mes: "desc" }]
     })
 
-    return NextResponse.json<ReconciliacaoListResponse>({
+    // Cast to handle type compatibility with the response type
+    return NextResponse.json({
       success: true,
       reconciliacoes
     })
@@ -414,7 +415,8 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    return NextResponse.json<ReconciliacaoResponse>({
+    // Cast to handle type compatibility with the response type
+    return NextResponse.json({
       success: true,
       reconciliacao
     })

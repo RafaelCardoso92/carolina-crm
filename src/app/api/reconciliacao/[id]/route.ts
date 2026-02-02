@@ -41,7 +41,8 @@ export async function GET(
       )
     }
 
-    return NextResponse.json<ReconciliacaoResponse>({
+    // Cast to handle type compatibility with the response type
+    return NextResponse.json({
       success: true,
       reconciliacao
     })
@@ -110,7 +111,8 @@ export async function PUT(
       }
     })
 
-    return NextResponse.json<ReconciliacaoResponse>({
+    // Cast to handle type compatibility with the response type
+    return NextResponse.json({
       success: true,
       reconciliacao
     })

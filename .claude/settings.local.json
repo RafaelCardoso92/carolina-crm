@@ -56,7 +56,8 @@
       "Bash(grep:*)",
       "Bash(pdftotext:*)",
       "Bash(find:*)",
-      "Bash(sudo pkill:*)"
+      "Bash(sudo pkill:*)",
+      "Bash(kubectl rollout:*)"
     ]
   }
 }
