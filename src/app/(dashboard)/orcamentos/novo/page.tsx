@@ -566,9 +566,9 @@ export default function NovoOrcamentoPage() {
           ) : (
             <div className="space-y-4">
               {variosItens.map((item, index) => (
-                <div key={index} className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl space-y-3">
+                <div key={index} className="p-4 bg-purple-50 dark:bg-purple-950/60 rounded-xl space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-purple-700 dark:text-purple-400">Varios {index + 1}</span>
+                    <span className="text-sm font-medium text-purple-700 dark:text-purple-200">Varios {index + 1}</span>
                     <button
                       type="button"
                       onClick={() => removeVariosItem(index)}
@@ -584,7 +584,7 @@ export default function NovoOrcamentoPage() {
                       <select
                         value={item.objetivoId}
                         onChange={e => updateVariosItem(index, "objetivoId", e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-purple-200 dark:border-purple-800 bg-background text-sm"
+                        className="w-full px-3 py-2 rounded-lg border border-purple-200 dark:border-purple-600 bg-background text-sm"
                       >
                         <option value="">Selecionar ou inserir manualmente...</option>
                         {objetivosVarios.map(o => (
@@ -600,7 +600,7 @@ export default function NovoOrcamentoPage() {
                         type="number"
                         value={item.valor}
                         onChange={e => updateVariosItem(index, "valor", Number(e.target.value))}
-                        className="w-full px-3 py-2 rounded-lg border border-purple-200 dark:border-purple-800 bg-background text-sm"
+                        className="w-full px-3 py-2 rounded-lg border border-purple-200 dark:border-purple-600 bg-background text-sm"
                         step="0.01"
                         placeholder="0.00"
                       />
@@ -613,7 +613,7 @@ export default function NovoOrcamentoPage() {
                       type="text"
                       value={item.titulo}
                       onChange={e => updateVariosItem(index, "titulo", e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-purple-200 dark:border-purple-800 bg-background text-sm"
+                      className="w-full px-3 py-2 rounded-lg border border-purple-200 dark:border-purple-600 bg-background text-sm"
                       placeholder="Descricao do objetivo"
                     />
                   </div>
@@ -651,9 +651,9 @@ export default function NovoOrcamentoPage() {
           ) : (
             <div className="space-y-4">
               {campanhaItens.map((item, index) => (
-                <div key={index} className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl space-y-3">
+                <div key={index} className="p-4 bg-amber-50 dark:bg-amber-950/60 rounded-xl space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-amber-700 dark:text-amber-400">Campanha {index + 1}</span>
+                    <span className="text-sm font-medium text-amber-700 dark:text-amber-200">Campanha {index + 1}</span>
                     <button
                       type="button"
                       onClick={() => removeCampanhaItem(index)}
@@ -668,7 +668,7 @@ export default function NovoOrcamentoPage() {
                     <select
                       value={item.campanhaId}
                       onChange={e => updateCampanhaItem(index, "campanhaId", e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-background text-sm"
+                      className="w-full px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-600 bg-background text-sm"
                     >
                       <option value="">Selecionar campanha...</option>
                       {campanhas.map(c => (
@@ -686,7 +686,7 @@ export default function NovoOrcamentoPage() {
                         type="text"
                         value={item.titulo}
                         onChange={e => updateCampanhaItem(index, "titulo", e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-background text-sm"
+                        className="w-full px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-600 bg-background text-sm"
                         placeholder="Nome da campanha"
                       />
                     </div>
@@ -696,7 +696,7 @@ export default function NovoOrcamentoPage() {
                         type="number"
                         value={item.quantidade}
                         onChange={e => updateCampanhaItem(index, "quantidade", Number(e.target.value))}
-                        className="w-full px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-background text-sm"
+                        className="w-full px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-600 bg-background text-sm"
                         min="1"
                       />
                     </div>
@@ -708,7 +708,7 @@ export default function NovoOrcamentoPage() {
                       type="number"
                       value={item.precoUnit}
                       onChange={e => updateCampanhaItem(index, "precoUnit", Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-background text-sm"
+                      className="w-full px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-600 bg-background text-sm"
                       step="0.01"
                     />
                   </div>

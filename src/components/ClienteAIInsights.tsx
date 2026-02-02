@@ -257,14 +257,14 @@ export default function ClienteAIInsights({ clienteId }: Props) {
       )}
 
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 p-3 rounded-lg text-sm flex items-center gap-2">
+        <div className="bg-red-50 dark:bg-red-950/70 text-red-700 dark:text-red-100 p-3 rounded-lg text-sm flex items-center gap-2">
           <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span className="flex-1">{error}</span>
           <button
             onClick={generateInsights}
-            className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 font-medium whitespace-nowrap"
+            className="text-red-600 dark:text-red-200 hover:text-red-800 dark:hover:text-red-50 font-medium whitespace-nowrap"
           >
             Tentar novamente
           </button>
