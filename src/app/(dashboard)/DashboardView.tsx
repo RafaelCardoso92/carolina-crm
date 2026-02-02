@@ -37,6 +37,18 @@ interface CobrancasStats {
   pagasValor: number
 }
 
+interface ObjetivoVario {
+  id: string
+  titulo: string
+  descricao: string | null
+  totalObjetivo: number
+  totalVendido: number
+  progresso: number
+  vendasCount: number
+  produtosCount: number
+  atingido: boolean
+}
+
 interface DashboardData {
   totalClientes: number
   clientesAtivos: number
@@ -62,6 +74,7 @@ interface DashboardData {
   valorAtrasado: number
   proximasParcelas: ProximaParcela[]
   cobrancasStats?: CobrancasStats
+  objetivosVarios?: ObjetivoVario[]
 }
 
 export default function DashboardView() {
@@ -191,8 +204,70 @@ export default function DashboardView() {
         </div>
       </div>
 
-      {/* Wellbeing Section - Mental Health First Aid */}
+      {/* Wellbeing Section */}
       <WellbeingSection />
+
+      {/* Objetivos Varios Widget */}
+      {data.objetivosVarios && data.objetivosVarios.length > 0 && (
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-foreground flex items-center gap-2">
+              <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Objetivos Varios - {meses[data.currentMonth]}
+            </h3>
+            <a href="/definicoes" className="text-xs text-primary hover:underline font-medium">
+              Gerir →
+            </a>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {data.objetivosVarios.map((obj) => (
+              <div 
+                key={obj.id} 
+                className={`rounded-xl p-3 border ${
+                  obj.atingido 
+                    ? "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800" 
+                    : "bg-secondary/50 border-border"
+                }`}
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <h4 className="font-medium text-foreground text-sm">{obj.titulo}</h4>
+                    {obj.descricao && (
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{obj.descricao}</p>
+                    )}
+                  </div>
+                  {obj.atingido && (
+                    <span className="shrink-0 ml-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-medium">
+                      Atingido
+                    </span>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Progresso</span>
+                    <span className={`font-semibold ${obj.atingido ? "text-green-600 dark:text-green-400" : "text-primary"}`}>
+                      {obj.progresso.toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full transition-all ${obj.atingido ? "bg-green-500" : "bg-primary"}`}
+                      style={{ width: `${Math.min(obj.progresso, 100)}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>{formatCurrency(obj.totalVendido)}€ / {formatCurrency(obj.totalObjetivo)}€</span>
+                    <span>{obj.vendasCount} venda{obj.vendasCount !== 1 ? "s" : ""}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Cobrancas Summary Card */}
       {data.cobrancasStats && (

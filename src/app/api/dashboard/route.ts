@@ -47,7 +47,8 @@ export async function GET(request: Request) {
       proximasParcelas,
       cobrancasPendentesCount,
       cobrancasPagasCount,
-      cobrancasPagasValor
+      cobrancasPagasValor,
+      objetivosVarios
     ] = await Promise.all([
       prisma.cliente.count(),
       prisma.cliente.count({ where: { ativo: true } }),
@@ -146,18 +147,40 @@ export async function GET(request: Request) {
         orderBy: { dataVencimento: "asc" },
         take: 5
       }),
-      // Cobrancas pendentes count
       prisma.cobranca.count({
         where: { pago: false }
       }),
-      // Cobrancas pagas count
       prisma.cobranca.count({
         where: { pago: true }
       }),
-      // Cobrancas pagas value
       prisma.cobranca.aggregate({
         where: { pago: true },
         _sum: { valor: true }
+      }),
+      // Objetivos Varios for current month/year
+      prisma.objetivoVario.findMany({
+        where: {
+          mes,
+          ano,
+          ativo: true
+        },
+        include: {
+          produtos: {
+            include: { produto: true }
+          },
+          vendas: {
+            where: { mes, ano },
+            select: {
+              id: true,
+              objetivoVarioValor: true,
+              total: true,
+              cliente: {
+                select: { nome: true }
+              }
+            }
+          }
+        },
+        orderBy: { titulo: "asc" }
       })
     ])
 
@@ -224,6 +247,25 @@ export async function GET(request: Request) {
       orderBy: { ano: "desc" }
     })
 
+    // Process objetivos varios data
+    const objetivosVariosData = objetivosVarios.map(o => {
+      const totalObjetivo = o.produtos.reduce((sum, p) => sum + Number(p.precoSemIva) * p.quantidade, 0)
+      const totalVendido = o.vendas.reduce((sum, v) => sum + Number(v.objetivoVarioValor || 0), 0)
+      const progresso = totalObjetivo > 0 ? (totalVendido / totalObjetivo) * 100 : 0
+      
+      return {
+        id: o.id,
+        titulo: o.titulo,
+        descricao: o.descricao,
+        totalObjetivo,
+        totalVendido,
+        progresso,
+        vendasCount: o.vendas.length,
+        produtosCount: o.produtos.length,
+        atingido: progresso >= 100
+      }
+    })
+
     const responseData = {
       totalClientes,
       clientesAtivos,
@@ -274,13 +316,13 @@ export async function GET(request: Request) {
         cobrancaId: p.cobrancaId,
         fatura: p.cobranca.fatura
       })),
-      // Cobranca stats
       cobrancasStats: {
         pendentesCount: cobrancasPendentesCount,
         pendentesValor: pendentesTotal,
         pagasCount: cobrancasPagasCount,
         pagasValor: Number(cobrancasPagasValor._sum.valor) || 0
-      }
+      },
+      objetivosVarios: objetivosVariosData
     }
 
     cache.set(cacheKey, responseData, { ttl: 60, tags: [cacheTags.dashboard] })
