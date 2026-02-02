@@ -393,25 +393,27 @@ model ReconciliacaoMensal {
 }
 
 model ItemReconciliacao {
-  id               String              @id @default(cuid())
-  reconciliacaoId  String
-  codigoClientePdf String
-  nomeClientePdf   String
-  valorBrutoPdf    Decimal             @db.Decimal(10, 2)
-  descontoPdf      Decimal             @db.Decimal(10, 2)
-  valorLiquidoPdf  Decimal             @db.Decimal(10, 2)
-  clienteId        String?
-  vendaId          String?
-  valorSistema     Decimal?            @db.Decimal(10, 2)
-  corresponde      Boolean             @default(false)
-  tipoDiscrepancia TipoDiscrepancia?
-  diferencaValor   Decimal?            @db.Decimal(10, 2)
-  resolvido        Boolean             @default(false)
-  notaResolucao    String?
-  createdAt        DateTime            @default(now())
-  cliente          Cliente?            @relation(fields: [clienteId], references: [id])
-  reconciliacao    ReconciliacaoMensal @relation(fields: [reconciliacaoId], references: [id], onDelete: Cascade)
-  venda            Venda?              @relation(fields: [vendaId], references: [id])
+  id                    String              @id @default(cuid())
+  reconciliacaoId       String
+  codigoClientePdf      String
+  nomeClientePdf        String
+  valorBrutoPdf         Decimal             @db.Decimal(10, 2)
+  descontoPdf           Decimal             @db.Decimal(10, 2)
+  valorLiquidoPdf       Decimal             @db.Decimal(10, 2)
+  clienteId             String?
+  vendaId               String?
+  valorSistema          Decimal?            @db.Decimal(10, 2)
+  valorVendas           Decimal?            @db.Decimal(10, 2) // Value from regular sales only
+  valorObjetivosVarios  Decimal?            @db.Decimal(10, 2) // Value from objetivos varios
+  corresponde           Boolean             @default(false)
+  tipoDiscrepancia      TipoDiscrepancia?
+  diferencaValor        Decimal?            @db.Decimal(10, 2)
+  resolvido             Boolean             @default(false)
+  notaResolucao         String?
+  createdAt             DateTime            @default(now())
+  cliente               Cliente?            @relation(fields: [clienteId], references: [id])
+  reconciliacao         ReconciliacaoMensal @relation(fields: [reconciliacaoId], references: [id], onDelete: Cascade)
+  venda                 Venda?              @relation(fields: [vendaId], references: [id])
 
   @@index([reconciliacaoId])
   @@index([clienteId])

@@ -461,8 +461,21 @@ export default function ReconciliacaoView({ reconciliacoes: initialReconciliacoe
                               <td className="px-4 py-3 text-right font-medium">
                                 {formatCurrency(item.valorLiquidoPdf)} €
                               </td>
-                              <td className="px-4 py-3 text-right font-medium">
-                                {item.valorSistema !== null ? `${formatCurrency(item.valorSistema)} €` : "-"}
+                              <td className="px-4 py-3 text-right">
+                                {item.valorSistema !== null ? (
+                                  <div>
+                                    <div className="font-medium">{formatCurrency(item.valorSistema)} €</div>
+                                    {item.valorObjetivosVarios && Number(item.valorObjetivosVarios) > 0 && (
+                                      <div className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">
+                                        <span className="text-muted-foreground">Vendas:</span> {formatCurrency(item.valorVendas)} €
+                                        <br />
+                                        <span className="bg-purple-100 dark:bg-purple-900/30 px-1.5 py-0.5 rounded">
+                                          Varios: {formatCurrency(item.valorObjetivosVarios)} €
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : "-"}
                               </td>
                               <td className="px-4 py-3 text-right">
                                 {item.diferencaValor !== null && Number(item.diferencaValor) !== 0 ? (

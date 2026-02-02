@@ -246,8 +246,9 @@ export async function POST(request: NextRequest) {
       clienteId: string
       clienteNome: string
       vendas: typeof vendasSistema
-      totalLiquido: number
-      totalObjetivoVario: number
+      totalVendas: number          // Regular sales value (excluding objetivos varios)
+      totalObjetivosVarios: number // Value from objetivos varios only
+      totalLiquido: number         // Total (vendas + objetivos varios)
     }
     const vendasByClientCode: Map<string, ClientSalesData> = new Map()
     let totalSistema = 0
@@ -267,16 +268,18 @@ export async function POST(request: NextRequest) {
         if (existing) {
           // Add to existing client totals
           existing.vendas.push(venda)
+          existing.totalVendas += vendaLiquido
+          existing.totalObjetivosVarios += objetivoVarioValor
           existing.totalLiquido += totalComObjetivo
-          existing.totalObjetivoVario += objetivoVarioValor
         } else {
           // First sale for this client
           vendasByClientCode.set(venda.cliente.codigo, {
             clienteId: venda.cliente.id,
             clienteNome: venda.cliente.nome,
             vendas: [venda],
-            totalLiquido: totalComObjetivo,
-            totalObjetivoVario: objetivoVarioValor
+            totalVendas: vendaLiquido,
+            totalObjetivosVarios: objetivoVarioValor,
+            totalLiquido: totalComObjetivo
           })
         }
       }
@@ -336,6 +339,8 @@ export async function POST(request: NextRequest) {
         clienteId: cliente?.id || null,
         vendaId: primeiraVendaId,
         valorSistema,
+        valorVendas: clienteSistema?.totalVendas || null,
+        valorObjetivosVarios: clienteSistema?.totalObjetivosVarios || null,
         corresponde,
         tipoDiscrepancia,
         diferencaValor
@@ -358,6 +363,8 @@ export async function POST(request: NextRequest) {
         clienteId: clienteData.clienteId,
         vendaId: clienteData.vendas[0]?.id || null,
         valorSistema: clienteData.totalLiquido,
+        valorVendas: clienteData.totalVendas,
+        valorObjetivosVarios: clienteData.totalObjetivosVarios,
         corresponde: false,
         tipoDiscrepancia: "VENDA_EXTRA" as const,
         diferencaValor: -clienteData.totalLiquido

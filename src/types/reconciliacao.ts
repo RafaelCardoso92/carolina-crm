@@ -46,6 +46,8 @@ export interface ItemReconciliacaoWithRelations {
     ano: number
   } | null
   valorSistema: number | Prisma.Decimal | null
+  valorVendas: number | Prisma.Decimal | null       // Value from regular sales only
+  valorObjetivosVarios: number | Prisma.Decimal | null // Value from objetivos varios
   corresponde: boolean
   tipoDiscrepancia: TipoDiscrepancia | null
   diferencaValor: number | Prisma.Decimal | null

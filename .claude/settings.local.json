@@ -55,7 +55,8 @@
       "Bash(sudo kubectl patch:*)",
       "Bash(grep:*)",
       "Bash(pdftotext:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(sudo pkill:*)"
     ]
   }
 }
