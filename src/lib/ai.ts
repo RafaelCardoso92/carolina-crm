@@ -116,16 +116,36 @@ async function processGeminiQueue() {
   geminiRateLimit.processing = false
 }
 
-// Execute single Gemini request (internal)
-async function executeGeminiRequest(prompt: string): Promise<string> {
+// Execute single Gemini request with retry logic for rate limits
+async function executeGeminiRequest(prompt: string, retries = 3): Promise<string> {
   if (!gemini) {
     throw new Error("Gemini API key not configured")
   }
 
-  const model = gemini.getGenerativeModel({ model: "gemini-1.5-flash" })
-  const result = await model.generateContent(prompt)
-  const response = await result.response
-  return response.text()
+  const model = gemini.getGenerativeModel({ model: "gemini-2.0-flash" })
+  
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const result = await model.generateContent(prompt)
+      const response = await result.response
+      return response.text()
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error)
+      const is429 = errorMsg.includes("429") || 
+                    errorMsg.includes("RESOURCE_EXHAUSTED") || 
+                    errorMsg.includes("quota") ||
+                    errorMsg.includes("rate")
+      
+      if (is429 && attempt < retries) {
+        const waitTime = Math.pow(2, attempt) * 10000
+        console.log("[Gemini] Rate limited, waiting " + (waitTime/1000) + "s before retry " + (attempt + 1) + "/" + retries)
+        await new Promise(resolve => setTimeout(resolve, waitTime))
+        continue
+      }
+      throw error
+    }
+  }
+  throw new Error("Max retries exceeded")
 }
 
 // ===========================================
