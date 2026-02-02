@@ -388,7 +388,7 @@ model ReconciliacaoMensal {
   updatedAt         DateTime            @updatedAt
   itens             ItemReconciliacao[]
 
-  @@unique([mes, ano])
+  @@index([mes, ano])
   @@index([estado])
 }
 

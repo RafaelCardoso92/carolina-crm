@@ -1896,14 +1896,16 @@ function ObjetivosVariosTable({
                         className="w-full px-2 py-1.5 border border-border rounded-lg bg-background text-sm"
                       />
                     </div>
-                    <div className="w-20">
-                      <label className="block text-xs text-muted-foreground mb-1">Qtd</label>
+                    <div className="w-24">
+                      <label className="block text-xs text-muted-foreground mb-1">Valor</label>
                       <input
                         type="number"
+                        step="0.01"
                         value={p.quantidade}
-                        onChange={(e) => updateProdutoForm(index, "quantidade", parseInt(e.target.value) || 1)}
+                        onChange={(e) => updateProdutoForm(index, "quantidade", parseFloat(e.target.value) || 0)}
                         className="w-full px-2 py-1.5 border border-border rounded-lg bg-background text-sm"
-                        min="1"
+                        min="0"
+                        placeholder="0.00"
                       />
                     </div>
                     <button

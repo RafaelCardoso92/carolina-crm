@@ -54,7 +54,8 @@
       "Bash(DATABASE_URL=\"postgresql://carolina:carolina123@localhost:5438/carolina_crm?schema=public\" npx prisma db push:*)",
       "Bash(sudo kubectl patch:*)",
       "Bash(grep:*)",
-      "Bash(pdftotext:*)"
+      "Bash(pdftotext:*)",
+      "Bash(find:*)"
     ]
   }
 }

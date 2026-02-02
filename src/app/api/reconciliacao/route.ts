@@ -208,18 +208,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if reconciliation already exists for this month
-    const existing = await prisma.reconciliacaoMensal.findUnique({
-      where: { mes_ano: { mes, ano } }
-    })
-
-    if (existing) {
-      return NextResponse.json<ReconciliacaoResponse>(
-        { success: false, error: `Já existe uma reconciliação para ${mes}/${ano}. Elimine a existente primeiro.` },
-        { status: 400 }
-      )
-    }
-
     // Save PDF file
     const dirPath = join(UPLOADS_DIR, "reconciliacoes", `${ano}`)
     await mkdir(dirPath, { recursive: true })
