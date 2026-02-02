@@ -2,6 +2,46 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { generateAIResponse, getAIProvider } from "@/lib/ai"
 import type { ProspectoTacticsResponse, ProspectoTactics } from "@/types/ai"
+// Strip HTML tags from text
+function stripHtml(text: string): string {
+  if (!text) return text
+  return text
+    .replace(/<[^>]*>/g, "")  // Remove HTML tags
+    .replace(/&nbsp;/g, " ")   // Replace &nbsp;
+    .replace(/&amp;/g, "&")    // Replace &amp;
+    .replace(/&lt;/g, "<")     // Replace &lt;
+    .replace(/&gt;/g, ">")     // Replace &gt;
+    .replace(/&quot;/g, "\"")   // Replace &quot;
+    .replace(/&#39;/g, "'")   // Replace &#39;
+    .trim()
+}
+
+// Clean tactics object by stripping HTML from all text fields
+function cleanTactics(tactics: ProspectoTactics): ProspectoTactics {
+  return {
+    abordagem: {
+      texto: stripHtml(tactics.abordagem?.texto || ""),
+      explicacao: stripHtml(tactics.abordagem?.explicacao || "")
+    },
+    iniciadoresConversa: (tactics.iniciadoresConversa || []).map(item => ({
+      texto: stripHtml(item.texto || ""),
+      explicacao: stripHtml(item.explicacao || "")
+    })),
+    pontosDor: (tactics.pontosDor || []).map(item => ({
+      texto: stripHtml(item.texto || ""),
+      explicacao: stripHtml(item.explicacao || "")
+    })),
+    dicasSucesso: (tactics.dicasSucesso || []).map(item => ({
+      texto: stripHtml(item.texto || ""),
+      explicacao: stripHtml(item.explicacao || "")
+    })),
+    probabilidadeConversao: {
+      nivel: tactics.probabilidadeConversao?.nivel || "Media",
+      justificacao: stripHtml(tactics.probabilidadeConversao?.justificacao || "")
+    }
+  }
+}
+
 
 const PROMPT_TEMPLATE = `Voce e um especialista em vendas B2B no sector de cosmeticos e beleza profissional em Portugal.
 Analise este prospecto e forneca tacticas personalizadas de abordagem COM EXPLICACOES de porque cada sugestao e boa.
@@ -33,7 +73,7 @@ Com base nestes dados, forneca em portugues de Portugal:
 
 5. PROBABILIDADE: Avaliacao (Alta/Media/Baixa) com justificacao detalhada.
 
-IMPORTANTE: Responda APENAS com JSON valido no seguinte formato, sem texto adicional:
+IMPORTANTE: Responda APENAS com JSON valido. NAO inclua HTML, apenas texto simples:
 {
   "abordagem": {
     "texto": "estrategia de abordagem aqui",
@@ -213,7 +253,8 @@ export async function POST(request: NextRequest) {
       if (!jsonMatch) {
         throw new Error("No JSON found in response")
       }
-      tactics = JSON.parse(jsonMatch[0])
+      const rawTactics = JSON.parse(jsonMatch[0])
+      tactics = cleanTactics(rawTactics)
     } catch (parseError) {
       console.error("Failed to parse AI response:", aiResponse)
       return NextResponse.json<ProspectoTacticsResponse>(

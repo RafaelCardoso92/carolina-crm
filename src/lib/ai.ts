@@ -16,8 +16,8 @@ export type AIProvider = "gemini" | "openai"
 // ===========================================
 // Rate Limiting for Gemini (Free tier: 15 RPM)
 // ===========================================
-const GEMINI_MAX_REQUESTS_PER_MINUTE = 10 // Stay under the 15 RPM limit
-const GEMINI_MIN_DELAY_MS = 4000 // Minimum 4 seconds between requests
+const GEMINI_MAX_REQUESTS_PER_MINUTE = 12 // Stay under the 15 RPM limit
+const GEMINI_MIN_DELAY_MS = 5000 // Minimum 4 seconds between requests
 
 interface RateLimitState {
   requestTimestamps: number[]
@@ -122,7 +122,7 @@ async function executeGeminiRequest(prompt: string): Promise<string> {
     throw new Error("Gemini API key not configured")
   }
 
-  const model = gemini.getGenerativeModel({ model: "gemini-2.5-flash" })
+  const model = gemini.getGenerativeModel({ model: "gemini-1.5-flash" })
   const result = await model.generateContent(prompt)
   const response = await result.response
   return response.text()
