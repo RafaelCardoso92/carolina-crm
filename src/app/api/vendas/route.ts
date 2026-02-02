@@ -175,16 +175,18 @@ export async function POST(request: Request) {
           : new Date()
 
         // Cobranca value includes objetivo vario value (which is NOT part of sale total)
+        const IVA_RATE = 0.23
         const objetivoVarioValor = data.objetivoVarioValor ? parseFloat(data.objetivoVarioValor) : 0
-        const cobrancaValor = total + objetivoVarioValor
+        const cobrancaValorSemIva = total + objetivoVarioValor
+        const cobrancaValorComIva = cobrancaValorSemIva * (1 + IVA_RATE)
 
         // Create the cobrança
         const cobranca = await tx.cobranca.create({
           data: {
             clienteId: data.clienteId,
             vendaId: newVenda.id,
-            valor: cobrancaValor, // Total + objetivo vario
-            valorSemIva: cobrancaValor,
+            valor: cobrancaValorComIva, // Total + objetivo vario COM IVA
+            valorSemIva: cobrancaValorSemIva,
             dataEmissao,
             dataInicioVencimento: dataEmissao, // Use emission date as first due date
             numeroParcelas,
@@ -194,7 +196,7 @@ export async function POST(request: Request) {
 
         // Create parcelas if more than 1
         if (numeroParcelas > 1) {
-          const valorParcela = cobrancaValor / numeroParcelas
+          const valorParcela = cobrancaValorComIva / numeroParcelas
           const parcelas = []
 
           for (let i = 0; i < numeroParcelas; i++) {

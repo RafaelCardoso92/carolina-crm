@@ -429,6 +429,7 @@ export default function RoutePlannerAdvanced() {
 
   // Address search state
   const [searchAutocomplete, setSearchAutocomplete] = useState<google.maps.places.Autocomplete | null>(null)
+  const [startingPointAutocomplete, setStartingPointAutocomplete] = useState<google.maps.places.Autocomplete | null>(null)
   const [searchMarker, setSearchMarker] = useState<{ lat: number; lng: number; address: string } | null>(null)
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null)
 
@@ -619,6 +620,21 @@ export default function RoutePlannerAdvanced() {
         text: "Erro ao geocodificar morada",
         confirmButtonColor: "#10b981"
       })
+    }
+  }
+
+  // Handle starting point autocomplete selection
+  const onStartingPointPlaceSelect = () => {
+    if (startingPointAutocomplete) {
+      const place = startingPointAutocomplete.getPlace()
+      if (place.geometry?.location) {
+        setStartingPoint({
+          type: "address",
+          latitude: place.geometry.location.lat(),
+          longitude: place.geometry.location.lng(),
+          address: place.formatted_address || place.name || ""
+        })
+      }
     }
   }
 
@@ -1081,7 +1097,7 @@ export default function RoutePlannerAdvanced() {
       const response = await fetch("/api/rotas/nearby", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lat, lng, type, radius: 2000 })
+        body: JSON.stringify({ lat, lng, type, radius: type === "gas_station" ? 10000 : 5000 })
       })
       const data = await response.json()
       setNearbyPlaces(data.places || [])
@@ -1385,30 +1401,20 @@ export default function RoutePlannerAdvanced() {
                   Usar Localização Atual
                 </button>
 
-                <div className="flex gap-2">
+                <Autocomplete
+                  onLoad={(autocomplete) => setStartingPointAutocomplete(autocomplete)}
+                  onPlaceChanged={onStartingPointPlaceSelect}
+                  options={{
+                    componentRestrictions: { country: "pt" },
+                    types: ["address"]
+                  }}
+                >
                   <input
                     type="text"
-                    placeholder="Ou inserir morada..."
-                    value={startingPoint.address}
-                    onChange={(e) => setStartingPoint(prev => ({
-                      ...prev,
-                      type: "address",
-                      address: e.target.value,
-                      latitude: null,
-                      longitude: null
-                    }))}
-                    className="flex-1 px-3 py-2.5 bg-secondary border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Pesquisar morada..."
+                    className="w-full px-3 py-2.5 bg-secondary border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   />
-                  <button
-                    onClick={geocodeStartingAddress}
-                    disabled={!startingPoint.address.trim()}
-                    className="px-4 py-2.5 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary-hover transition disabled:opacity-50"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  </button>
-                </div>
+                </Autocomplete>
               </div>
             )}
           </div>
