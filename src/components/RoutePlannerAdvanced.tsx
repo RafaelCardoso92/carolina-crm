@@ -107,20 +107,44 @@ const extractPostalCodeFromAddress = (morada: string | null): string | null => {
   return null
 }
 
-// Extract city name from address
+// Extract city name from address - handles multi-word cities like "Torres Vedras"
 const extractCityFromAddress = (morada: string | null): string | null => {
   if (!morada) return null
-  const match = morada.match(/\d{4}[-\s]?\d{3}\s+(.+?)(?:\s*$|\s*,|\s*-\s*[A-Z])/)
-  if (match && match[1]) {
-    return match[1].trim()
+
+  // Try to extract city after postal code (format: 2560-123 Torres Vedras)
+  // Use greedy capture (.+) to get the full city name
+  const postalCodeMatch = morada.match(/\d{4}[-\s]?\d{3}\s+([A-Za-zÀ-ÿ\s]+?)(?:\s*,|$)/)
+  if (postalCodeMatch && postalCodeMatch[1]) {
+    const city = postalCodeMatch[1].trim()
+    // Remove trailing "Portugal" if present
+    return city.replace(/\s*portugal\s*$/i, "").trim()
   }
-  const parts = morada.split(/\s+/)
-  if (parts.length > 0) {
-    const lastPart = parts[parts.length - 1]
-    if (!/^\d/.test(lastPart)) {
-      return lastPart
+
+  // Alternative: try to find city between postal code and end/comma
+  const altMatch = morada.match(/\d{4}[-\s]?\d{3}\s+(.+?)$/i)
+  if (altMatch && altMatch[1]) {
+    const city = altMatch[1].trim()
+      .replace(/\s*portugal\s*$/i, "")
+      .replace(/\s*,\s*$/, "")
+      .trim()
+    if (city && !/^\d/.test(city)) {
+      return city
     }
   }
+
+  // Fallback: look for city pattern after street address (Rua X, N, Cidade)
+  const parts = morada.split(/,\s*/)
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const part = parts[i].trim()
+    // Skip if it's a postal code, number, or "Portugal"
+    if (!/^\d/.test(part) && !/portugal/i.test(part) && part.length > 2) {
+      // Check if it looks like a city name (not a street with "Rua", "Av", etc.)
+      if (!/^(rua|av\.|avenida|travessa|largo|praca|estrada|beco)/i.test(part)) {
+        return part
+      }
+    }
+  }
+
   return null
 }
 
@@ -207,6 +231,120 @@ const getDistrictFromPostalCode = (postalCode: string | null, cityFallback?: str
 
 const getRouteLetter = (index: number): string => {
   return String.fromCharCode(65 + index)
+}
+
+// Calculate distance between two points using Haversine formula
+const haversineDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+  const R = 6371 // Earth radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLng = (lng2 - lng1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
+
+// Nearest Neighbor algorithm for initial route optimization
+const nearestNeighborOptimization = (
+  startLat: number,
+  startLng: number,
+  locations: Array<{ lat: number; lng: number; index: number }>
+): number[] => {
+  if (locations.length <= 1) return locations.map(l => l.index)
+
+  const unvisited = [...locations]
+  const route: number[] = []
+  let currentLat = startLat
+  let currentLng = startLng
+
+  while (unvisited.length > 0) {
+    let nearestIdx = 0
+    let nearestDist = Infinity
+
+    for (let i = 0; i < unvisited.length; i++) {
+      const dist = haversineDistance(currentLat, currentLng, unvisited[i].lat, unvisited[i].lng)
+      if (dist < nearestDist) {
+        nearestDist = dist
+        nearestIdx = i
+      }
+    }
+
+    const nearest = unvisited[nearestIdx]
+    route.push(nearest.index)
+    currentLat = nearest.lat
+    currentLng = nearest.lng
+    unvisited.splice(nearestIdx, 1)
+  }
+
+  return route
+}
+
+// 2-opt local search to improve route
+const twoOptImprove = (
+  route: number[],
+  locations: Array<{ lat: number; lng: number }>,
+  startLat: number,
+  startLng: number
+): number[] => {
+  if (route.length <= 2) return route
+
+  const getRouteDistance = (r: number[]): number => {
+    let dist = haversineDistance(startLat, startLng, locations[r[0]].lat, locations[r[0]].lng)
+    for (let i = 0; i < r.length - 1; i++) {
+      dist += haversineDistance(locations[r[i]].lat, locations[r[i]].lng, locations[r[i + 1]].lat, locations[r[i + 1]].lng)
+    }
+    return dist
+  }
+
+  let improved = true
+  let bestRoute = [...route]
+  let bestDist = getRouteDistance(bestRoute)
+
+  while (improved) {
+    improved = false
+    for (let i = 0; i < bestRoute.length - 1; i++) {
+      for (let j = i + 1; j < bestRoute.length; j++) {
+        // Reverse the segment between i and j
+        const newRoute = [
+          ...bestRoute.slice(0, i),
+          ...bestRoute.slice(i, j + 1).reverse(),
+          ...bestRoute.slice(j + 1)
+        ]
+        const newDist = getRouteDistance(newRoute)
+        if (newDist < bestDist - 0.1) { // Small threshold to avoid floating point issues
+          bestRoute = newRoute
+          bestDist = newDist
+          improved = true
+        }
+      }
+    }
+  }
+
+  return bestRoute
+}
+
+// Optimize route order using nearest neighbor + 2-opt
+const optimizeRouteOrder = (
+  startLat: number,
+  startLng: number,
+  locations: Array<{ lat: number; lng: number; index: number }>
+): number[] => {
+  if (locations.length <= 1) return locations.map(l => l.index)
+
+  // First pass: nearest neighbor
+  const nnRoute = nearestNeighborOptimization(startLat, startLng, locations)
+
+  // Second pass: 2-opt improvement
+  const locArray = locations.map(l => ({ lat: l.lat, lng: l.lng }))
+  const optimizedOrder = twoOptImprove(
+    nnRoute.map(i => locations.findIndex(l => l.index === i)),
+    locArray,
+    startLat,
+    startLng
+  )
+
+  return optimizedOrder.map(i => locations[i].index)
 }
 
 const PIPELINE_STATES = [
@@ -692,7 +830,7 @@ export default function RoutePlannerAdvanced() {
     }
   }
 
-  const calculateRoute = useCallback(async () => {
+  const calculateRoute = useCallback(async (existingParkingStops?: ParkingStop[]) => {
     if (selectedLocations.length < 1) {
       alert("Seleciona pelo menos 1 local para visitar")
       return
@@ -715,25 +853,54 @@ export default function RoutePlannerAdvanced() {
     const directionsService = new google.maps.DirectionsService()
     const origin = { lat: startingPoint.latitude, lng: startingPoint.longitude }
 
-    let destination: google.maps.LatLngLiteral
-    let waypoints: google.maps.DirectionsWaypoint[] = []
+    // Use our local optimization algorithm first for better results
+    const locationsForOptimization = selected.map((loc, i) => ({
+      lat: loc.latitude!,
+      lng: loc.longitude!,
+      index: i
+    }))
 
-    if (selected.length === 1) {
-      destination = { lat: selected[0].latitude!, lng: selected[0].longitude! }
-    } else {
-      destination = { lat: selected[selected.length - 1].latitude!, lng: selected[selected.length - 1].longitude! }
-      waypoints = selected.slice(0, -1).map(l => ({
-        location: { lat: l.latitude!, lng: l.longitude! },
-        stopover: true
-      }))
+    const optimizedIndices = optimizeRouteOrder(
+      startingPoint.latitude,
+      startingPoint.longitude,
+      locationsForOptimization
+    )
+
+    // Reorder selected locations based on our optimization
+    const optimizedSelected = optimizedIndices.map(i => selected[i])
+
+    // Include parking stops in the route if any
+    const stopsToInclude = existingParkingStops || []
+    const allWaypoints: google.maps.DirectionsWaypoint[] = []
+
+    // Build waypoints with parking stops inserted at correct positions
+    for (let i = 0; i < optimizedSelected.length; i++) {
+      // Add the location waypoint (except last one which is destination)
+      if (i < optimizedSelected.length - 1) {
+        allWaypoints.push({
+          location: { lat: optimizedSelected[i].latitude!, lng: optimizedSelected[i].longitude! },
+          stopover: true
+        })
+      }
+
+      // Add any parking/gas stops that should come after this location
+      const stopsAfterThis = stopsToInclude.filter(s => s.afterStopIndex === i)
+      stopsAfterThis.forEach(stop => {
+        allWaypoints.push({
+          location: { lat: stop.lat, lng: stop.lng },
+          stopover: true
+        })
+      })
     }
+
+    const destination = { lat: optimizedSelected[optimizedSelected.length - 1].latitude!, lng: optimizedSelected[optimizedSelected.length - 1].longitude! }
 
     try {
       const result = await directionsService.route({
         origin,
         destination,
-        waypoints,
-        optimizeWaypoints: waypoints.length > 0,
+        waypoints: allWaypoints,
+        optimizeWaypoints: false, // We already optimized locally
         travelMode: google.maps.TravelMode.DRIVING
       })
 
@@ -764,18 +931,12 @@ export default function RoutePlannerAdvanced() {
         custoTotal: (tollEstimate.cost || 0) + (fuelCost || 0) + (prev.custoEstacionamento || 0) || null
       }))
 
-      const waypointOrder = route.waypoint_order || []
-      const optimized: RouteLocation[] = []
+      setOptimizedRoute(optimizedSelected)
 
-      if (waypoints.length > 0) {
-        waypointOrder.forEach(i => optimized.push(selected[i]))
-        optimized.push(selected[selected.length - 1])
-      } else {
-        optimized.push(selected[0])
+      // Reset parking stops if this was a fresh calculation (not recalculating with parking)
+      if (!existingParkingStops) {
+        setParkingStops([])
       }
-
-      setOptimizedRoute(optimized)
-      setParkingStops([])
 
     } catch (error) {
       console.error("Directions error:", error)
@@ -794,12 +955,22 @@ export default function RoutePlannerAdvanced() {
       custoEstimado: null,
       afterStopIndex
     }
-    setParkingStops(prev => [...prev, newParking])
+    const newParkingStops = [...parkingStops, newParking]
+    setParkingStops(newParkingStops)
     setNearbyPanelOpen(false)
+
+    // Recalculate route with the new parking stop included
+    calculateRoute(newParkingStops)
   }
 
   const removeParkingStop = (index: number) => {
-    setParkingStops(prev => prev.filter((_, i) => i !== index))
+    const newParkingStops = parkingStops.filter((_, i) => i !== index)
+    setParkingStops(newParkingStops)
+
+    // Recalculate route without the removed parking stop
+    if (optimizedRoute.length > 0) {
+      calculateRoute(newParkingStops)
+    }
   }
 
   const updateParkingCost = (index: number, cost: number | null) => {
@@ -944,11 +1115,18 @@ export default function RoutePlannerAdvanced() {
     const origin = `${startingPoint.latitude},${startingPoint.longitude}`
     const destination = `${optimizedRoute[optimizedRoute.length - 1].latitude},${optimizedRoute[optimizedRoute.length - 1].longitude}`
 
-    let waypointsStr = ""
-    if (optimizedRoute.length > 1) {
-      waypointsStr = optimizedRoute.slice(0, -1).map(l => `${l.latitude},${l.longitude}`).join("|")
+    // Build waypoints including parking/gas stops at correct positions
+    const allWaypoints: string[] = []
+    for (let i = 0; i < optimizedRoute.length - 1; i++) {
+      allWaypoints.push(`${optimizedRoute[i].latitude},${optimizedRoute[i].longitude}`)
+      // Add parking stops that come after this location
+      const stopsAfterThis = parkingStops.filter(s => s.afterStopIndex === i)
+      stopsAfterThis.forEach(stop => {
+        allWaypoints.push(`${stop.lat},${stop.lng}`)
+      })
     }
 
+    const waypointsStr = allWaypoints.join("|")
     return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}${waypointsStr ? `&waypoints=${waypointsStr}` : ""}&travelmode=driving`
   }
 
