@@ -158,7 +158,7 @@ export default function LoginPage() {
           <p className="text-center text-gray-400 dark:text-gray-600 text-sm mt-8">
             Baboretes &copy; {new Date().getFullYear()}
             <span className="mx-2">•</span>
-            <span className="font-medium">v2.0</span>
+            <span className="font-medium">v2.1</span>
             <span className="ml-1 px-1.5 py-0.5 text-xs font-bold bg-primary/10 text-primary rounded">β</span>
           </p>
         </div>
