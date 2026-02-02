@@ -104,6 +104,72 @@ export async function PUT(
       }
     }
 
+    // If updateParcelas is true, regenerate all parcelas
+    if (data.updateParcelas && data.numeroParcelas && data.dataInicioVencimento) {
+      // Delete existing parcelas
+      await prisma.parcela.deleteMany({
+        where: { cobrancaId: id }
+      })
+
+      // Create new parcelas
+      const valorParcela = data.valor / data.numeroParcelas
+      const parcelas = []
+      for (let i = 0; i < data.numeroParcelas; i++) {
+        const dataVencimento = new Date(data.dataInicioVencimento)
+        dataVencimento.setMonth(dataVencimento.getMonth() + i)
+        parcelas.push({
+          cobrancaId: id,
+          numero: i + 1,
+          valor: valorParcela,
+          dataVencimento,
+          pago: false
+        })
+      }
+
+      await prisma.parcela.createMany({
+        data: parcelas
+      })
+
+      // Update cobranca with parcelas info
+      const cobranca = await prisma.cobranca.update({
+        where: { id },
+        data: {
+          clienteId: data.clienteId,
+          fatura: data.fatura || null,
+          valor: data.valor,
+          valorSemIva: data.valorSemIva || null,
+          comissao: data.comissao || null,
+          dataEmissao: data.dataEmissao ? new Date(data.dataEmissao) : null,
+          notas: data.notas || null,
+          numeroParcelas: data.numeroParcelas,
+          dataInicioVencimento: new Date(data.dataInicioVencimento),
+          pago: false // Reset pago status when parcelas are regenerated
+        },
+        include: {
+          cliente: true,
+          parcelas: {
+            orderBy: { numero: "asc" }
+          }
+        }
+      })
+
+      return NextResponse.json(cobranca)
+    }
+
+    // If not updating parcelas but switching to single payment, delete existing parcelas
+    if (!data.updateParcelas && data.numeroParcelas === undefined) {
+      // Check if cobranca currently has parcelas
+      const existingParcelas = await prisma.parcela.count({
+        where: { cobrancaId: id }
+      })
+
+      if (existingParcelas > 0) {
+        await prisma.parcela.deleteMany({
+          where: { cobrancaId: id }
+        })
+      }
+    }
+
     const cobranca = await prisma.cobranca.update({
       where: { id },
       data: {
@@ -113,7 +179,9 @@ export async function PUT(
         valorSemIva: data.valorSemIva || null,
         comissao: data.comissao || null,
         dataEmissao: data.dataEmissao ? new Date(data.dataEmissao) : null,
-        notas: data.notas || null
+        notas: data.notas || null,
+        numeroParcelas: data.numeroParcelas || 1,
+        dataInicioVencimento: data.dataInicioVencimento ? new Date(data.dataInicioVencimento) : null
       },
       include: {
         cliente: true,

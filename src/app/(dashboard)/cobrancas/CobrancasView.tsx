@@ -64,49 +64,22 @@ function formatDate(dateVal: Date | string): string {
   return date.toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric" })
 }
 
-export default function CobrancasView({ cobrancas: initialCobrancas, clientes, totalPendente: initialTotalPendente, totalComissao: initialTotalComissao, ano }: Props) {
+export default function CobrancasView({ cobrancas, clientes, totalPendente, totalComissao, ano }: Props) {
   const router = useRouter()
-  // Local state for cobrancas to ensure immediate UI updates
-  const [cobrancas, setCobrancas] = useState(initialCobrancas)
-  const [totalPendente, setTotalPendente] = useState(initialTotalPendente)
-  const [totalComissao, setTotalComissao] = useState(initialTotalComissao)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState<"all" | "pending" | "paid" | "overdue">("pending")
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
 
-  // Sync local state when props change (e.g., year navigation)
-  useEffect(() => {
-    setCobrancas(initialCobrancas)
-    setTotalPendente(initialTotalPendente)
-    setTotalComissao(initialTotalComissao)
-  }, [initialCobrancas, initialTotalPendente, initialTotalComissao])
-
-  // Refetch cobrancas from API
-  async function refetchCobrancas() {
-    try {
-      const url = ano ? `/api/cobrancas?ano=${ano}` : "/api/cobrancas"
-      const res = await fetch(url)
-      if (res.ok) {
-        const data = await res.json()
-        setCobrancas(data)
-        // Recalculate totals
-        const pendentes = data.filter((c: Cobranca) => !c.pago)
-        setTotalPendente(pendentes.reduce((sum: number, c: Cobranca) => sum + Number(c.valor), 0))
-        setTotalComissao(pendentes.reduce((sum: number, c: Cobranca) => sum + Number(c.comissao || 0), 0))
-      }
-    } catch (err) {
-      console.error("Error refetching cobrancas:", err)
-    }
-    refetchCobrancas() // Backup sync
-  }
-
   // Form state for installments
   const [tipoParcelado, setTipoParcelado] = useState(false)
   const [numeroParcelas, setNumeroParcelas] = useState(2)
   const [dataInicioVencimento, setDataInicioVencimento] = useState("")
   const [valorTotal, setValorTotal] = useState("")
+
+  // Modal state
+  const [showModal, setShowModal] = useState(false)
 
   const filtered = cobrancas.filter(c => {
     if (filter === "pending") return !c.pago
@@ -142,6 +115,13 @@ export default function CobrancasView({ cobrancas: initialCobrancas, clientes, t
     setValorTotal("")
   }
 
+  function closeModal() {
+    setShowModal(false)
+    setShowForm(false)
+    setEditingId(null)
+    resetForm()
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
@@ -161,9 +141,10 @@ export default function CobrancasView({ cobrancas: initialCobrancas, clientes, t
     }
 
     // Add installment data if parcelado mode
-    if (tipoParcelado && !editingId) {
+    if (tipoParcelado) {
       data.numeroParcelas = numeroParcelas
       data.dataInicioVencimento = dataInicioVencimento
+      data.updateParcelas = true // Flag to tell backend to regenerate parcelas
     }
 
     try {
@@ -177,10 +158,8 @@ export default function CobrancasView({ cobrancas: initialCobrancas, clientes, t
       })
 
       if (res.ok) {
-        setShowForm(false)
-        setEditingId(null)
-        resetForm()
-        refetchCobrancas()
+        closeModal()
+        router.refresh()
       } else {
         const error = await res.json()
         Swal.fire({
@@ -227,7 +206,7 @@ export default function CobrancasView({ cobrancas: initialCobrancas, clientes, t
         })
       })
       if (res.ok) {
-        refetchCobrancas()
+        router.refresh()
       }
     } catch {
       Swal.fire({
@@ -261,7 +240,7 @@ export default function CobrancasView({ cobrancas: initialCobrancas, clientes, t
         body: JSON.stringify({ pago: !pago })
       })
       if (res.ok) {
-        refetchCobrancas()
+        router.refresh()
       }
     } catch {
       Swal.fire({
@@ -290,7 +269,7 @@ export default function CobrancasView({ cobrancas: initialCobrancas, clientes, t
     try {
       const res = await fetch(`/api/cobrancas/${id}`, { method: "DELETE" })
       if (res.ok) {
-        refetchCobrancas()
+        router.refresh()
       } else {
         Swal.fire({
           icon: "error",
@@ -311,9 +290,25 @@ export default function CobrancasView({ cobrancas: initialCobrancas, clientes, t
 
   function startEdit(cobranca: Cobranca) {
     setEditingId(cobranca.id)
-    setShowForm(true)
-    // Reset installment fields for edit mode (not editable for existing)
-    setTipoParcelado(false)
+    setValorTotal(String(cobranca.valor))
+    // Set parcela data if it has parcelas
+    if (cobranca.parcelas.length > 0) {
+      setTipoParcelado(true)
+      setNumeroParcelas(cobranca.numeroParcelas || cobranca.parcelas.length)
+      if (cobranca.dataInicioVencimento) {
+        setDataInicioVencimento(new Date(cobranca.dataInicioVencimento).toISOString().split("T")[0])
+      } else if (cobranca.parcelas[0]?.dataVencimento) {
+        const firstDate = cobranca.parcelas[0].dataVencimento instanceof Date
+          ? cobranca.parcelas[0].dataVencimento
+          : new Date(cobranca.parcelas[0].dataVencimento)
+        setDataInicioVencimento(firstDate.toISOString().split("T")[0])
+      }
+    } else {
+      setTipoParcelado(false)
+      setNumeroParcelas(2)
+      setDataInicioVencimento("")
+    }
+    setShowModal(true)
   }
 
   const editingCobranca = editingId ? cobrancas.find(c => c.id === editingId) : null
@@ -443,7 +438,7 @@ export default function CobrancasView({ cobrancas: initialCobrancas, clientes, t
           ))}
         </div>
         <button
-          onClick={() => { setShowForm(true); setEditingId(null); resetForm(); }}
+          onClick={() => { setShowForm(true); setEditingId(null); resetForm(); setShowModal(false); }}
           className="bg-primary text-white px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold hover:bg-primary-hover transition flex items-center justify-center gap-2 shadow-lg shadow-primary/20 text-sm md:text-base"
         >
           <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -454,14 +449,14 @@ export default function CobrancasView({ cobrancas: initialCobrancas, clientes, t
         </button>
       </div>
 
-      {/* Add/Edit Form */}
-      {showForm && (
+      {/* Add Form (inline for new cobrancas) */}
+      {showForm && !showModal && (
         <div className="bg-card rounded-xl shadow-sm p-4 md:p-6 mb-4 md:mb-6 border-2 border-primary/20">
           <h3 className="text-lg md:text-xl font-bold text-foreground mb-4 md:mb-6 flex items-center gap-2">
             <svg className="w-5 h-5 md:w-6 md:h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            {editingId ? "Editar Cobranca" : "Nova Cobranca"}
+            Nova Cobranca
           </h3>
           <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -528,8 +523,8 @@ export default function CobrancasView({ cobrancas: initialCobrancas, clientes, t
               </div>
             </div>
 
-            {/* Installment Options - Only for new cobrancas */}
-            {!editingId && (
+            {/* Installment Options */}
+            {(
               <div className="border-t-2 border-border pt-4 mt-4">
                 <label className="block text-sm font-bold text-foreground mb-3">Tipo de Pagamento</label>
                 <div className="flex gap-4 mb-4">
@@ -640,7 +635,7 @@ export default function CobrancasView({ cobrancas: initialCobrancas, clientes, t
               </button>
               <button
                 type="button"
-                onClick={() => { setShowForm(false); setEditingId(null); resetForm(); }}
+                onClick={closeModal}
                 className="px-6 py-3 border-2 border-border rounded-xl font-bold text-foreground hover:bg-secondary transition flex items-center gap-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -650,6 +645,230 @@ export default function CobrancasView({ cobrancas: initialCobrancas, clientes, t
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showModal && editingCobranca && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-card border-b border-border p-4 md:p-6 flex items-center justify-between">
+              <h3 className="text-lg md:text-xl font-bold text-foreground flex items-center gap-2">
+                <svg className="w-5 h-5 md:w-6 md:h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Editar Cobranca
+              </h3>
+              <button
+                onClick={closeModal}
+                className="p-2 hover:bg-secondary rounded-lg transition"
+              >
+                <svg className="w-6 h-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <form onSubmit={handleSubmit} className="p-4 md:p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-bold text-foreground mb-2">Cliente *</label>
+                  <select
+                    name="clienteId"
+                    required
+                    defaultValue={editingCobranca.clienteId}
+                    className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
+                  >
+                    <option value="">Escolher cliente...</option>
+                    {clientes.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nome} {c.codigo ? `(${c.codigo})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-foreground mb-2">Numero da Fatura</label>
+                  <input
+                    name="fatura"
+                    type="text"
+                    defaultValue={editingCobranca.fatura || ""}
+                    className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
+                    placeholder="Ex: FA2025/001"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-foreground mb-2">Valor Total (com IVA) *</label>
+                  <div className="relative">
+                    <input
+                      name="valor"
+                      type="number"
+                      step="0.01"
+                      required
+                      value={valorTotal}
+                      onChange={(e) => setValorTotal(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium pr-10 bg-card"
+                      placeholder="0.00"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">€</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-foreground mb-2">Data de Emissao</label>
+                  <input
+                    name="dataEmissao"
+                    type="date"
+                    defaultValue={editingCobranca.dataEmissao ? new Date(editingCobranca.dataEmissao).toISOString().split("T")[0] : ""}
+                    className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-foreground mb-2">Notas</label>
+                  <input
+                    name="notas"
+                    type="text"
+                    defaultValue={editingCobranca.notas || ""}
+                    className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
+                    placeholder="Notas adicionais..."
+                  />
+                </div>
+              </div>
+
+              {/* Parcelas Section */}
+              <div className="border-t-2 border-border pt-4 mt-4">
+                <label className="block text-sm font-bold text-foreground mb-3">Tipo de Pagamento</label>
+                <div className="flex gap-4 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setTipoParcelado(false)}
+                    className={`flex-1 py-3 px-4 rounded-xl font-semibold transition border-2 ${
+                      !tipoParcelado
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-card text-foreground border-border hover:bg-secondary"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                      </svg>
+                      Pagamento Unico
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTipoParcelado(true)}
+                    className={`flex-1 py-3 px-4 rounded-xl font-semibold transition border-2 ${
+                      tipoParcelado
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-card text-foreground border-border hover:bg-secondary"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                      </svg>
+                      Parcelado
+                    </div>
+                  </button>
+                </div>
+
+                {tipoParcelado && (
+                  <div className="bg-secondary/50 rounded-xl p-4 space-y-4">
+                    {/* Current parcelas info */}
+                    {editingCobranca.parcelas.length > 0 && (
+                      <div className="bg-orange-100 dark:bg-orange-900/20 border border-orange-300 dark:border-orange-700 rounded-lg p-3 mb-4">
+                        <p className="text-sm text-orange-800 dark:text-orange-200 font-medium">
+                          <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          Esta cobranca tem {editingCobranca.parcelas.length} parcelas existentes. Alterar o numero de parcelas ira regenerar todas as parcelas (parcelas pagas serao perdidas).
+                        </p>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-bold text-foreground mb-2">Numero de Parcelas *</label>
+                        <select
+                          value={numeroParcelas}
+                          onChange={(e) => setNumeroParcelas(parseInt(e.target.value))}
+                          className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
+                        >
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
+                            <option key={n} value={n}>{n} parcela{n > 1 ? "s" : ""}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-foreground mb-2">Data da 1ª Parcela *</label>
+                        <input
+                          type="date"
+                          value={dataInicioVencimento}
+                          onChange={(e) => setDataInicioVencimento(e.target.value)}
+                          required={tipoParcelado}
+                          className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Preview of new parcelas */}
+                    {valorTotal && dataInicioVencimento && (
+                      <div className="mt-4">
+                        <h4 className="text-sm font-bold text-foreground mb-2">Pre-visualizacao das Parcelas:</h4>
+                        <div className="bg-card rounded-lg p-3 space-y-2 max-h-48 overflow-y-auto">
+                          {Array.from({ length: numeroParcelas }, (_, i) => {
+                            const date = new Date(dataInicioVencimento)
+                            date.setMonth(date.getMonth() + i)
+                            return (
+                              <div key={i} className="flex justify-between items-center text-sm py-1 border-b border-border last:border-0">
+                                <span className="font-medium text-foreground">Parcela {i + 1}</span>
+                                <span className="text-muted-foreground">
+                                  {formatCurrency(parseFloat(valorTotal) / numeroParcelas)} € - {date.toLocaleDateString("pt-PT")}
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t border-border">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 bg-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-primary-hover transition disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      A guardar...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Guardar Alteracoes
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="px-6 py-3 border-2 border-border rounded-xl font-bold text-foreground hover:bg-secondary transition flex items-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
