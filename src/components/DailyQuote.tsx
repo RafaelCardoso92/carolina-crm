@@ -41,35 +41,36 @@ interface DailyQuoteProps {
 }
 
 export default function DailyQuote({ compact = false }: DailyQuoteProps) {
-  const [quote, setQuote] = useState<{ text: string; author: string } | null>(null)
+  const [quoteIndex, setQuoteIndex] = useState<number | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   useEffect(() => {
-    // Get quote based on day of year for consistency
-    const now = new Date()
-    const start = new Date(now.getFullYear(), 0, 0)
-    const diff = now.getTime() - start.getTime()
-    const oneDay = 1000 * 60 * 60 * 24
-    const dayOfYear = Math.floor(diff / oneDay)
-    const quoteIndex = dayOfYear % quotes.length
-    setQuote(quotes[quoteIndex])
+    // Get a random quote on mount
+    const randomIndex = Math.floor(Math.random() * quotes.length)
+    setQuoteIndex(randomIndex)
   }, [])
 
-  function getRandomQuote() {
+  function getNewQuote() {
     setIsRefreshing(true)
     setTimeout(() => {
-      const randomIndex = Math.floor(Math.random() * quotes.length)
-      setQuote(quotes[randomIndex])
+      // Always get a different quote
+      let newIndex = Math.floor(Math.random() * quotes.length)
+      while (newIndex === quoteIndex && quotes.length > 1) {
+        newIndex = Math.floor(Math.random() * quotes.length)
+      }
+      setQuoteIndex(newIndex)
       setIsRefreshing(false)
     }, 300)
   }
 
+  const quote = quoteIndex !== null ? quotes[quoteIndex] : null
+
   if (!quote) {
     return (
-      <div className={compact ? "bg-white/10 rounded-xl p-3" : "bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-2xl border border-amber-200 dark:border-amber-800 p-6"}>
+      <div className={compact ? "bg-white/10 rounded-xl p-3" : "bg-card rounded-2xl border border-border p-5"}>
         <div className="animate-pulse">
-          <div className={compact ? "h-3 bg-white/20 rounded w-3/4 mb-2" : "h-4 bg-amber-200 dark:bg-amber-800 rounded w-3/4 mb-2"}></div>
-          <div className={compact ? "h-3 bg-white/20 rounded w-1/2" : "h-4 bg-amber-200 dark:bg-amber-800 rounded w-1/2"}></div>
+          <div className={compact ? "h-3 bg-white/20 rounded w-3/4 mb-2" : "h-4 bg-secondary rounded w-3/4 mb-2"}></div>
+          <div className={compact ? "h-3 bg-white/20 rounded w-1/2" : "h-4 bg-secondary rounded w-1/2"}></div>
         </div>
       </div>
     )
@@ -89,7 +90,7 @@ export default function DailyQuote({ compact = false }: DailyQuoteProps) {
             </p>
           </div>
           <button
-            onClick={getRandomQuote}
+            onClick={getNewQuote}
             disabled={isRefreshing}
             className="p-1 rounded text-white/60 hover:text-white hover:bg-white/10 transition disabled:opacity-50 shrink-0"
             title="Nova citação"
@@ -103,38 +104,38 @@ export default function DailyQuote({ compact = false }: DailyQuoteProps) {
     )
   }
 
-  // Full version
+  // Full version - cleaner design
   return (
-    <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-2xl border border-amber-200 dark:border-amber-800 p-6 relative overflow-hidden">
-      {/* Decorative quote marks */}
-      <div className="absolute top-2 left-4 text-6xl text-amber-200 dark:text-amber-800 font-serif leading-none select-none">"</div>
-
-      <div className="relative z-10">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 pl-6">
-            <p className={`text-foreground font-medium leading-relaxed transition-opacity duration-300 ${isRefreshing ? "opacity-0" : "opacity-100"}`}>
-              {quote.text}
-            </p>
-            <p className={`text-amber-700 dark:text-amber-400 text-sm mt-3 font-medium transition-opacity duration-300 ${isRefreshing ? "opacity-0" : "opacity-100"}`}>
-              — {quote.author}
-            </p>
-          </div>
-          <button
-            onClick={getRandomQuote}
-            disabled={isRefreshing}
-            className="p-2 rounded-lg text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition disabled:opacity-50"
-            title="Nova citação"
-          >
-            <svg className={`w-5 h-5 ${isRefreshing ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          </button>
+    <div className="bg-card rounded-2xl border border-border p-5 relative">
+      <div className="flex items-start gap-4">
+        {/* Quote icon */}
+        <div className="shrink-0 w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+          <svg className="w-5 h-5 text-primary" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
+          </svg>
         </div>
-      </div>
-
-      {/* Label */}
-      <div className="absolute bottom-2 right-4">
-        <span className="text-xs text-amber-500 dark:text-amber-600 font-medium">Citação do Dia</span>
+        
+        {/* Quote content */}
+        <div className="flex-1 min-w-0">
+          <p className={`text-foreground font-medium leading-relaxed transition-opacity duration-300 ${isRefreshing ? "opacity-0" : "opacity-100"}`}>
+            {quote.text}
+          </p>
+          <p className={`text-muted-foreground text-sm mt-2 transition-opacity duration-300 ${isRefreshing ? "opacity-0" : "opacity-100"}`}>
+            — {quote.author}
+          </p>
+        </div>
+        
+        {/* Refresh button */}
+        <button
+          onClick={getNewQuote}
+          disabled={isRefreshing}
+          className="shrink-0 p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition disabled:opacity-50"
+          title="Nova citação"
+        >
+          <svg className={`w-5 h-5 ${isRefreshing ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
       </div>
     </div>
   )

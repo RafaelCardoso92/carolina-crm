@@ -5,17 +5,11 @@ import SalesCharts from "./SalesCharts"
 import { TarefasWidget, FollowUpWidget } from "@/components/DashboardWidgets"
 import { NotificationsWidget, ForecastWidget, HealthScoresWidget, QuickStatsWidget, AcordosWidget } from "@/components/EnhancedDashboardWidgets"
 import { formatCurrency } from "@/lib/utils"
-import MoodTracker from "@/components/MoodTracker"
-import DailyQuote from "@/components/DailyQuote"
+import WellbeingSection from "@/components/WellbeingSection"
 
 const meses = [
   "", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
   "Jul", "Ago", "Set", "Out", "Nov", "Dez"
-]
-
-const mesesFull = [
-  "", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
 ]
 
 const IVA_RATE = 0.23
@@ -34,6 +28,13 @@ interface ProximaParcela {
   clienteNome: string
   cobrancaId: string
   fatura: string | null
+}
+
+interface CobrancasStats {
+  pendentesCount: number
+  pendentesValor: number
+  pagasCount: number
+  pagasValor: number
 }
 
 interface DashboardData {
@@ -60,6 +61,7 @@ interface DashboardData {
   parcelasAtrasadas: number
   valorAtrasado: number
   proximasParcelas: ProximaParcela[]
+  cobrancasStats?: CobrancasStats
 }
 
 export default function DashboardView() {
@@ -137,7 +139,6 @@ export default function DashboardView() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Period Selectors */}
           <select
             value={ano}
             onChange={(e) => setAno(parseInt(e.target.value))}
@@ -153,7 +154,6 @@ export default function DashboardView() {
             {meses.slice(1).map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
           </select>
 
-          {/* Export */}
           <div className="relative">
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
@@ -191,11 +191,55 @@ export default function DashboardView() {
         </div>
       </div>
 
-      {/* Daily Inspiration */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <DailyQuote />
-        <MoodTracker />
-      </div>
+      {/* Wellbeing Section - Mental Health First Aid */}
+      <WellbeingSection />
+
+      {/* Cobrancas Summary Card */}
+      {data.cobrancasStats && (
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-foreground flex items-center gap-2">
+              <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              Cobrancas
+            </h3>
+            <a href="/cobrancas" className="text-xs text-primary hover:underline font-medium">
+              Ver todas →
+            </a>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-orange-50 dark:bg-orange-950/30 rounded-xl p-3 text-center">
+              <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{data.cobrancasStats.pendentesCount}</p>
+              <p className="text-xs text-muted-foreground">Pendentes</p>
+              <p className="text-sm font-semibold text-orange-600 dark:text-orange-400 mt-1">
+                {formatCurrency(data.cobrancasStats.pendentesValor)}€
+              </p>
+            </div>
+            <div className="bg-green-50 dark:bg-green-950/30 rounded-xl p-3 text-center">
+              <p className="text-2xl font-bold text-green-600 dark:text-green-400">{data.cobrancasStats.pagasCount}</p>
+              <p className="text-xs text-muted-foreground">Pagas</p>
+              <p className="text-sm font-semibold text-green-600 dark:text-green-400 mt-1">
+                {formatCurrency(data.cobrancasStats.pagasValor)}€
+              </p>
+            </div>
+            <div className="bg-red-50 dark:bg-red-950/30 rounded-xl p-3 text-center">
+              <p className="text-2xl font-bold text-red-600 dark:text-red-400">{data.parcelasAtrasadas}</p>
+              <p className="text-xs text-muted-foreground">Em Atraso</p>
+              <p className="text-sm font-semibold text-red-600 dark:text-red-400 mt-1">
+                {formatCurrency(data.valorAtrasado)}€
+              </p>
+            </div>
+            <div className="bg-blue-50 dark:bg-blue-950/30 rounded-xl p-3 text-center">
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{data.proximasParcelas.length}</p>
+              <p className="text-xs text-muted-foreground">Proximos 7 dias</p>
+              <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 mt-1">
+                {formatCurrency(data.proximasParcelas.reduce((sum, p) => sum + p.valor, 0))}€
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Quick Stats */}
       <QuickStatsWidget />
@@ -255,7 +299,7 @@ export default function DashboardView() {
               {data.parcelasAtrasadas} parcela{data.parcelasAtrasadas !== 1 ? "s" : ""} em atraso: <span className="font-bold">{formatCurrency(data.valorAtrasado)}€</span>
             </p>
           </div>
-          <a href="/cobrancas" className="shrink-0 text-xs font-medium text-red-700 dark:text-red-200 hover:underline">
+          <a href="/cobrancas?filter=overdue" className="shrink-0 text-xs font-medium text-red-700 dark:text-red-200 hover:underline">
             Ver
           </a>
         </div>
@@ -401,9 +445,9 @@ function StatCard({ title, value, subtitle, color }: {
   }
 
   return (
-    <div className={`bg-card rounded-lg border border-border border-l-2 ${colors[color].split(' ')[0]} p-3`}>
+    <div className={`bg-card rounded-lg border border-border border-l-2 ${colors[color].split(" ")[0]} p-3`}>
       <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">{title}</p>
-      <p className={`text-base sm:text-lg font-bold ${colors[color].split(' ').slice(1).join(' ')}`}>{value}</p>
+      <p className={`text-base sm:text-lg font-bold ${colors[color].split(" ").slice(1).join(" ")}`}>{value}</p>
       {subtitle && <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{subtitle}</p>}
     </div>
   )
@@ -412,8 +456,8 @@ function StatCard({ title, value, subtitle, color }: {
 function MiniStat({ label, value, small }: { label: string; value: string; small?: boolean }) {
   return (
     <div className="bg-secondary/50 rounded-lg p-2 text-center">
-      <p className={`${small ? 'text-[9px]' : 'text-[10px]'} font-medium text-muted-foreground uppercase`}>{label}</p>
-      <p className={`${small ? 'text-xs' : 'text-sm'} font-bold text-foreground`}>{value}</p>
+      <p className={`${small ? "text-[9px]" : "text-[10px]"} font-medium text-muted-foreground uppercase`}>{label}</p>
+      <p className={`${small ? "text-xs" : "text-sm"} font-bold text-foreground`}>{value}</p>
     </div>
   )
 }

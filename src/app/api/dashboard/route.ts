@@ -10,7 +10,7 @@ export async function GET(request: Request) {
 
   try {
     const session = await requirePermission(PERMISSIONS.DASHBOARD_READ)
-    const userId = session.user?.id || 'anonymous'
+    const userId = session.user?.id || "anonymous"
 
     const { searchParams } = new URL(request.url)
     const ano = parseInt(searchParams.get("ano") || new Date().getFullYear().toString())
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     const cacheKey = cacheKeys.dashboard(userId) + `:${ano}:${mes}`
     const cached = cache.get(cacheKey)
     if (cached) {
-      logger.debug('Dashboard cache hit', { userId, duration: timer.elapsed() })
+      logger.debug("Dashboard cache hit", { userId, duration: timer.elapsed() })
       return NextResponse.json(cached)
     }
 
@@ -33,11 +33,8 @@ export async function GET(request: Request) {
       vendasMes,
       vendasTrimestre,
       vendasAno,
-      // Returns for this month
       devolucoesMes,
-      // Returns for this quarter
       devolucoesTrimestre,
-      // Returns for this year
       devolucoesAno,
       cobrancasPendentes,
       objetivoMensal,
@@ -47,7 +44,10 @@ export async function GET(request: Request) {
       premiosTrimestrais,
       parcelasAtrasadas,
       parcelasAtrasadasValor,
-      proximasParcelas
+      proximasParcelas,
+      cobrancasPendentesCount,
+      cobrancasPagasCount,
+      cobrancasPagasValor
     ] = await Promise.all([
       prisma.cliente.count(),
       prisma.cliente.count({ where: { ativo: true } }),
@@ -69,7 +69,6 @@ export async function GET(request: Request) {
         where: { ano },
         _sum: { total: true }
       }),
-      // Returns for this month (based on the original sale's month, not return date)
       prisma.devolucao.aggregate({
         where: {
           venda: { mes, ano }
@@ -79,7 +78,6 @@ export async function GET(request: Request) {
           totalSubstituido: true
         }
       }),
-      // Returns for this quarter
       prisma.devolucao.aggregate({
         where: {
           venda: {
@@ -95,7 +93,6 @@ export async function GET(request: Request) {
           totalSubstituido: true
         }
       }),
-      // Returns for this year
       prisma.devolucao.aggregate({
         where: {
           venda: { ano }
@@ -120,14 +117,12 @@ export async function GET(request: Request) {
       }),
       prisma.premioMensal.findMany({ orderBy: { minimo: "asc" } }),
       prisma.premioTrimestral.findMany({ orderBy: { minimo: "asc" } }),
-      // Count overdue parcelas
       prisma.parcela.count({
         where: {
           pago: false,
           dataVencimento: { lt: now }
         }
       }),
-      // Sum of overdue parcelas values
       prisma.parcela.aggregate({
         where: {
           pago: false,
@@ -135,7 +130,6 @@ export async function GET(request: Request) {
         },
         _sum: { valor: true }
       }),
-      // Upcoming parcelas (next 7 days)
       prisma.parcela.findMany({
         where: {
           pago: false,
@@ -151,15 +145,26 @@ export async function GET(request: Request) {
         },
         orderBy: { dataVencimento: "asc" },
         take: 5
+      }),
+      // Cobrancas pendentes count
+      prisma.cobranca.count({
+        where: { pago: false }
+      }),
+      // Cobrancas pagas count
+      prisma.cobranca.count({
+        where: { pago: true }
+      }),
+      // Cobrancas pagas value
+      prisma.cobranca.aggregate({
+        where: { pago: true },
+        _sum: { valor: true }
       })
     ])
 
-    // Calculate gross totals
     const vendasMesBruto = Number(vendasMes._sum.total) || 0
     const vendasTrimestreBruto = Number(vendasTrimestre._sum.total) || 0
     const vendasAnoBruto = Number(vendasAno._sum.total) || 0
 
-    // Calculate returns adjustments
     const devolvidoMes = Number(devolucoesMes._sum.totalDevolvido) || 0
     const substituidoMes = Number(devolucoesMes._sum.totalSubstituido) || 0
     const devolvidoTrimestre = Number(devolucoesTrimestre._sum.totalDevolvido) || 0
@@ -167,7 +172,6 @@ export async function GET(request: Request) {
     const devolvidoAno = Number(devolucoesAno._sum.totalDevolvido) || 0
     const substituidoAno = Number(devolucoesAno._sum.totalSubstituido) || 0
 
-    // Calculate net totals (Original - Returns + Substitutions)
     const vendasMesTotal = vendasMesBruto - devolvidoMes + substituidoMes
     const vendasTrimestreTotal = vendasTrimestreBruto - devolvidoTrimestre + substituidoTrimestre
     const vendasAnoTotal = vendasAnoBruto - devolvidoAno + substituidoAno
@@ -177,7 +181,6 @@ export async function GET(request: Request) {
     const objTrimestral = Number(objetivoTrimestral?.objetivo) || 0
     const objAnual = Number(objetivoAnual?.objetivo) || 0
 
-    // Calculate prize progress
     const premiosMensaisData = premiosMensais.map(p => ({
       minimo: Number(p.minimo),
       premio: Number(p.premio)
@@ -187,7 +190,6 @@ export async function GET(request: Request) {
       premio: Number(p.premio)
     }))
 
-    // Find current and next prize for monthly
     let premioMensalAtual = null
     let proximoPremioMensal = null
     for (let i = 0; i < premiosMensaisData.length; i++) {
@@ -202,7 +204,6 @@ export async function GET(request: Request) {
       proximoPremioMensal = null
     }
 
-    // Find current and next prize for quarterly
     let premioTrimestralAtual = null
     let proximoPremioTrimestral = null
     for (let i = 0; i < premiosTrimestraisData.length; i++) {
@@ -217,7 +218,6 @@ export async function GET(request: Request) {
       proximoPremioTrimestral = null
     }
 
-    // Get available years from sales data
     const anosDisponiveis = await prisma.venda.findMany({
       select: { ano: true },
       distinct: ["ano"],
@@ -227,15 +227,12 @@ export async function GET(request: Request) {
     const responseData = {
       totalClientes,
       clientesAtivos,
-      // Net sales (after returns)
       vendasMes: vendasMesTotal,
       vendasTrimestre: vendasTrimestreTotal,
       vendasAno: vendasAnoTotal,
-      // Gross sales (before returns) - for reference
       vendasMesBruto,
       vendasTrimestreBruto,
       vendasAnoBruto,
-      // Returns breakdown
       devolucoesMes: {
         devolvido: devolvidoMes,
         substituido: substituidoMes,
@@ -266,7 +263,6 @@ export async function GET(request: Request) {
       premioTrimestralAtual,
       proximoPremioTrimestral,
       anosDisponiveis: anosDisponiveis.map(a => a.ano),
-      // Overdue parcelas data
       parcelasAtrasadas,
       valorAtrasado: Number(parcelasAtrasadasValor._sum.valor) || 0,
       proximasParcelas: proximasParcelas.map(p => ({
@@ -277,13 +273,19 @@ export async function GET(request: Request) {
         clienteNome: p.cobranca.cliente.nome,
         cobrancaId: p.cobrancaId,
         fatura: p.cobranca.fatura
-      }))
+      })),
+      // Cobranca stats
+      cobrancasStats: {
+        pendentesCount: cobrancasPendentesCount,
+        pendentesValor: pendentesTotal,
+        pagasCount: cobrancasPagasCount,
+        pagasValor: Number(cobrancasPagasValor._sum.valor) || 0
+      }
     }
 
-    // Cache for 60 seconds (dashboard data changes frequently)
     cache.set(cacheKey, responseData, { ttl: 60, tags: [cacheTags.dashboard] })
 
-    logger.info('Dashboard loaded', { userId, duration: timer.elapsed() })
+    logger.info("Dashboard loaded", { userId, duration: timer.elapsed() })
 
     return NextResponse.json(responseData)
   } catch (error) {
