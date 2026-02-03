@@ -16,14 +16,14 @@ type TokenBalance = {
   isNegative: boolean
 }
 
-interface ChatBaboretaProps {
+interface ChatBaborellaProps {
   entityType: "cliente" | "prospecto"
   entityId: string
   entityName: string
   context: string
 }
 
-export default function ChatBaboreta({ entityType, entityId, entityName, context }: ChatBaboretaProps) {
+export default function ChatBaborella({ entityType, entityId, entityName, context }: ChatBaborellaProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
@@ -50,7 +50,7 @@ export default function ChatBaboreta({ entityType, entityId, entityName, context
 
   async function fetchChat() {
     try {
-      const res = await fetch(`/api/ai/baboreta?entityType=${entityType}&entityId=${entityId}`)
+      const res = await fetch(`/api/ai/baborella?entityType=${entityType}&entityId=${entityId}`)
       if (res.ok) {
         const data = await res.json()
         setMessages(data.messages || [])
@@ -69,7 +69,7 @@ export default function ChatBaboreta({ entityType, entityId, entityName, context
       Swal.fire({
         icon: "warning",
         title: "Tokens esgotados",
-        html: "Precisas de mais tokens para continuar a conversar com a Baboreta.",
+        html: "Precisas de mais tokens para continuar a conversar com a Baborella.",
         confirmButtonText: "Comprar Tokens",
         confirmButtonColor: "#ec4899",
         showCancelButton: true,
@@ -95,7 +95,7 @@ export default function ChatBaboreta({ entityType, entityId, entityName, context
     }])
 
     try {
-      const res = await fetch("/api/ai/baboreta", {
+      const res = await fetch("/api/ai/baborella", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -163,7 +163,7 @@ export default function ChatBaboreta({ entityType, entityId, entityName, context
 
     if (result.isConfirmed) {
       try {
-        await fetch(`/api/ai/baboreta?entityType=${entityType}&entityId=${entityId}`, {
+        await fetch(`/api/ai/baborella?entityType=${entityType}&entityId=${entityId}`, {
           method: "DELETE"
         })
         setMessages([])
@@ -185,7 +185,7 @@ export default function ChatBaboreta({ entityType, entityId, entityName, context
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={"fixed bottom-4 right-4 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 " + (isOpen ? "bg-gray-600" : "bg-gradient-to-br from-pink-500 to-purple-600")}
-        title="Falar com Baboreta"
+        title="Falar com Baborella"
       >
         {isOpen ? (
           <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -210,7 +210,7 @@ export default function ChatBaboreta({ entityType, entityId, entityName, context
                 </svg>
               </div>
               <div>
-                <h3 className="font-bold text-white text-sm">Baboreta</h3>
+                <h3 className="font-bold text-white text-sm">Baborella</h3>
                 <p className="text-pink-100 text-xs">Assistente de {entityName}</p>
               </div>
             </div>
@@ -247,7 +247,7 @@ export default function ChatBaboreta({ entityType, entityId, entityName, context
                 </svg>
               </div>
                 <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm">
-                  Ola! Sou a Baboreta, a tua assistente.
+                  Ola! Sou a Baborella, a tua assistente.
                 </p>
                 <p className="text-gray-500 dark:text-gray-500 text-xs mt-1">
                   Pergunta-me qualquer coisa sobre {entityName}!

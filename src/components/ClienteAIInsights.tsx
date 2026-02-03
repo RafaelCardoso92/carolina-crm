@@ -132,7 +132,7 @@ export default function ClienteAIInsights({ clienteId }: Props) {
     }
   }
 
-  const providerLabel = (p: string) => "ChatGPT"
+  const providerLabel = (p: string) => "Baboretta"
   const providerColor = (p: string) => p === "openai" ? "text-green-600" : "text-blue-600"
   const providerBg = (p: string) => p === "openai" ? "bg-green-500/10" : "bg-blue-500/10"
 
@@ -192,7 +192,7 @@ export default function ClienteAIInsights({ clienteId }: Props) {
                   : "bg-secondary text-muted-foreground hover:bg-secondary/80"
               } ${!availableProviders.openai ? "opacity-50 cursor-not-allowed" : ""}`}
             >
-              GPT-5.1
+              Baboretta
             </button>
           </div>
           <span className={`text-xs font-medium ${providerColor(currentProvider)}`}>

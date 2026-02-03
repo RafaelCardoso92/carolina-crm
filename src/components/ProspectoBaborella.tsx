@@ -1,13 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import ChatBaboreta from "./ChatBaboreta"
+import ChatBaborella from "./ChatBaborella"
 
-interface ProspectoBaboretaProps {
+interface ProspectoBaborellaProps {
   prospectoId: string
 }
 
-export default function ProspectoBaboreta({ prospectoId }: ProspectoBaboretaProps) {
+export default function ProspectoBaborella({ prospectoId }: ProspectoBaborellaProps) {
   const [context, setContext] = useState<string>("")
   const [prospectoName, setProspectoName] = useState<string>("Prospecto")
   const [loaded, setLoaded] = useState(false)
@@ -55,7 +55,7 @@ export default function ProspectoBaboreta({ prospectoId }: ProspectoBaboretaProp
   if (!loaded) return null
 
   return (
-    <ChatBaboreta
+    <ChatBaborella
       entityType="prospecto"
       entityId={prospectoId}
       entityName={prospectoName}

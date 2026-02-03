@@ -973,7 +973,7 @@ model ProdutoInsight {
   @@index([produtoId])
 }
 
-model BaboretaChat {
+model BaborellaChat {
   id          String   @id @default(cuid())
   userId      String
   entityType  String   // 'cliente' or 'prospecto'

@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Missing parameters" }, { status: 400 })
     }
 
-    const chat = await prisma.baboretaChat.findUnique({
+    const chat = await prisma.baborellaChat.findUnique({
       where: {
         userId_entityType_entityId: {
           userId: session.user.id,
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error("Error fetching Baboreta chat:", error)
+    console.error("Error fetching Baborella chat:", error)
     return NextResponse.json({ error: "Erro ao carregar conversa" }, { status: 500 })
   }
 }
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get existing chat
-    const existingChat = await prisma.baboretaChat.findUnique({
+    const existingChat = await prisma.baborellaChat.findUnique({
       where: {
         userId_entityType_entityId: { userId, entityType, entityId }
       }
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
 
     // Build system prompt with context
     const entityName = entityType === "cliente" ? "cliente" : "prospecto"
-    const systemPrompt = `Tu es a Baboreta, uma assistente de vendas super fofa, doce e prestavel. Falas portugues de Portugal com um toque chique e elegante. Es especialista em ajudar vendedores a ter sucesso com os seus clientes.
+    const systemPrompt = `Tu es a Baborella, uma assistente de vendas super fofa, doce e prestavel. Falas portugues de Portugal com um toque chique e elegante. Es especialista em ajudar vendedores a ter sucesso com os seus clientes.
 
 CONTEXTO DO ${entityName.toUpperCase()}:
 ${context}
@@ -113,7 +113,7 @@ INSTRUCOES:
 - Podes usar emojis com moderacao para ser mais expressiva
 - Foca-te em ajudar o utilizador a ter sucesso com este ${entityName} especifico
 - Se nao souberes algo, admite com graciosidade
-- Assina sempre como "Baboreta" no final das respostas mais longas`
+- Assina sempre como "Baborella" no final das respostas mais longas`
 
     // Build messages for OpenAI
     const openaiMessages: { role: "system" | "user" | "assistant"; content: string }[] = [
@@ -159,7 +159,7 @@ INSTRUCOES:
         outputTokens,
         totalTokens,
         costEur: totalTokens * EUR_PER_TOKEN,
-        feature: "baboreta_chat"
+        feature: "baborella_chat"
       }
     })
 
@@ -179,7 +179,7 @@ INSTRUCOES:
 
     const updatedMessages = [...existingMessages, newUserMessage, newAssistantMessage]
 
-    await prisma.baboretaChat.upsert({
+    await prisma.baborellaChat.upsert({
       where: {
         userId_entityType_entityId: { userId, entityType, entityId }
       },
@@ -206,7 +206,7 @@ INSTRUCOES:
       }
     })
   } catch (error) {
-    console.error("Error in Baboreta chat:", error)
+    console.error("Error in Baborella chat:", error)
     return NextResponse.json({ error: "Erro ao processar mensagem" }, { status: 500 })
   }
 }
@@ -227,7 +227,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Missing parameters" }, { status: 400 })
     }
 
-    await prisma.baboretaChat.delete({
+    await prisma.baborellaChat.delete({
       where: {
         userId_entityType_entityId: {
           userId: session.user.id,
@@ -239,7 +239,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Error deleting Baboreta chat:", error)
+    console.error("Error deleting Baborella chat:", error)
     return NextResponse.json({ error: "Erro ao limpar conversa" }, { status: 500 })
   }
 }

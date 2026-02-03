@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 
 const manifest = {
-  name: "BABOR Carolina CRM",
+  name: "Baborette",
   short_name: "BABOR CRM",
   description: "Sistema de gestao de clientes e vendas BABOR",
   start_url: "/",

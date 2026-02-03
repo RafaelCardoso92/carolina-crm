@@ -32,7 +32,7 @@ const MIN_LEVEL = (process.env.LOG_LEVEL as LogLevel) || 'info'
 class Logger {
   private serviceName: string
 
-  constructor(serviceName: string = 'carolina-crm') {
+  constructor(serviceName: string = 'baborette') {
     this.serviceName = serviceName
   }
 

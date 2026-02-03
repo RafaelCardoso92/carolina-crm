@@ -22,11 +22,18 @@ export async function GET(request: Request, { params }: RouteParams) {
               include: { produto: true }
             }
           },
+          orderBy: [{ ano: "desc" }, { mes: "desc" }],
+          take: 20
+        },
+        cobrancas: {
+          orderBy: { createdAt: "desc" },
+          take: 20
+        },
+        amostras: {
+          include: { produto: true },
           orderBy: { createdAt: "desc" },
           take: 10
-        },
-        
-        cobrancas: true
+        }
       }
     })
 

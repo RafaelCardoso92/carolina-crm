@@ -11,7 +11,7 @@ import SampleTracking from "@/components/SampleTracking"
 import CustomerSegmentation from "@/components/CustomerSegmentation"
 import AcordoParceria from "@/components/AcordoParceria"
 import WhatsAppButton from "@/components/WhatsAppButton"
-import ClienteBaboreta from "@/components/ClienteBaboreta"
+import ClienteBaborella from "@/components/ClienteBaborella"
 import QuickReorder from "./QuickReorder"
 
 async function getCliente(id: string) {
@@ -266,7 +266,7 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
         )}
       </div>
       {/* Baboreta AI Chat */}
-      <ClienteBaboreta clienteId={id} />
+      <ClienteBaborella clienteId={id} />
     </div>
   )
 }
