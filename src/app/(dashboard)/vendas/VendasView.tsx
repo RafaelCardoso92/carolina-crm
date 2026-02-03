@@ -1,4 +1,5 @@
 "use client"
+import VendasAITrends from "@/components/VendasAITrends"
 
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
@@ -672,6 +673,11 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
         )}
       </div>
 
+
+      {/* AI Trends Analysis */}
+      <div className="mb-6">
+        <VendasAITrends />
+      </div>
       {/* Add Sale Button */}
       <div className="flex justify-end mb-4 md:mb-6">
         <button

@@ -1,4 +1,5 @@
 "use client"
+import CobrancaAIRisk from "@/components/CobrancaAIRisk"
 
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
@@ -475,6 +476,11 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
         )}
       </div>
 
+
+      {/* AI Risk Analysis */}
+      <div className="mb-4">
+        <CobrancaAIRisk />
+      </div>
       {/* Search, Filter, Sort Controls */}
       <div className="bg-card rounded-xl shadow-sm p-4 mb-4 border border-border space-y-3">
         {/* Search Bar */}

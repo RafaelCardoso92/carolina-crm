@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import SalesCharts from "./SalesCharts"
 import { TarefasWidget, FollowUpWidget } from "@/components/DashboardWidgets"
 import { NotificationsWidget, ForecastWidget, HealthScoresWidget, QuickStatsWidget, AcordosWidget } from "@/components/EnhancedDashboardWidgets"
+import DashboardAIInsights from "@/components/DashboardAIInsights"
 import { formatCurrency } from "@/lib/utils"
 import WellbeingSection from "@/components/WellbeingSection"
 
@@ -354,6 +355,9 @@ export default function DashboardView() {
         <HealthScoresWidget />
         <AcordosWidget />
       </div>
+
+      {/* AI Insights */}
+      <DashboardAIInsights />
 
       {/* Tasks and Follow-up */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 sm:gap-3">

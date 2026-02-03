@@ -922,3 +922,53 @@ enum TokenPurchaseStatus {
   FAILED
   REFUNDED
 }
+
+// ===========================================
+// AI Insights Models
+// ===========================================
+
+enum InsightType {
+  DASHBOARD
+  COBRANCA_RISK
+  VENDAS_TREND
+  PRODUTO_PERFORMANCE
+}
+
+model AIInsight {
+  id        String      @id @default(cuid())
+  userId    String
+  type      InsightType
+  data      Json
+  summary   String?     @db.Text
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  expiresAt DateTime?
+
+  @@unique([userId, type])
+  @@index([userId])
+  @@index([type])
+}
+
+model CobrancaRisk {
+  id           String   @id @default(cuid())
+  cobrancaId   String   @unique
+  riskLevel    String   // HIGH, MEDIUM, LOW
+  riskScore    Int      // 0-100
+  factors      Json     // Array of risk factors
+  suggestions  Json     // Array of suggested actions
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([riskLevel])
+}
+
+model ProdutoInsight {
+  id         String   @id @default(cuid())
+  produtoId  String   @unique
+  insights   Json
+  trend      String?  // UP, DOWN, STABLE
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([produtoId])
+}
