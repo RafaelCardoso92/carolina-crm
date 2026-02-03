@@ -21,6 +21,12 @@ function serializeVendas(vendas: Awaited<ReturnType<typeof fetchVendas>>) {
     valor1: serializeDecimal(v.valor1),
     valor2: serializeDecimal(v.valor2),
     total: serializeDecimal(v.total),
+    cobranca: v.cobranca ? {
+      ...v.cobranca,
+      valor: serializeDecimal(v.cobranca.valor),
+      valorSemIva: serializeDecimal(v.cobranca.valorSemIva),
+      comissao: serializeDecimal(v.cobranca.comissao),
+    } : null,
     itens: v.itens?.map(item => ({
       ...item,
       quantidade: serializeDecimal(item.quantidade),
@@ -68,6 +74,7 @@ async function fetchVendas(mes: number, ano: number) {
   return prisma.venda.findMany({
     where: { mes, ano },
     include: {
+      cobranca: true,
       cliente: true,
       objetivoVario: true,
       campanhas: {
