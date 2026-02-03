@@ -16,7 +16,16 @@ export async function GET(request: Request, { params }: RouteParams) {
         ...userScopedWhere(session)
       },
       include: {
-        vendas: true,
+        vendas: {
+          include: {
+            itens: {
+              include: { produto: true }
+            }
+          },
+          orderBy: { createdAt: "desc" },
+          take: 10
+        },
+        
         cobrancas: true
       }
     })
