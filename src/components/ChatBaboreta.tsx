@@ -192,7 +192,14 @@ export default function ChatBaboreta({ entityType, entityId, entityName, context
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         ) : (
-          <span className="text-2xl">🦋</span>
+          <div className="relative">
+            <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+            </svg>
+            <span className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-300 rounded-full animate-ping" />
+            <span className="absolute -bottom-1 -left-1 w-1.5 h-1.5 bg-pink-300 rounded-full animate-ping" style={{ animationDelay: "0.3s" }} />
+            <span className="absolute top-0 -left-2 w-1 h-1 bg-white rounded-full animate-ping" style={{ animationDelay: "0.6s" }} />
+          </div>
         )}
       </button>
 
@@ -202,7 +209,12 @@ export default function ChatBaboreta({ entityType, entityId, entityName, context
           {/* Header */}
           <div className="bg-gradient-to-r from-pink-500 to-purple-600 p-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-2xl">🦋</span>
+              <div className="relative">
+                <svg className="w-6 h-6 text-yellow-300" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+                </svg>
+                <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-white rounded-full animate-ping" />
+              </div>
               <div>
                 <h3 className="font-bold text-white text-sm">Baboreta</h3>
                 <p className="text-pink-100 text-xs">Assistente de {entityName}</p>
@@ -235,7 +247,13 @@ export default function ChatBaboreta({ entityType, entityId, entityName, context
           <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-gradient-to-b from-pink-50/50 to-white dark:from-gray-800/50 dark:to-gray-900">
             {messages.length === 0 && (
               <div className="text-center py-8">
-                <span className="text-4xl">🦋</span>
+                <div className="relative inline-block">
+                <svg className="w-12 h-12 text-pink-400" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+                </svg>
+                <span className="absolute top-0 right-0 w-2 h-2 bg-yellow-300 rounded-full animate-ping" />
+                <span className="absolute bottom-1 left-0 w-1.5 h-1.5 bg-pink-300 rounded-full animate-ping" style={{ animationDelay: "0.4s" }} />
+              </div>
                 <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm">
                   Ola! Sou a Baboreta, a tua assistente.
                 </p>
