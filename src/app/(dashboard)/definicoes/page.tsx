@@ -1,5 +1,8 @@
 "use client"
 
+import TokensTab from "@/components/TokensTab"
+import { useSearchParams } from "next/navigation"
+
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Swal from "sweetalert2"
@@ -114,8 +117,9 @@ export default function DefinicoesPage() {
   const [campanhas, setCampanhas] = useState<Campanha[]>([])
   const [objetivosVarios, setObjetivosVarios] = useState<ObjetivoVario[]>([])
   const [loading, setLoading] = useState(true)
+  const [userRole, setUserRole] = useState<string>("")
   const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<"config" | "objetivos" | "objetivos-varios" | "premios" | "produtos" | "campanhas" | "display">("config")
+  const [activeTab, setActiveTab] = useState<"config" | "objetivos" | "objetivos-varios" | "premios" | "produtos" | "campanhas" | "display" | "tokens">("config")
 
   // Form states
   const [iva, setIva] = useState("")
@@ -124,20 +128,32 @@ export default function DefinicoesPage() {
 
   useEffect(() => {
     fetchData()
+
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const tab = searchParams.get("tab")
+    if (tab === "tokens") {
+      setActiveTab("tokens")
+    }
+  }, [searchParams])
   }, [])
 
   async function fetchData() {
     try {
-      const [defRes, prodRes, campRes, objVarRes] = await Promise.all([
+      const [defRes, prodRes, campRes, objVarRes, meRes] = await Promise.all([
         fetch("/api/definicoes"),
         fetch("/api/produtos?limit=1000"),
         fetch("/api/campanhas?limit=1000"),
-        fetch("/api/objetivos-varios?limit=1000")
+        fetch("/api/objetivos-varios?limit=1000"),
+        fetch("/api/me")
       ])
       const json = await defRes.json()
       const produtosRaw = await prodRes.json()
       const campanhasRaw = campRes.ok ? await campRes.json() : []
       const objetivosVariosRaw = objVarRes.ok ? await objVarRes.json() : []
+      const meData = meRes.ok ? await meRes.json() : null
+      if (meData?.role) setUserRole(meData.role)
 
       // Handle paginated responses
       const produtosData = Array.isArray(produtosRaw) ? produtosRaw : (produtosRaw?.data || [])
@@ -282,7 +298,8 @@ export default function DefinicoesPage() {
           { id: "premios", label: "Tabela Prémios", shortLabel: "Prémios", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
           { id: "produtos", label: "Produtos", shortLabel: "Prod.", icon: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" },
           { id: "campanhas", label: "Campanhas", shortLabel: "Camp.", icon: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" },
-          { id: "display", label: "Apresentação", shortLabel: "Visual", icon: "M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" }
+          { id: "display", label: "Apresentação", shortLabel: "Visual", icon: "M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" },
+          { id: "tokens", label: "AI Tokens", shortLabel: "Tokens", icon: "M13 10V3L4 14h7v7l9-11h-7z" }
         ].map((tab) => (
           <button
             key={tab.id}
@@ -705,6 +722,11 @@ export default function DefinicoesPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Tokens Tab */}
+      {activeTab === "tokens" && (
+        <TokensTab isAdmin={userRole === "MASTERADMIN"} />
       )}
     </div>
   )

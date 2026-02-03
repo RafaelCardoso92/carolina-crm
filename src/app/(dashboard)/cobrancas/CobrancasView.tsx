@@ -1137,13 +1137,17 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                             {cobranca.pago ? "Pago" : "Pendente"}
                           </button>
                         ) : (
-                          <span className={`px-4 py-2 rounded-xl text-sm font-bold inline-flex items-center gap-2 ${
+                          <button
+                            onClick={() => toggleRowExpanded(cobranca.id)}
+                            className={`px-4 py-2 rounded-xl text-sm font-bold inline-flex items-center gap-2 cursor-pointer hover:opacity-80 transition ${
                             cobranca.pago
                               ? "bg-green-100 text-green-700"
                               : hasOverdue
                                 ? "bg-red-100 text-red-700"
                                 : "bg-orange-100 text-orange-700"
-                          }`}>
+                          }`}
+                            title={cobranca.pago ? "" : "Clique para ver parcelas"}
+                          >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={
                                 cobranca.pago
@@ -1153,8 +1157,8 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                                     : "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                               } />
                             </svg>
-                            {cobranca.pago ? "Pago" : hasOverdue ? "Atrasado" : "Pendente"}
-                          </span>
+                            {cobranca.pago ? "Pago" : hasOverdue ? "Atrasado - Ver Parcelas" : "Pendente - Ver Parcelas"}
+                          </button>
                         )}
                       </td>
                       <td className="px-4 py-4">

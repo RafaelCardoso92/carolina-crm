@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { generateAIResponse, getAIProvider } from "@/lib/ai"
+import { auth } from "@/lib/auth"
 import type { ClienteInsightsResponse, ClienteInsights } from "@/types/ai"
 
 const PROMPT_TEMPLATE = `Voce e um especialista em analise de clientes no sector de cosmeticos e beleza profissional em Portugal.
@@ -67,13 +68,21 @@ function getAIErrorMessage(error: unknown): { message: string; status: number } 
   const errorMessage = error instanceof Error ? error.message : String(error)
   const errorLower = errorMessage.toLowerCase()
 
+  // Check for insufficient tokens first
+  if (errorMessage === "INSUFFICIENT_TOKENS") {
+    return {
+      message: "Tokens insuficientes. Compre mais tokens em Definicoes > AI Tokens.",
+      status: 402
+    }
+  }
+
   if (errorLower.includes("api_key_invalid") ||
       errorLower.includes("api key not valid") ||
       errorLower.includes("invalid api key") ||
       errorLower.includes("unauthorized") ||
       errorLower.includes("401")) {
     return {
-      message: "Chave API inválida. Verifique a configuração nas definições.",
+      message: "Chave API invalida. Verifique a configuracao nas definicoes.",
       status: 401
     }
   }
@@ -92,7 +101,7 @@ function getAIErrorMessage(error: unknown): { message: string; status: number } 
   if (errorLower.includes("model") &&
       (errorLower.includes("not found") || errorLower.includes("unavailable"))) {
     return {
-      message: "Modelo de IA não disponível. Tente outro fornecedor.",
+      message: "Modelo de IA nao disponivel. Tente outro fornecedor.",
       status: 503
     }
   }
@@ -102,7 +111,7 @@ function getAIErrorMessage(error: unknown): { message: string; status: number } 
       errorLower.includes("timeout") ||
       errorLower.includes("fetch")) {
     return {
-      message: "Erro de ligação ao serviço de IA. Tente novamente.",
+      message: "Erro de ligacao ao servico de IA. Tente novamente.",
       status: 503
     }
   }
@@ -160,6 +169,16 @@ export async function GET(request: NextRequest) {
 // POST - Generate new insights and save them
 export async function POST(request: NextRequest) {
   try {
+    // Get authenticated user
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json<ClienteInsightsResponse>(
+        { success: false, error: "Nao autorizado" },
+        { status: 401 }
+      )
+    }
+    const userId = session.user.id
+
     const body = await request.json()
     const { clienteId, provider: requestedProvider } = body
 
@@ -252,8 +271,8 @@ export async function POST(request: NextRequest) {
       .replace("{mediaVenda}", mediaVenda.toFixed(2))
       .replace("{produtosUnicos}", produtosComprados.size.toString())
 
-    // Get AI response
-    const aiResponse = await generateAIResponse(prompt)
+    // Get AI response with userId for token tracking
+    const aiResponse = await generateAIResponse(prompt, userId, "cliente_insights")
 
     // Parse JSON response
     let insights: ClienteInsights

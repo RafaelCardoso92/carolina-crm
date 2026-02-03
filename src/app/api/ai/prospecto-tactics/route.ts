@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { generateAIResponse, getAIProvider } from "@/lib/ai"
+import { auth } from "@/lib/auth"
 import type { ProspectoTacticsResponse, ProspectoTactics } from "@/types/ai"
+
 // Strip HTML tags from text
 function stripHtml(text: string): string {
   if (!text) return text
   return text
-    .replace(/<[^>]*>/g, "")  // Remove HTML tags
-    .replace(/&nbsp;/g, " ")   // Replace &nbsp;
-    .replace(/&amp;/g, "&")    // Replace &amp;
-    .replace(/&lt;/g, "<")     // Replace &lt;
-    .replace(/&gt;/g, ">")     // Replace &gt;
-    .replace(/&quot;/g, "\"")   // Replace &quot;
-    .replace(/&#39;/g, "'")   // Replace &#39;
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'")
     .trim()
 }
 
@@ -41,7 +43,6 @@ function cleanTactics(tactics: ProspectoTactics): ProspectoTactics {
     }
   }
 }
-
 
 const PROMPT_TEMPLATE = `Voce e um especialista em vendas B2B no sector de cosmeticos e beleza profissional em Portugal.
 Analise este prospecto e forneca tacticas personalizadas de abordagem COM EXPLICACOES de porque cada sugestao e boa.
@@ -105,13 +106,21 @@ function getAIErrorMessage(error: unknown): { message: string; status: number } 
   const errorMessage = error instanceof Error ? error.message : String(error)
   const errorLower = errorMessage.toLowerCase()
 
+  // Check for insufficient tokens first
+  if (errorMessage === "INSUFFICIENT_TOKENS") {
+    return {
+      message: "Tokens insuficientes. Compre mais tokens em Definicoes > AI Tokens.",
+      status: 402
+    }
+  }
+
   if (errorLower.includes("api_key_invalid") ||
       errorLower.includes("api key not valid") ||
       errorLower.includes("invalid api key") ||
       errorLower.includes("unauthorized") ||
       errorLower.includes("401")) {
     return {
-      message: "Chave API inválida. Verifique a configuração nas definições.",
+      message: "Chave API invalida. Verifique a configuracao nas definicoes.",
       status: 401
     }
   }
@@ -130,7 +139,7 @@ function getAIErrorMessage(error: unknown): { message: string; status: number } 
   if (errorLower.includes("model") &&
       (errorLower.includes("not found") || errorLower.includes("unavailable"))) {
     return {
-      message: "Modelo de IA não disponível. Tente outro fornecedor.",
+      message: "Modelo de IA nao disponivel. Tente outro fornecedor.",
       status: 503
     }
   }
@@ -140,13 +149,13 @@ function getAIErrorMessage(error: unknown): { message: string; status: number } 
       errorLower.includes("timeout") ||
       errorLower.includes("fetch")) {
     return {
-      message: "Erro de ligação ao serviço de IA. Tente novamente.",
+      message: "Erro de ligacao ao servico de IA. Tente novamente.",
       status: 503
     }
   }
 
   return {
-    message: "Erro ao gerar tácticas de IA",
+    message: "Erro ao gerar tacticas de IA",
     status: 500
   }
 }
@@ -189,7 +198,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Error fetching saved tactics:", error)
     return NextResponse.json<ProspectoTacticsResponse>(
-      { success: false, error: "Erro ao carregar tácticas guardadas" },
+      { success: false, error: "Erro ao carregar tacticas guardadas" },
       { status: 500 }
     )
   }
@@ -198,6 +207,16 @@ export async function GET(request: NextRequest) {
 // POST - Generate new tactics and save them
 export async function POST(request: NextRequest) {
   try {
+    // Get authenticated user
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json<ProspectoTacticsResponse>(
+        { success: false, error: "Nao autorizado" },
+        { status: 401 }
+      )
+    }
+    const userId = session.user.id
+
     const body = await request.json()
     const { prospectoId, provider: requestedProvider } = body
 
@@ -243,8 +262,8 @@ export async function POST(request: NextRequest) {
       .replace("{facebook}", prospecto.facebook || "Nao disponivel")
       .replace("{instagram}", prospecto.instagram || "Nao disponivel")
 
-    // Get AI response
-    const aiResponse = await generateAIResponse(prompt)
+    // Get AI response with userId for token tracking
+    const aiResponse = await generateAIResponse(prompt, userId, "prospecto_tactics")
 
     // Parse JSON response
     let tactics: ProspectoTactics
@@ -324,7 +343,7 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error("Error deleting tactics:", error)
     return NextResponse.json(
-      { success: false, error: "Erro ao eliminar tácticas" },
+      { success: false, error: "Erro ao eliminar tacticas" },
       { status: 500 }
     )
   }

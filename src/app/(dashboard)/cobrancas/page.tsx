@@ -47,8 +47,9 @@ async function getCobrancasData(ano: number | null) {
   }))
 
   const pendentes = cobrancas.filter(c => !c.pago)
+  const pagas = cobrancas.filter(c => c.pago)
   const totalPendente = pendentes.reduce((sum, c) => sum + Number(c.valor), 0)
-  const totalComissao = pendentes.reduce((sum, c) => sum + Number(c.comissao || 0), 0)
+  const totalComissao = pagas.reduce((sum, c) => sum + Number(c.comissao || 0), 0)
 
   return { cobrancas: serializedCobrancas, clientes, totalPendente, totalComissao }
 }

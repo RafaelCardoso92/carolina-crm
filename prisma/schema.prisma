@@ -35,16 +35,17 @@ model User {
   updatedAt            DateTime   @updatedAt
 
   // Owned data relationships
-  clientes       Cliente[]
-  prospectos     Prospecto[]
-  tarefas        Tarefa[]
-  comunicacoes   Comunicacao[]
-  amostras       Amostra[]
-  orcamentos     Orcamento[]
-  rotasSalvas    RotaSalva[]
-  campanhas      Campanha[]
-  moodEntries    MoodEntry[]
+  clientes        Cliente[]
+  prospectos      Prospecto[]
+  tarefas         Tarefa[]
+  comunicacoes    Comunicacao[]
+  amostras        Amostra[]
+  orcamentos      Orcamento[]
+  rotasSalvas     RotaSalva[]
+  campanhas       Campanha[]
+  moodEntries     MoodEntry[]
   objetivosVarios ObjetivoVario[]
+  tokenBalance    TokenBalance?
 
   @@index([role])
   @@index([status])
@@ -98,25 +99,25 @@ model Cliente {
 }
 
 model Venda {
-  id                  String              @id @default(cuid())
-  clienteId           String
-  valor1              Decimal?            @db.Decimal(10, 2)
-  valor2              Decimal?            @db.Decimal(10, 2)
-  total               Decimal             @db.Decimal(10, 2)
-  mes                 Int
-  ano                 Int
-  notas               String?
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
-  objetivoVarioId     String?
-  objetivoVarioValor  Decimal?            @db.Decimal(10, 2)
-  campanhas           CampanhaVenda[]
-  cobranca                Cobranca?
-  devolucoes              Devolucao[]
-  itensReconciliacao      ItemReconciliacao[]
-  itens                   ItemVenda[]
-  cliente                 Cliente             @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  objetivoVario           ObjetivoVario?      @relation(fields: [objetivoVarioId], references: [id])
+  id                 String              @id @default(cuid())
+  clienteId          String
+  valor1             Decimal?            @db.Decimal(10, 2)
+  valor2             Decimal?            @db.Decimal(10, 2)
+  total              Decimal             @db.Decimal(10, 2)
+  mes                Int
+  ano                Int
+  notas              String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  objetivoVarioId    String?
+  objetivoVarioValor Decimal?            @db.Decimal(10, 2)
+  campanhas          CampanhaVenda[]
+  cobranca           Cobranca?
+  devolucoes         Devolucao[]
+  itensReconciliacao ItemReconciliacao[]
+  itens              ItemVenda[]
+  cliente            Cliente             @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  objetivoVario      ObjetivoVario?      @relation(fields: [objetivoVarioId], references: [id])
 
   @@index([clienteId])
   @@index([mes, ano])
@@ -238,22 +239,22 @@ model PremioAnual {
 }
 
 model Produto {
-  id               String                 @id @default(cuid())
-  nome             String
-  codigo           String?                @unique
-  categoria        String?
-  descricao        String?
-  ativo            Boolean                @default(true)
-  createdAt        DateTime               @default(now())
-  updatedAt        DateTime               @updatedAt
-  preco            Decimal?               @db.Decimal(10, 2)
-  tipo             String?
-  amostras         Amostra[]
-  produtos         CampanhaProduto[]
-  substituicoes    ItemDevolucao[]        @relation("Substituicao")
-  itensOrcamento   ItemOrcamento[]
-  itensVenda       ItemVenda[]
-  objetivosVarios  ObjetivoVarioProduto[]
+  id              String                 @id @default(cuid())
+  nome            String
+  codigo          String?                @unique
+  categoria       String?
+  descricao       String?
+  ativo           Boolean                @default(true)
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  preco           Decimal?               @db.Decimal(10, 2)
+  tipo            String?
+  amostras        Amostra[]
+  produtos        CampanhaProduto[]
+  substituicoes   ItemDevolucao[]        @relation("Substituicao")
+  itensOrcamento  ItemOrcamento[]
+  itensVenda      ItemVenda[]
+  objetivosVarios ObjetivoVarioProduto[]
 }
 
 model ItemVenda {
@@ -393,27 +394,27 @@ model ReconciliacaoMensal {
 }
 
 model ItemReconciliacao {
-  id                    String              @id @default(cuid())
-  reconciliacaoId       String
-  codigoClientePdf      String
-  nomeClientePdf        String
-  valorBrutoPdf         Decimal             @db.Decimal(10, 2)
-  descontoPdf           Decimal             @db.Decimal(10, 2)
-  valorLiquidoPdf       Decimal             @db.Decimal(10, 2)
-  clienteId             String?
-  vendaId               String?
-  valorSistema          Decimal?            @db.Decimal(10, 2)
-  valorVendas           Decimal?            @db.Decimal(10, 2) // Value from regular sales only
-  valorObjetivosVarios  Decimal?            @db.Decimal(10, 2) // Value from objetivos varios
-  corresponde           Boolean             @default(false)
-  tipoDiscrepancia      TipoDiscrepancia?
-  diferencaValor        Decimal?            @db.Decimal(10, 2)
-  resolvido             Boolean             @default(false)
-  notaResolucao         String?
-  createdAt             DateTime            @default(now())
-  cliente               Cliente?            @relation(fields: [clienteId], references: [id])
-  reconciliacao         ReconciliacaoMensal @relation(fields: [reconciliacaoId], references: [id], onDelete: Cascade)
-  venda                 Venda?              @relation(fields: [vendaId], references: [id])
+  id                   String              @id @default(cuid())
+  reconciliacaoId      String
+  codigoClientePdf     String
+  nomeClientePdf       String
+  valorBrutoPdf        Decimal             @db.Decimal(10, 2)
+  descontoPdf          Decimal             @db.Decimal(10, 2)
+  valorLiquidoPdf      Decimal             @db.Decimal(10, 2)
+  clienteId            String?
+  vendaId              String?
+  valorSistema         Decimal?            @db.Decimal(10, 2)
+  valorVendas          Decimal?            @db.Decimal(10, 2) // Value from regular sales only
+  valorObjetivosVarios Decimal?            @db.Decimal(10, 2) // Value from objetivos varios
+  corresponde          Boolean             @default(false)
+  tipoDiscrepancia     TipoDiscrepancia?
+  diferencaValor       Decimal?            @db.Decimal(10, 2)
+  resolvido            Boolean             @default(false)
+  notaResolucao        String?
+  createdAt            DateTime            @default(now())
+  cliente              Cliente?            @relation(fields: [clienteId], references: [id])
+  reconciliacao        ReconciliacaoMensal @relation(fields: [reconciliacaoId], references: [id], onDelete: Cascade)
+  venda                Venda?              @relation(fields: [vendaId], references: [id])
 
   @@index([reconciliacaoId])
   @@index([clienteId])
@@ -630,18 +631,18 @@ model PrevisaoVendas {
 }
 
 model Campanha {
-  id              String            @id @default(cuid())
-  userId          String?
-  titulo          String
-  descricao       String?
-  mes             Int
-  ano             Int
-  ativo           Boolean           @default(true)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  user            User?             @relation(fields: [userId], references: [id])
-  produtos        CampanhaProduto[]
-  vendas          CampanhaVenda[]
+  id        String            @id @default(cuid())
+  userId    String?
+  titulo    String
+  descricao String?
+  mes       Int
+  ano       Int
+  ativo     Boolean           @default(true)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  user      User?             @relation(fields: [userId], references: [id])
+  produtos  CampanhaProduto[]
+  vendas    CampanhaVenda[]
 
   @@index([userId])
   @@index([ativo])
@@ -678,18 +679,18 @@ model CampanhaVenda {
 }
 
 model ObjetivoVario {
-  id          String                 @id @default(cuid())
-  userId      String?
-  titulo      String
-  descricao   String?
-  mes         Int
-  ano         Int
-  ativo       Boolean                @default(true)
-  createdAt   DateTime               @default(now())
-  updatedAt   DateTime               @updatedAt
-  user        User?                  @relation(fields: [userId], references: [id])
-  produtos    ObjetivoVarioProduto[]
-  vendas      Venda[]
+  id        String                 @id @default(cuid())
+  userId    String?
+  titulo    String
+  descricao String?
+  mes       Int
+  ano       Int
+  ativo     Boolean                @default(true)
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+  user      User?                  @relation(fields: [userId], references: [id])
+  produtos  ObjetivoVarioProduto[]
+  vendas    Venda[]
 
   @@index([userId])
   @@index([ativo])
@@ -839,19 +840,85 @@ enum TipoNotificacao {
 }
 
 model AcordoParceria {
-  id              String    @id @default(cuid())
-  clienteId       String    @unique
-  cliente         Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  valorAnual      Decimal   @db.Decimal(10, 2)
-  ano             Int
-  dataInicio      DateTime  @default(now())
-  dataFim         DateTime?
-  ativo           Boolean   @default(true)
-  notas           String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id         String    @id @default(cuid())
+  clienteId  String    @unique
+  cliente    Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  valorAnual Decimal   @db.Decimal(10, 2)
+  ano        Int
+  dataInicio DateTime  @default(now())
+  dataFim    DateTime?
+  ativo      Boolean   @default(true)
+  notas      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@index([clienteId])
   @@index([ano])
   @@index([ativo])
+}
+
+// ==========================================
+// AI Token System
+// ==========================================
+
+model TokenBalance {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  tokensTotal Int      @default(0)
+  tokensUsed  Int      @default(0)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model TokenUsage {
+  id           String   @id @default(cuid())
+  userId       String
+  inputTokens  Int
+  outputTokens Int
+  totalTokens  Int
+  costEur      Decimal  @db.Decimal(10, 6)
+  feature      String
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([userId, createdAt])
+}
+
+model TokenPurchase {
+  id              String              @id @default(cuid())
+  userId          String
+  tokens          Int
+  amountEur       Decimal             @db.Decimal(10, 2)
+  stripeSessionId String?             @unique
+  stripePaymentId String?             @unique
+  status          TokenPurchaseStatus @default(PENDING)
+  createdAt       DateTime            @default(now())
+  completedAt     DateTime?
+
+  @@index([userId])
+  @@index([status])
+  @@index([stripeSessionId])
+}
+
+model TokenAllocation {
+  id          String   @id @default(cuid())
+  userId      String
+  tokens      Int
+  allocatedBy String
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([allocatedBy])
+}
+
+enum TokenPurchaseStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
 }
