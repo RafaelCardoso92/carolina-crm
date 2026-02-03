@@ -137,7 +137,7 @@ INSTRUCOES:
       model: "gpt-5.1",
       messages: openaiMessages,
       temperature: 0.8,
-      max_tokens: 1000
+      max_completion_tokens: 1000
     })
 
     const assistantMessage = response.choices[0]?.message?.content || "Desculpa, nao consegui responder. Tenta novamente!"
