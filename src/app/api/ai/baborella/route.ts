@@ -136,10 +136,10 @@ INSTRUCOES:
     let response
     try {
       response = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-5.1",
         messages: openaiMessages,
         temperature: 0.8,
-        max_tokens: 1000
+        max_completion_tokens: 1000
       })
     } catch (openaiError) {
       console.error("OpenAI API error:", openaiError)
