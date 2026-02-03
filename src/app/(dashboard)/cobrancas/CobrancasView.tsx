@@ -48,7 +48,10 @@ type Props = {
   cobrancas: Cobranca[]
   clientes: Cliente[]
   totalPendente: number
-  totalComissao: number
+  totalPago: number
+  pagoEsteMes: number
+  pagoMesPassado: number
+  valorEmAtraso: number
   ano: number | null
 }
 
@@ -68,7 +71,7 @@ function formatDate(dateVal: Date | string): string {
   return date.toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric" })
 }
 
-export default function CobrancasView({ cobrancas, clientes, totalPendente, totalComissao, ano }: Props) {
+export default function CobrancasView({ cobrancas, clientes, totalPendente, totalPago, pagoEsteMes, pagoMesPassado, valorEmAtraso, ano }: Props) {
   const router = useRouter()
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -436,42 +439,46 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6">
-        <div className="bg-white dark:bg-card rounded-2xl shadow-sm p-4 md:p-5 border-l-4 border-orange-500 border border-border">
+        <div className="bg-white rounded-2xl shadow-sm p-4 md:p-5 border-l-4 border-orange-500 border border-border">
           <div className="flex items-center gap-2 md:gap-3 mb-2">
             <div className="p-2 md:p-2.5 bg-orange-500/10 rounded-xl">
-              <svg className="w-5 h-5 md:w-6 md:h-6 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 md:w-6 md:h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h3 className="text-xs md:text-sm font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wide">Pendente</h3>
+            <h3 className="text-xs md:text-sm font-bold text-orange-600 uppercase tracking-wide">Pendente</h3>
           </div>
-          <p className="text-xl md:text-3xl font-bold text-orange-600 dark:text-orange-400">{formatCurrency(totalPendente)} €</p>
+          <p className="text-xl md:text-3xl font-bold text-orange-600">{formatCurrency(totalPendente)} €</p>
           <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden md:block">Por receber {ano ? `(${ano})` : ""}</p>
         </div>
-        <div className="bg-white dark:bg-card rounded-2xl shadow-sm p-4 md:p-5 border-l-4 border-primary border border-border">
+        <div className="bg-white rounded-2xl shadow-sm p-4 md:p-5 border-l-4 border-green-500 border border-border">
           <div className="flex items-center gap-2 md:gap-3 mb-2">
-            <div className="p-2 md:p-2.5 bg-primary/10 rounded-xl">
-              <svg className="w-5 h-5 md:w-6 md:h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            <div className="p-2 md:p-2.5 bg-green-500/10 rounded-xl">
+              <svg className="w-5 h-5 md:w-6 md:h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h3 className="text-xs md:text-sm font-bold text-muted-foreground uppercase tracking-wide">Comissao</h3>
+            <h3 className="text-xs md:text-sm font-bold text-green-600 uppercase tracking-wide">Pago</h3>
           </div>
-          <p className="text-xl md:text-3xl font-bold text-primary">{formatCurrency(totalComissao)} €</p>
-          <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden md:block">3.5% pendentes</p>
+          <p className="text-xl md:text-3xl font-bold text-green-600">{formatCurrency(totalPago)} €</p>
+          <div className="text-xs text-muted-foreground mt-1 hidden md:flex md:gap-2">
+            <span>Este mês: {formatCurrency(pagoEsteMes)}€</span>
+            <span>•</span>
+            <span>Mês passado: {formatCurrency(pagoMesPassado)}€</span>
+          </div>
         </div>
         {totalAtrasadas > 0 && (
-          <div className="bg-white dark:bg-card rounded-2xl shadow-sm p-4 md:p-5 border-l-4 border-red-500 border border-border col-span-2 md:col-span-1 hover:shadow-md transition-shadow">
+          <div className="bg-white rounded-2xl shadow-sm p-4 md:p-5 border-l-4 border-red-500 border border-border col-span-2 md:col-span-1 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-2 md:gap-3 mb-2">
               <div className="p-2 md:p-2.5 bg-red-500/15 rounded-xl">
-                <svg className="w-5 h-5 md:w-6 md:h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 md:w-6 md:h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
-              <h3 className="text-xs md:text-sm font-bold text-muted-foreground uppercase tracking-wide">Em Atraso</h3>
+              <h3 className="text-xs md:text-sm font-bold text-red-600 uppercase tracking-wide">Em Atraso</h3>
             </div>
-            <p className="text-xl md:text-3xl font-bold text-red-600 dark:text-red-400">{totalAtrasadas}</p>
-            <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden md:block">Parcelas atrasadas</p>
+            <p className="text-xl md:text-3xl font-bold text-red-600">{formatCurrency(valorEmAtraso)} €</p>
+            <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden md:block">{totalAtrasadas} parcela{totalAtrasadas !== 1 ? 's' : ''} atrasada{totalAtrasadas !== 1 ? 's' : ''}</p>
           </div>
         )}
       </div>

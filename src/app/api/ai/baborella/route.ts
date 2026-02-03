@@ -135,26 +135,30 @@ INSTRUCOES:
     // Call OpenAI
     let response
     try {
+      console.log("Calling GPT-5.1...")
       response = await openai.chat.completions.create({
         model: "gpt-5.1",
         messages: openaiMessages,
         temperature: 0.8,
         max_completion_tokens: 1000
       })
-    } catch (openaiError) {
+      console.log("GPT-5.1 response:", JSON.stringify(response, null, 2))
+    } catch (openaiError: unknown) {
       console.error("OpenAI API error:", openaiError)
-      // Return error WITHOUT charging tokens
+      const errorMessage = openaiError instanceof Error ? openaiError.message : "Unknown error"
       return NextResponse.json({ 
-        error: "Erro ao contactar a IA. Tenta novamente!",
+        error: "Erro ao contactar a IA: " + errorMessage,
         tokensUsed: 0
       }, { status: 500 })
     }
 
     const assistantMessage = response.choices[0]?.message?.content
     
+    console.log("Assistant message:", assistantMessage)
+    
     // If no valid response, don't charge tokens
     if (!assistantMessage || assistantMessage.trim() === "") {
-      console.error("OpenAI returned empty response")
+      console.error("OpenAI returned empty response, full response:", JSON.stringify(response))
       return NextResponse.json({ 
         error: "A Baborella nao conseguiu responder. Tenta novamente!",
         tokensUsed: 0
