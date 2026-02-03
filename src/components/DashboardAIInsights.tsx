@@ -113,6 +113,16 @@ export default function DashboardAIInsights() {
         setInsight(data.insight)
         setExpanded(true)
         fetchTokens()
+        if (data.tokensUsed) {
+          Swal.fire({
+            icon: "success",
+            title: "Insights gerados!",
+            html: `Foram utilizados <strong>${data.tokensUsed.toLocaleString()}</strong> tokens.`,
+            timer: 3000,
+            timerProgressBar: true,
+            showConfirmButton: false
+          })
+        }
       } else {
         throw new Error(data.error)
       }

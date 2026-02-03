@@ -153,7 +153,7 @@ export async function generateAIResponse(
   }
 
   const response = await openai.chat.completions.create({
-    model: "gpt-5.1",
+    model: "gpt-4o",
     messages: [{ role: "user", content: prompt }],
     temperature: 0.7,
   })
@@ -165,6 +165,9 @@ export async function generateAIResponse(
   
   await deductTokens(userId, inputTokens, outputTokens, feature)
   setCachedResponse(prompt, result)
+  
+  // Attach token usage info to the result
+  ;(result as any).__tokensUsed = inputTokens + outputTokens
 
   return result
 }

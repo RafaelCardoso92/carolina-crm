@@ -169,6 +169,7 @@ Responde APENAS em JSON valido com esta estrutura exata:
 }`
 
     const response = await generateAIResponse(prompt, userId, "dashboard_insights")
+    const tokensUsed = (response as any).__tokensUsed || 0
 
     let parsedData
     try {
@@ -206,7 +207,7 @@ Responde APENAS em JSON valido com esta estrutura exata:
       }
     })
 
-    return NextResponse.json({ insight, cached: false })
+    return NextResponse.json({ insight, cached: false, tokensUsed })
   } catch (error) {
     console.error("Error generating dashboard insights:", error)
     if (error instanceof Error && error.message === "INSUFFICIENT_TOKENS") {
