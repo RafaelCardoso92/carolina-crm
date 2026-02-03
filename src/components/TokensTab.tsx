@@ -292,11 +292,11 @@ export default function TokensTab({ isAdmin }: TokensTabProps) {
           </svg>
           Comprar Tokens
         </h3>
-        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 mb-4">
-          <p className="text-sm text-blue-800 dark:text-blue-200">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 mb-4 shadow-sm">
+          <p className="text-sm text-gray-900 dark:text-gray-100">
             <strong>Preco:</strong> €5 por 1 milhao de tokens
           </p>
-          <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
+          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
             Minimo: €{MIN_PURCHASE} ({formatTokens(MIN_PURCHASE * TOKENS_PER_EUR)} tokens)
           </p>
         </div>

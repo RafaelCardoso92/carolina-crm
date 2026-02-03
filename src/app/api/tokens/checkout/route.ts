@@ -68,7 +68,10 @@ export async function POST(request: NextRequest) {
       mode: "payment",
       success_url: `${process.env.NEXTAUTH_URL || "https://carolina.rafaelcardoso.co.uk"}/definicoes?tab=tokens&success=true`,
       cancel_url: `${process.env.NEXTAUTH_URL || "https://carolina.rafaelcardoso.co.uk"}/definicoes?tab=tokens&canceled=true`,
-      customer_email: session.user.email,
+      // Only include customer_email if it's a valid email
+      ...(session.user.email && session.user.email.includes('@') && session.user.email.includes('.') 
+        ? { customer_email: session.user.email } 
+        : {}),
       metadata: {
         purchaseId: purchase.id,
         userId: userId,

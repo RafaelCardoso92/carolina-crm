@@ -314,6 +314,13 @@ export default function DashboardView() {
                 {formatCurrency(data.proximasParcelas.reduce((sum, p) => sum + p.valor, 0))}€
               </p>
             </div>
+            <div className="bg-white dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-xl p-3 text-center">
+              <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{formatCurrency(data.cobrancasStats.comissaoMensal)}€</p>
+              <p className="text-xs text-muted-foreground">Comissao do Mes</p>
+              <p className="text-sm font-semibold text-purple-600 dark:text-purple-400 mt-1">
+                {meses[data.currentMonth]}
+              </p>
+            </div>
           </div>
         </div>
       )}
