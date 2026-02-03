@@ -300,28 +300,27 @@ export default function TokensTab({ isAdmin }: TokensTabProps) {
             Minimo: €{MIN_PURCHASE} ({formatTokens(MIN_PURCHASE * TOKENS_PER_EUR)} tokens)
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-end">
+          <div className="w-32">
+            <label className="block text-sm font-medium text-foreground mb-1">Valor em €</label>
+            <input
+              type="number"
+              min={MIN_PURCHASE}
+              max={1000}
+              step="1"
+              value={purchaseAmount}
+              onChange={(e) => setPurchaseAmount(e.target.value)}
+              className="w-full px-4 py-3 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none text-center"
+            />
+          </div>
           <div className="flex-1">
-            <label className="block text-sm font-medium text-foreground mb-1">Valor (EUR)</label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">€</span>
-              <input
-                type="number"
-                min={MIN_PURCHASE}
-                max={1000}
-                step="1"
-                value={purchaseAmount}
-                onChange={(e) => setPurchaseAmount(e.target.value)}
-                className="w-full pl-8 pr-4 py-3 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none"
-              />
-            </div>
             {tokensForAmount > 0 && (
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-muted-foreground py-3">
                 = {formatTokens(tokensForAmount)} tokens
               </p>
             )}
           </div>
-          <div className="flex items-end">
+          <div>
             <button
               onClick={handlePurchase}
               disabled={purchasing}
