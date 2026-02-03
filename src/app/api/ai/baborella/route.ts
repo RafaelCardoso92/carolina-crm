@@ -133,19 +133,39 @@ INSTRUCOES:
     openaiMessages.push({ role: "user", content: message })
 
     // Call OpenAI
-    const response = await openai.chat.completions.create({
-      model: "gpt-5.1",
-      messages: openaiMessages,
-      temperature: 0.8,
-      max_completion_tokens: 1000
-    })
+    let response
+    try {
+      response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: openaiMessages,
+        temperature: 0.8,
+        max_tokens: 1000
+      })
+    } catch (openaiError) {
+      console.error("OpenAI API error:", openaiError)
+      // Return error WITHOUT charging tokens
+      return NextResponse.json({ 
+        error: "Erro ao contactar a IA. Tenta novamente!",
+        tokensUsed: 0
+      }, { status: 500 })
+    }
 
-    const assistantMessage = response.choices[0]?.message?.content || "Desculpa, nao consegui responder. Tenta novamente!"
+    const assistantMessage = response.choices[0]?.message?.content
+    
+    // If no valid response, don't charge tokens
+    if (!assistantMessage || assistantMessage.trim() === "") {
+      console.error("OpenAI returned empty response")
+      return NextResponse.json({ 
+        error: "A Baborella nao conseguiu responder. Tenta novamente!",
+        tokensUsed: 0
+      }, { status: 500 })
+    }
+
     const inputTokens = response.usage?.prompt_tokens || 0
     const outputTokens = response.usage?.completion_tokens || 0
     const totalTokens = inputTokens + outputTokens
 
-    // Deduct tokens
+    // Only deduct tokens if we have a valid response
     await prisma.tokenBalance.upsert({
       where: { userId },
       create: { userId, tokensTotal: 0, tokensUsed: totalTokens },
@@ -207,7 +227,11 @@ INSTRUCOES:
     })
   } catch (error) {
     console.error("Error in Baborella chat:", error)
-    return NextResponse.json({ error: "Erro ao processar mensagem" }, { status: 500 })
+    // Generic error - no tokens charged
+    return NextResponse.json({ 
+      error: "Erro ao processar mensagem",
+      tokensUsed: 0 
+    }, { status: 500 })
   }
 }
 
