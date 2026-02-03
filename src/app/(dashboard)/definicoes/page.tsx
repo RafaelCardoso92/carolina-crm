@@ -2,6 +2,7 @@
 
 import TokensTab from "@/components/TokensTab"
 import { useSearchParams } from "next/navigation"
+import { Suspense } from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -126,19 +127,19 @@ export default function DefinicoesPage() {
   const [comissao, setComissao] = useState("")
   const [selectedAno, setSelectedAno] = useState(new Date().getFullYear())
 
-  useEffect(() => {
-    fetchData()
 
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    const tab = searchParams.get("tab")
+    fetchData()
+  }, [])
+
+  useEffect(() => {
+    const tab = searchParams?.get("tab")
     if (tab === "tokens") {
       setActiveTab("tokens")
     }
   }, [searchParams])
-  }, [])
-
   async function fetchData() {
     try {
       const [defRes, prodRes, campRes, objVarRes, meRes] = await Promise.all([
