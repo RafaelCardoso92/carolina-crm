@@ -32,7 +32,7 @@ export default function ProspectoAITactics({ prospectoId }: Props) {
         if (settingsRes.ok) {
           const data: AISettingsResponse = await settingsRes.json()
           setCurrentProvider(data.currentProvider)
-          setAvailableProviders(data.availableProviders)
+          setAvailableProviders(data.availableProviders || { openai: true })
         }
 
         // Fetch saved tactics
