@@ -7,11 +7,8 @@ const openai = process.env.OPENAI_API_KEY
 
 export type AIProvider = "openai"
 
-// Token pricing: €5 per 1M tokens
-// GPT-5.1: $1.25/1M input, $10/1M output
-// We charge a flat rate of €5 per 1M tokens (combined)
-const TOKENS_PER_EUR = 200000 // 1M tokens / €5 = 200K tokens per €1
-const EUR_PER_TOKEN = 0.000005 // €5 / 1M = €0.000005 per token
+const TOKENS_PER_EUR = 200000
+const EUR_PER_TOKEN = 0.000005
 
 // ===========================================
 // Response Cache (1 hour TTL)
@@ -22,7 +19,7 @@ interface CacheEntry {
 }
 
 const responseCache = new Map<string, CacheEntry>()
-const CACHE_TTL_MS = 60 * 60 * 1000 // 1 hour
+const CACHE_TTL_MS = 60 * 60 * 1000
 
 function getCacheKey(prompt: string): string {
   let hash = 0
@@ -37,24 +34,17 @@ function getCacheKey(prompt: string): string {
 function getCachedResponse(prompt: string): string | null {
   const key = getCacheKey(prompt)
   const entry = responseCache.get(key)
-
   if (!entry) return null
-
   if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
     responseCache.delete(key)
     return null
   }
-
   return entry.response
 }
 
 function setCachedResponse(prompt: string, response: string) {
   const key = getCacheKey(prompt)
-  responseCache.set(key, {
-    response,
-    timestamp: Date.now()
-  })
-
+  responseCache.set(key, { response, timestamp: Date.now() })
   if (responseCache.size > 100) {
     const now = Date.now()
     for (const [k, v] of responseCache) {
@@ -69,32 +59,42 @@ function setCachedResponse(prompt: string, response: string) {
 // Token Management
 // ===========================================
 
-export async function getTokenBalance(userId: string): Promise<{ total: number; used: number; remaining: number }> {
+export async function getTokenBalance(userId: string): Promise<{ total: number; used: number; remaining: number; isNegative: boolean }> {
   const balance = await prisma.tokenBalance.findUnique({
     where: { userId }
   })
   
   if (!balance) {
-    return { total: 0, used: 0, remaining: 0 }
+    return { total: 0, used: 0, remaining: 0, isNegative: false }
   }
   
+  const remaining = balance.tokensTotal - balance.tokensUsed
   return {
     total: balance.tokensTotal,
     used: balance.tokensUsed,
-    remaining: balance.tokensTotal - balance.tokensUsed
+    remaining,
+    isNegative: remaining < 0
   }
 }
 
-export async function checkTokens(userId: string, estimatedTokens: number): Promise<boolean> {
+// Allow going negative ONCE - if already negative, block
+export async function checkTokens(userId: string, estimatedTokens: number): Promise<{ allowed: boolean; isNegative: boolean; remaining: number }> {
   const balance = await getTokenBalance(userId)
-  return balance.remaining >= estimatedTokens
+  
+  // If already negative, they must add more tokens
+  if (balance.remaining < 0) {
+    return { allowed: false, isNegative: true, remaining: balance.remaining }
+  }
+  
+  // If they have tokens OR this would be their first time going negative, allow
+  // (allowing one negative use)
+  return { allowed: true, isNegative: false, remaining: balance.remaining }
 }
 
 async function deductTokens(userId: string, inputTokens: number, outputTokens: number, feature: string): Promise<void> {
   const totalTokens = inputTokens + outputTokens
   const costEur = totalTokens * EUR_PER_TOKEN
   
-  // Update balance
   await prisma.tokenBalance.upsert({
     where: { userId },
     create: {
@@ -107,7 +107,6 @@ async function deductTokens(userId: string, inputTokens: number, outputTokens: n
     }
   })
   
-  // Record usage
   await prisma.tokenUsage.create({
     data: {
       userId,
@@ -137,18 +136,16 @@ export async function generateAIResponse(
     throw new Error("OpenAI API key not configured")
   }
 
-  // Estimate tokens (rough: 4 chars = 1 token)
   const estimatedInputTokens = Math.ceil(prompt.length / 4)
-  const estimatedOutputTokens = 1000 // Assume max 1000 output tokens
+  const estimatedOutputTokens = 1000
   const estimatedTotal = estimatedInputTokens + estimatedOutputTokens
 
-  // Check if user has enough tokens
-  const hasTokens = await checkTokens(userId, estimatedTotal)
-  if (!hasTokens) {
+  // Check if user can use tokens (allows going negative once)
+  const tokenCheck = await checkTokens(userId, estimatedTotal)
+  if (!tokenCheck.allowed) {
     throw new Error("INSUFFICIENT_TOKENS")
   }
 
-  // Check cache first
   const cached = getCachedResponse(prompt)
   if (cached) {
     console.log("[AI] Cache hit")
@@ -163,20 +160,15 @@ export async function generateAIResponse(
 
   const result = response.choices[0]?.message?.content || ""
   
-  // Get actual token usage from response
   const inputTokens = response.usage?.prompt_tokens || estimatedInputTokens
   const outputTokens = response.usage?.completion_tokens || Math.ceil(result.length / 4)
   
-  // Deduct tokens
   await deductTokens(userId, inputTokens, outputTokens, feature)
-  
-  // Cache the response
   setCachedResponse(prompt, result)
 
   return result
 }
 
-// Legacy function for backward compatibility (requires userId now)
 export async function generateAIResponseLegacy(prompt: string): Promise<string> {
   throw new Error("generateAIResponse now requires userId for token tracking")
 }
@@ -188,9 +180,7 @@ export function getAvailableProviders(): { gemini: boolean; openai: boolean } {
   }
 }
 
-export async function setAIProvider(): Promise<void> {
-  // Only OpenAI available now
-}
+export async function setAIProvider(): Promise<void> {}
 
 // ===========================================
 // Admin Functions
@@ -202,7 +192,6 @@ export async function allocateTokens(
   allocatedBy: string,
   reason?: string
 ): Promise<void> {
-  // Update balance
   await prisma.tokenBalance.upsert({
     where: { userId },
     create: {
@@ -215,7 +204,6 @@ export async function allocateTokens(
     }
   })
   
-  // Record allocation
   await prisma.tokenAllocation.create({
     data: {
       userId,
@@ -229,7 +217,6 @@ export async function allocateTokens(
 export async function addPurchasedTokens(userId: string, amountEur: number, stripePaymentId: string): Promise<number> {
   const tokens = Math.floor(amountEur * TOKENS_PER_EUR)
   
-  // Update balance
   await prisma.tokenBalance.upsert({
     where: { userId },
     create: {

@@ -36,6 +36,7 @@ interface CobrancasStats {
   pendentesValor: number
   pagasCount: number
   pagasValor: number
+  comissaoMensal: number
 }
 
 interface ObjetivoVario {
@@ -228,7 +229,7 @@ export default function DashboardView() {
                 key={obj.id} 
                 className={`rounded-xl p-3 border ${
                   obj.atingido 
-                    ? "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800" 
+                    ? "bg-white dark:bg-green-950/30 border border-green-200 dark:border-green-800 border-green-200 dark:border-green-800" 
                     : "bg-secondary/50 border-border"
                 }`}
               >
@@ -284,29 +285,29 @@ export default function DashboardView() {
               Ver todas →
             </a>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-orange-50 dark:bg-orange-950/30 rounded-xl p-3 text-center">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <div className="bg-white dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-xl p-3 text-center">
               <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{data.cobrancasStats.pendentesCount}</p>
               <p className="text-xs text-muted-foreground">Pendentes</p>
               <p className="text-sm font-semibold text-orange-600 dark:text-orange-400 mt-1">
                 {formatCurrency(data.cobrancasStats.pendentesValor)}€
               </p>
             </div>
-            <div className="bg-green-50 dark:bg-green-950/30 rounded-xl p-3 text-center">
+            <div className="bg-white dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-xl p-3 text-center">
               <p className="text-2xl font-bold text-green-600 dark:text-green-400">{data.cobrancasStats.pagasCount}</p>
               <p className="text-xs text-muted-foreground">Pagas</p>
               <p className="text-sm font-semibold text-green-600 dark:text-green-400 mt-1">
                 {formatCurrency(data.cobrancasStats.pagasValor)}€
               </p>
             </div>
-            <div className="bg-red-50 dark:bg-red-950/30 rounded-xl p-3 text-center">
+            <div className="bg-white dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl p-3 text-center">
               <p className="text-2xl font-bold text-red-600 dark:text-red-400">{data.parcelasAtrasadas}</p>
               <p className="text-xs text-muted-foreground">Em Atraso</p>
               <p className="text-sm font-semibold text-red-600 dark:text-red-400 mt-1">
                 {formatCurrency(data.valorAtrasado)}€
               </p>
             </div>
-            <div className="bg-blue-50 dark:bg-blue-950/30 rounded-xl p-3 text-center">
+            <div className="bg-white dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-center">
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{data.proximasParcelas.length}</p>
               <p className="text-xs text-muted-foreground">Proximos 7 dias</p>
               <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 mt-1">
@@ -421,7 +422,7 @@ export default function DashboardView() {
       {/* Annual Summary */}
       <div className="bg-card rounded-lg border border-border p-3">
         <h3 className="text-sm font-semibold text-foreground mb-2">Resumo {data.currentYear}</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
           <MiniStat label="Total" value={`${formatCurrency(data.vendasAno)}€`} />
           <MiniStat label="Sem IVA" value={`${formatCurrency(ivaAno.semIVA)}€`} />
           <MiniStat label="IVA" value={`${formatCurrency(ivaAno.iva)}€`} />

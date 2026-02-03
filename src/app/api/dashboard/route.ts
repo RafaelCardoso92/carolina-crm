@@ -48,6 +48,7 @@ export async function GET(request: Request) {
       cobrancasPendentesCount,
       cobrancasPagasCount,
       cobrancasPagasValor,
+      comissaoMensal,
       objetivosVarios
     ] = await Promise.all([
       prisma.cliente.count(),
@@ -156,6 +157,16 @@ export async function GET(request: Request) {
       prisma.cobranca.aggregate({
         where: { pago: true },
         _sum: { valor: true }
+      }),
+      prisma.cobranca.aggregate({
+        where: {
+          pago: true,
+          dataPago: {
+            gte: new Date(ano, mes - 1, 1),
+            lt: new Date(ano, mes, 1)
+          }
+        },
+        _sum: { comissao: true }
       }),
       // Objetivos Varios for current month/year
       prisma.objetivoVario.findMany({
@@ -320,7 +331,8 @@ export async function GET(request: Request) {
         pendentesCount: cobrancasPendentesCount,
         pendentesValor: pendentesTotal,
         pagasCount: cobrancasPagasCount,
-        pagasValor: Number(cobrancasPagasValor._sum.valor) || 0
+        pagasValor: Number(cobrancasPagasValor._sum.valor) || 0,
+        comissaoMensal: Number(comissaoMensal._sum.comissao) || 0
       },
       objetivosVarios: objetivosVariosData
     }

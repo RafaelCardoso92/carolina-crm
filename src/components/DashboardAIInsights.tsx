@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import Swal from "sweetalert2"
 
 type InsightData = {
@@ -28,15 +29,35 @@ type Insight = {
   updatedAt: string
 }
 
+type TokenBalance = {
+  remaining: number
+  formatted: string
+  isNegative: boolean
+}
+
 export default function DashboardAIInsights() {
   const [insight, setInsight] = useState<Insight | null>(null)
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  const [tokens, setTokens] = useState<TokenBalance | null>(null)
 
   useEffect(() => {
     fetchInsight()
+    fetchTokens()
   }, [])
+
+  async function fetchTokens() {
+    try {
+      const res = await fetch("/api/tokens/balance")
+      if (res.ok) {
+        const data = await res.json()
+        setTokens(data)
+      }
+    } catch (error) {
+      console.error("Error fetching tokens:", error)
+    }
+  }
 
   async function fetchInsight() {
     try {
@@ -53,6 +74,23 @@ export default function DashboardAIInsights() {
   }
 
   async function generateInsight() {
+    if (tokens?.isNegative) {
+      Swal.fire({
+        icon: "warning",
+        title: "Tokens esgotados",
+        html: "O seu saldo de tokens esta negativo.<br/>Adicione mais tokens para continuar.",
+        confirmButtonText: "Comprar Tokens",
+        confirmButtonColor: "#b8860b",
+        showCancelButton: true,
+        cancelButtonText: "Cancelar"
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.href = "/definicoes?tab=tokens"
+        }
+      })
+      return
+    }
+
     setGenerating(true)
     try {
       const res = await fetch("/api/ai/dashboard-insights", { method: "POST" })
@@ -62,8 +100,11 @@ export default function DashboardAIInsights() {
         Swal.fire({
           icon: "warning",
           title: "Tokens insuficientes",
-          text: "Precisa de mais tokens para gerar insights. Va a Definicoes > Tokens para comprar.",
+          text: "Precisa de mais tokens para gerar insights.",
+          confirmButtonText: "Comprar Tokens",
           confirmButtonColor: "#b8860b"
+        }).then(() => {
+          window.location.href = "/definicoes?tab=tokens"
         })
         return
       }
@@ -71,6 +112,7 @@ export default function DashboardAIInsights() {
       if (res.ok) {
         setInsight(data.insight)
         setExpanded(true)
+        fetchTokens()
       } else {
         throw new Error(data.error)
       }
@@ -113,7 +155,7 @@ export default function DashboardAIInsights() {
 
   if (loading) {
     return (
-      <div className="bg-gradient-to-br from-purple-500/10 to-blue-500/10 rounded-2xl p-4 border border-purple-500/20">
+      <div className="bg-white dark:bg-card rounded-2xl p-4 border border-purple-500/20 shadow-sm">
         <div className="animate-pulse flex items-center gap-2">
           <div className="w-5 h-5 bg-purple-500/20 rounded" />
           <div className="h-4 bg-purple-500/20 rounded w-32" />
@@ -123,10 +165,10 @@ export default function DashboardAIInsights() {
   }
 
   return (
-    <div className="bg-gradient-to-br from-purple-500/10 to-blue-500/10 rounded-2xl border border-purple-500/20 overflow-hidden">
+    <div className="bg-white dark:bg-card rounded-2xl border border-purple-500/20 overflow-hidden shadow-sm">
       {/* Header */}
       <div 
-        className="p-4 flex items-center justify-between cursor-pointer hover:bg-purple-500/5 transition"
+        className="p-4 flex items-center justify-between cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-500/5 transition"
         onClick={() => insight && setExpanded(!expanded)}
       >
         <div className="flex items-center gap-2">
@@ -136,11 +178,25 @@ export default function DashboardAIInsights() {
           <h3 className="font-bold text-foreground">Insights AI</h3>
           {insight && (
             <span className="text-xs text-muted-foreground">
-              Atualizado {new Date(insight.updatedAt).toLocaleDateString("pt-PT")}
+              {new Date(insight.updatedAt).toLocaleDateString("pt-PT")}
             </span>
           )}
         </div>
         <div className="flex items-center gap-2">
+          {/* Token Balance */}
+          {tokens && (
+            <Link 
+              href="/definicoes?tab=tokens"
+              onClick={(e) => e.stopPropagation()}
+              className={`text-xs px-2 py-1 rounded-full font-medium ${
+                tokens.isNegative 
+                  ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" 
+                  : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+              }`}
+            >
+              {tokens.formatted} tokens
+            </Link>
+          )}
           {insight && (
             <>
               <button
@@ -174,12 +230,23 @@ export default function DashboardAIInsights() {
           <button
             onClick={generateInsight}
             disabled={generating}
-            className="w-full py-2 bg-purple-500 text-white rounded-xl font-medium hover:bg-purple-600 transition disabled:opacity-50 flex items-center justify-center gap-2"
+            className={`w-full py-2 rounded-xl font-medium transition disabled:opacity-50 flex items-center justify-center gap-2 ${
+              tokens?.isNegative 
+                ? "bg-red-500 text-white hover:bg-red-600"
+                : "bg-purple-500 text-white hover:bg-purple-600"
+            }`}
           >
             {generating ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 A gerar...
+              </>
+            ) : tokens?.isNegative ? (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                Comprar Tokens
               </>
             ) : (
               <>
@@ -193,49 +260,41 @@ export default function DashboardAIInsights() {
         </div>
       ) : (
         <>
-          {/* Summary always visible */}
           <div className="px-4 pb-2">
             <p className="text-sm text-foreground">{data?.resumo}</p>
           </div>
 
-          {/* Expanded content */}
           {expanded && data && (
             <div className="px-4 pb-4 space-y-4">
-              {/* Trend Prediction */}
               {data.previsaoProximoMes && (
                 <div className={`p-3 rounded-xl ${
                   data.previsaoProximoMes.tendencia === "SUBIDA" 
-                    ? "bg-green-500/10 border border-green-500/20" 
+                    ? "bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800" 
                     : data.previsaoProximoMes.tendencia === "DESCIDA"
-                    ? "bg-red-500/10 border border-red-500/20"
-                    : "bg-yellow-500/10 border border-yellow-500/20"
+                    ? "bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800"
+                    : "bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800"
                 }`}>
                   <div className="flex items-center gap-2 mb-1">
                     {data.previsaoProximoMes.tendencia === "SUBIDA" ? (
-                      <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                       </svg>
                     ) : data.previsaoProximoMes.tendencia === "DESCIDA" ? (
-                      <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                       </svg>
                     ) : (
-                      <svg className="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14" />
                       </svg>
                     )}
-                    <span className="font-medium text-sm">
-                      Previsao: {data.previsaoProximoMes.tendencia}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      (Confianca: {data.previsaoProximoMes.confianca})
-                    </span>
+                    <span className="font-medium text-sm">Previsao: {data.previsaoProximoMes.tendencia}</span>
+                    <span className="text-xs text-muted-foreground">(Confianca: {data.previsaoProximoMes.confianca})</span>
                   </div>
                   <p className="text-xs text-muted-foreground">{data.previsaoProximoMes.justificacao}</p>
                 </div>
               )}
 
-              {/* Strengths */}
               {data.pontosForca?.length > 0 && (
                 <div>
                   <h4 className="text-xs font-medium text-green-600 mb-2 flex items-center gap-1">
@@ -246,13 +305,12 @@ export default function DashboardAIInsights() {
                   </h4>
                   <ul className="space-y-1">
                     {data.pontosForca.map((p, i) => (
-                      <li key={i} className="text-xs text-foreground bg-green-500/5 px-2 py-1 rounded">{p}</li>
+                      <li key={i} className="text-xs text-foreground bg-green-50 dark:bg-green-950/20 px-2 py-1 rounded">{p}</li>
                     ))}
                   </ul>
                 </div>
               )}
 
-              {/* Alerts */}
               {data.alertas?.length > 0 && (
                 <div>
                   <h4 className="text-xs font-medium text-red-600 mb-2 flex items-center gap-1">
@@ -263,13 +321,12 @@ export default function DashboardAIInsights() {
                   </h4>
                   <ul className="space-y-1">
                     {data.alertas.map((a, i) => (
-                      <li key={i} className="text-xs text-foreground bg-red-500/5 px-2 py-1 rounded">{a}</li>
+                      <li key={i} className="text-xs text-foreground bg-red-50 dark:bg-red-950/20 px-2 py-1 rounded">{a}</li>
                     ))}
                   </ul>
                 </div>
               )}
 
-              {/* Opportunities */}
               {data.oportunidades?.length > 0 && (
                 <div>
                   <h4 className="text-xs font-medium text-blue-600 mb-2 flex items-center gap-1">
@@ -280,13 +337,12 @@ export default function DashboardAIInsights() {
                   </h4>
                   <ul className="space-y-1">
                     {data.oportunidades.map((o, i) => (
-                      <li key={i} className="text-xs text-foreground bg-blue-500/5 px-2 py-1 rounded">{o}</li>
+                      <li key={i} className="text-xs text-foreground bg-blue-50 dark:bg-blue-950/20 px-2 py-1 rounded">{o}</li>
                     ))}
                   </ul>
                 </div>
               )}
 
-              {/* Suggested Actions */}
               {data.acoesSugeridas?.length > 0 && (
                 <div>
                   <h4 className="text-xs font-medium text-purple-600 mb-2 flex items-center gap-1">
@@ -297,7 +353,7 @@ export default function DashboardAIInsights() {
                   </h4>
                   <div className="space-y-2">
                     {data.acoesSugeridas.map((a, i) => (
-                      <div key={i} className="bg-purple-500/5 px-2 py-2 rounded">
+                      <div key={i} className="bg-purple-50 dark:bg-purple-950/20 px-2 py-2 rounded">
                         <div className="flex items-center gap-2 mb-1">
                           <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
                             a.prioridade === "ALTA" ? "bg-red-500 text-white" :
@@ -315,17 +371,22 @@ export default function DashboardAIInsights() {
                 </div>
               )}
 
-              {/* Regenerate button */}
               <button
                 onClick={generateInsight}
                 disabled={generating}
-                className="w-full py-2 bg-purple-500/20 text-purple-600 rounded-xl text-sm font-medium hover:bg-purple-500/30 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                className={`w-full py-2 rounded-xl text-sm font-medium transition disabled:opacity-50 flex items-center justify-center gap-2 ${
+                  tokens?.isNegative
+                    ? "bg-red-100 text-red-700 hover:bg-red-200"
+                    : "bg-purple-100 text-purple-700 hover:bg-purple-200"
+                }`}
               >
                 {generating ? (
                   <>
                     <div className="w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
                     A regenerar...
                   </>
+                ) : tokens?.isNegative ? (
+                  "Comprar Tokens para Regenerar"
                 ) : (
                   <>
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
