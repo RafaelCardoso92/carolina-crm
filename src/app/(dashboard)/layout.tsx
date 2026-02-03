@@ -33,7 +33,7 @@ export default function DashboardLayout({
               Rafael Cardoso
             </a>
             <span className="mx-2">•</span>
-            <span className="font-medium">v2.1</span>
+            <span className="font-medium">v2.2.5</span>
             <span className="ml-1 px-1.5 py-0.5 text-xs font-bold bg-primary/10 text-primary rounded">β</span>
           </p>
         </footer>

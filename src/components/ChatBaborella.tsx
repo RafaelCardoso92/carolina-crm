@@ -200,7 +200,7 @@ export default function ChatBaborella({ entityType, entityId, entityName, contex
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-20 right-4 z-50 w-80 sm:w-96 h-[500px] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-pink-200 dark:border-pink-800 flex flex-col overflow-hidden">
+        <div className="fixed bottom-20 right-4 z-50 w-80 sm:w-96 h-[500px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-pink-500 to-purple-600 p-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -238,7 +238,7 @@ export default function ChatBaborella({ entityType, entityId, entityName, contex
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-gradient-to-b from-pink-50/50 to-white dark:from-gray-800/50 dark:to-gray-900">
+          <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50">
             {messages.length === 0 && (
               <div className="text-center py-8">
                 <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
@@ -264,7 +264,7 @@ export default function ChatBaborella({ entityType, entityId, entityName, contex
                   className={"max-w-[85%] rounded-2xl px-3 py-2 text-sm " + (
                     msg.role === "user"
                       ? "bg-gradient-to-br from-pink-500 to-purple-600 text-white rounded-br-md"
-                      : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 shadow-sm border border-pink-100 dark:border-pink-900 rounded-bl-md"
+                      : "bg-gray-100 text-gray-900 shadow-sm border border-gray-200 rounded-bl-md"
                   )}
                 >
                   <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -302,7 +302,7 @@ export default function ChatBaborella({ entityType, entityId, entityName, contex
           )}
 
           {/* Input */}
-          <form onSubmit={sendMessage} className="p-3 border-t border-pink-100 dark:border-pink-900 bg-white dark:bg-gray-900">
+          <form onSubmit={sendMessage} className="p-3 border-t border-gray-200 bg-white">
             <div className="flex gap-2">
               <input
                 ref={inputRef}
@@ -311,7 +311,7 @@ export default function ChatBaborella({ entityType, entityId, entityName, contex
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={tokens?.isNegative ? "Adiciona tokens para continuar..." : "Escreve uma mensagem..."}
                 disabled={loading || tokens?.isNegative}
-                className="flex-1 px-3 py-2 text-sm rounded-xl border border-pink-200 dark:border-pink-800 bg-pink-50/50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-400 disabled:opacity-50"
+                className="flex-1 px-3 py-2 text-sm rounded-xl border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-400 disabled:opacity-50"
               />
               <button
                 type="submit"
