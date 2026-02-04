@@ -76,7 +76,7 @@ function serializeVendas(vendas: Awaited<ReturnType<typeof fetchVendas>>) {
 
 async function fetchVendas(mes: number, ano: number, userFilter: { userId?: string }) {
   return prisma.venda.findMany({
-    where: { mes, ano, ...userFilter },
+    where: { mes, ano, ...(userFilter.userId ? { cliente: { userId: userFilter.userId } } : {}) },
     include: {
       cobranca: true,
       cliente: true,
