@@ -18,15 +18,10 @@ export default async function ReconciliacaoPage() {
     redirect("/login")
   }
 
-  // Reconciliation is admin-only (company-wide data)
-  if (!isAdminOrHigher(session.user.role)) {
-    redirect("/")
-  }
-
   const now = new Date()
   const currentYear = now.getFullYear()
 
-  // Fetch all reconciliations (admin-only page)
+  // Fetch all reconciliations (all users)
   const reconciliacoes = await prisma.reconciliacaoMensal.findMany({
     include: {
       itens: {
