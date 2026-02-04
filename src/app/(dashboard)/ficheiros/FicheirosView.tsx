@@ -59,7 +59,7 @@ function TextPreview({ fileId }: { fileId: string }) {
   useEffect(() => {
     async function fetchContent() {
       try {
-        const res = await fetch(`/api/files/${fileId}`)
+        const res = await fetch(`/api/files/${fileId}?preview=true`)
         if (res.ok) {
           const text = await res.text()
           setContent(text.slice(0, 50000)) // Limit to 50k chars
@@ -129,17 +129,42 @@ export default function FicheirosView() {
     if (fileInputRef.current) fileInputRef.current.value = ""
   }
 
-  const uploadFiles = async (filesToUpload: File[]) => {
+  const uploadFiles = async (filesToUpload: File[], overwrite = false) => {
     setUploading(true)
     try {
       const formData = new FormData()
       filesToUpload.forEach(file => formData.append("files", file))
+      if (overwrite) {
+        formData.append("overwrite", "true")
+      }
+      
       const res = await fetch("/api/files", { method: "POST", body: formData })
       const data = await res.json()
-      if (res.ok) {
+      
+      if (res.status === 409 && data.error === "duplicate") {
+        // File already exists, ask user if they want to overwrite
+        const result = await Swal.fire({
+          icon: "warning",
+          title: "Ficheiro ja existe",
+          text: `O ficheiro "${data.duplicates?.[0] || 'selecionado'}" ja existe. Queres substituir?`,
+          showCancelButton: true,
+          confirmButtonText: "Substituir",
+          cancelButtonText: "Cancelar",
+          confirmButtonColor: "#f59e0b"
+        })
+        
+        if (result.isConfirmed) {
+          // Retry upload with overwrite flag
+          setUploading(false)
+          await uploadFiles(filesToUpload, true)
+          return
+        }
+      } else if (res.ok) {
         Swal.fire({ icon: "success", title: "Sucesso", text: data.message, confirmButtonColor: "#3b82f6" })
         fetchFiles()
-      } else throw new Error(data.error)
+      } else {
+        throw new Error(data.error)
+      }
     } catch (error) {
       Swal.fire({ icon: "error", title: "Erro", text: error instanceof Error ? error.message : "Erro ao carregar ficheiros", confirmButtonColor: "#3b82f6" })
     } finally {
@@ -276,7 +301,7 @@ export default function FicheirosView() {
                 <div className="flex flex-col items-center">
                   {file.mimeType.startsWith("image/") ? (
                     <div className="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden">
-                      <img src={`/api/files/${file.id}`} alt={file.filename} className="w-full h-full object-cover" />
+                      <img src={`/api/files/${file.id}?preview=true`} alt={file.filename} className="w-full h-full object-cover" />
                     </div>
                   ) : (
                     <div className="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center">
@@ -321,7 +346,7 @@ export default function FicheirosView() {
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
                           {file.mimeType.startsWith("image/") ? (
-                            <img src={`/api/files/${file.id}`} alt={file.filename} className="w-full h-full object-cover rounded-lg" />
+                            <img src={`/api/files/${file.id}?preview=true`} alt={file.filename} className="w-full h-full object-cover rounded-lg" />
                           ) : (
                             <svg className={`w-5 h-5 ${color}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} /></svg>
                           )}
@@ -366,19 +391,19 @@ export default function FicheirosView() {
             </div>
             <div className="p-4 overflow-auto max-h-[calc(90vh-80px)] flex items-center justify-center bg-gray-100">
               {previewFile.mimeType.startsWith("image/") ? (
-                <img src={`/api/files/${previewFile.id}`} alt={previewFile.filename} className="max-w-full max-h-full object-contain" />
+                <img src={`/api/files/${previewFile.id}?preview=true`} alt={previewFile.filename} className="max-w-full max-h-full object-contain" />
               ) : previewFile.mimeType === "application/pdf" ? (
-                <iframe src={`/api/files/${previewFile.id}`} className="w-full h-[70vh]" title={previewFile.filename} />
+                <iframe src={`/api/files/${previewFile.id}?preview=true`} className="w-full h-[70vh]" title={previewFile.filename} />
               ) : previewFile.mimeType.startsWith("video/") ? (
                 <video controls className="max-w-full max-h-[70vh]">
-                  <source src={`/api/files/${previewFile.id}`} type={previewFile.mimeType} />
+                  <source src={`/api/files/${previewFile.id}?preview=true`} type={previewFile.mimeType} />
                 </video>
               ) : previewFile.mimeType.startsWith("audio/") ? (
                 <div className="flex flex-col items-center gap-4 py-8">
                   <svg className="w-24 h-24 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
                   </svg>
-                  <audio controls className="w-full max-w-md"><source src={`/api/files/${previewFile.id}`} type={previewFile.mimeType} /></audio>
+                  <audio controls className="w-full max-w-md"><source src={`/api/files/${previewFile.id}?preview=true`} type={previewFile.mimeType} /></audio>
                 </div>
               ) : previewFile.mimeType === "text/plain" || previewFile.mimeType === "application/json" || previewFile.mimeType === "text/csv" ? (
                 <TextPreview fileId={previewFile.id} />

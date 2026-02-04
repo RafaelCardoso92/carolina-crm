@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { writeFile, mkdir } from "fs/promises"
+import { writeFile, mkdir, unlink } from "fs/promises"
 import { existsSync } from "fs"
 import path from "path"
 import crypto from "crypto"
@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData()
     const files = formData.getAll("files") as File[]
+    const overwrite = formData.get("overwrite") === "true"
 
     if (!files || files.length === 0) {
       return NextResponse.json({ error: "Nenhum ficheiro enviado" }, { status: 400 })
@@ -60,6 +61,36 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ 
           error: `Ficheiro ${file.name} excede o limite de 50MB`
         }, { status: 400 })
+      }
+
+      // Check for existing file with same name
+      const existingFile = await prisma.userFile.findFirst({
+        where: {
+          userId: session.user.id,
+          filename: file.name
+        }
+      })
+
+      if (existingFile) {
+        if (!overwrite) {
+          // Return info about duplicates so client can ask for confirmation
+          return NextResponse.json({
+            error: "duplicate",
+            duplicates: [file.name],
+            message: `Ficheiro "${file.name}" ja existe`
+          }, { status: 409 })
+        }
+
+        // Delete existing file
+        const existingPath = path.join(UPLOAD_DIR, existingFile.storedName)
+        try {
+          if (existsSync(existingPath)) {
+            await unlink(existingPath)
+          }
+        } catch (e) {
+          console.error("Error deleting old file:", e)
+        }
+        await prisma.userFile.delete({ where: { id: existingFile.id } })
       }
 
       const bytes = await file.arrayBuffer()

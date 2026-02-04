@@ -7,7 +7,7 @@ import path from "path"
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "/app/uploads"
 
-// GET - Download file
+// GET - Download or preview file
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -19,6 +19,8 @@ export async function GET(
     }
 
     const { id } = await params
+    const { searchParams } = new URL(request.url)
+    const preview = searchParams.get("preview") === "true"
 
     const file = await prisma.userFile.findFirst({
       where: {
@@ -43,7 +45,10 @@ export async function GET(
 
     const response = new NextResponse(fileBuffer)
     response.headers.set("Content-Type", file.mimeType)
-    response.headers.set("Content-Disposition", `attachment; filename="${file.filename}"`)
+    
+    // Use inline for preview, attachment for download
+    const disposition = preview ? "inline" : "attachment"
+    response.headers.set("Content-Disposition", `${disposition}; filename="${file.filename}"`)
     response.headers.set("Content-Length", file.size.toString())
 
     return response
