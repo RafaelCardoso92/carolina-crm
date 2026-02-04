@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Swal from "sweetalert2"
 
@@ -29,6 +30,8 @@ type Prospecto = {
 }
 
 export default function ProspectosList() {
+  const searchParams = useSearchParams()
+  const seller = searchParams.get("seller")
   const [prospectos, setProspectos] = useState<Prospecto[]>([])
   const [loading, setLoading] = useState(true)
   const [filtroEstado, setFiltroEstado] = useState<string>("")
@@ -37,7 +40,7 @@ export default function ProspectosList() {
 
   useEffect(() => {
     fetchProspectos()
-  }, [filtroEstado, search])
+  }, [filtroEstado, search, seller])
 
   async function fetchProspectos() {
     setLoading(true)
@@ -46,6 +49,7 @@ export default function ProspectosList() {
       if (filtroEstado) params.set("estado", filtroEstado)
       if (search) params.set("search", search)
       params.set("ativo", "true")
+      if (seller) params.set("seller", seller)
 
       params.set("limit", "1000")
       const res = await fetch(`/api/prospectos?${params}`)

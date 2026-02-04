@@ -1,17 +1,26 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
+import { userScopedWhere, getEffectiveUserId } from "@/lib/permissions"
 import { EstadoPipeline } from "@prisma/client"
 
 // GET - List all prospects with filters
 export async function GET(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const searchParams = request.nextUrl.searchParams
     const estado = searchParams.get("estado") as EstadoPipeline | null
     const cidade = searchParams.get("cidade")
     const search = searchParams.get("search")
     const ativo = searchParams.get("ativo")
+    const seller = searchParams.get("seller")
 
-    const where: Record<string, unknown> = {}
+    const userFilter = userScopedWhere(session, seller)
+    const where: Record<string, unknown> = { ...userFilter }
 
     if (estado) {
       where.estado = estado
@@ -53,10 +62,17 @@ export async function GET(request: NextRequest) {
 // POST - Create new prospect
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const data = await request.json()
+    const userId = getEffectiveUserId(session)
 
     const prospecto = await prisma.prospecto.create({
       data: {
+        userId,
         nomeEmpresa: data.nomeEmpresa,
         tipoNegocio: data.tipoNegocio || null,
         website: data.website || null,

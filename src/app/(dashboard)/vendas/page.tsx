@@ -1,7 +1,11 @@
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
+import { redirect } from "next/navigation"
+import { userScopedWhere, isAdminOrHigher } from "@/lib/permissions"
 
 export const dynamic = 'force-dynamic'
 import VendasView from "./VendasView"
+import SellerTabs from "@/components/SellerTabs"
 
 const meses = [
   "", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -70,9 +74,9 @@ function serializeVendas(vendas: Awaited<ReturnType<typeof fetchVendas>>) {
   }))
 }
 
-async function fetchVendas(mes: number, ano: number) {
+async function fetchVendas(mes: number, ano: number, userFilter: { userId?: string }) {
   return prisma.venda.findMany({
-    where: { mes, ano },
+    where: { mes, ano, ...userFilter },
     include: {
       cobranca: true,
       cliente: true,
@@ -110,11 +114,11 @@ async function fetchVendas(mes: number, ano: number) {
   })
 }
 
-async function getVendasData(mes: number, ano: number) {
+async function getVendasData(mes: number, ano: number, userFilter: { userId?: string }) {
   const [vendas, clientes, objetivo, produtos, objetivosVarios, campanhas] = await Promise.all([
-    fetchVendas(mes, ano),
+    fetchVendas(mes, ano, userFilter),
     prisma.cliente.findMany({
-      where: { ativo: true },
+      where: { ativo: true, ...userFilter },
       orderBy: { nome: "asc" }
     }),
     prisma.objetivoMensal.findUnique({
@@ -132,14 +136,14 @@ async function getVendasData(mes: number, ano: number) {
       orderBy: { nome: "asc" }
     }),
     prisma.objetivoVario.findMany({
-      where: { ativo: true, mes, ano },
+      where: { ativo: true, mes, ano, ...userFilter },
       include: {
         produtos: true
       },
       orderBy: { titulo: "asc" }
     }),
     prisma.campanha.findMany({
-      where: { ativo: true, mes, ano },
+      where: { ativo: true, mes, ano, ...userFilter },
       select: {
         id: true,
         titulo: true,
@@ -159,21 +163,32 @@ async function getVendasData(mes: number, ano: number) {
 export default async function VendasPage({
   searchParams
 }: {
-  searchParams: Promise<{ mes?: string; ano?: string }>
+  searchParams: Promise<{ mes?: string; ano?: string; seller?: string }>
 }) {
+  const session = await auth()
+  
+  if (!session?.user) {
+    redirect("/login")
+  }
+
   const params = await searchParams
   const currentDate = new Date()
   const mes = params.mes ? parseInt(params.mes) : currentDate.getMonth() + 1
   const ano = params.ano ? parseInt(params.ano) : currentDate.getFullYear()
+  const selectedSeller = params.seller || null
+  const showSellerTabs = isAdminOrHigher(session.user.role)
 
-  const data = await getVendasData(mes, ano)
+  const userFilter = userScopedWhere(session, selectedSeller)
+  const data = await getVendasData(mes, ano, userFilter)
 
   return (
     <div>
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Vendas</h1>
         <p className="text-gray-500">{meses[mes]} {ano}</p>
       </div>
+
+      {showSellerTabs && <SellerTabs />}
 
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <VendasView

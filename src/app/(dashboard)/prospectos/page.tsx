@@ -1,11 +1,15 @@
 "use client"
 
 import { useState } from "react"
+import { useSession } from "next-auth/react"
 import ProspectosList from "@/components/ProspectosList"
 import ProspectosMap from "@/components/ProspectosMap"
+import SellerTabs from "@/components/SellerTabs"
 
 export default function ProspectosPage() {
   const [view, setView] = useState<"list" | "map">("list")
+  const { data: session } = useSession()
+  const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "MASTERADMIN"
 
   return (
     <div>
@@ -52,6 +56,8 @@ export default function ProspectosPage() {
           </div>
         </div>
       </div>
+
+      {isAdmin && <SellerTabs />}
 
       {view === "list" ? <ProspectosList /> : <ProspectosMap />}
     </div>
