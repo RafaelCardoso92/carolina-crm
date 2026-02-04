@@ -45,7 +45,6 @@ export default function DailyQuote({ compact = false }: DailyQuoteProps) {
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   useEffect(() => {
-    // Get a random quote on mount
     const randomIndex = Math.floor(Math.random() * quotes.length)
     setQuoteIndex(randomIndex)
   }, [])
@@ -53,7 +52,6 @@ export default function DailyQuote({ compact = false }: DailyQuoteProps) {
   function getNewQuote() {
     setIsRefreshing(true)
     setTimeout(() => {
-      // Always get a different quote
       let newIndex = Math.floor(Math.random() * quotes.length)
       while (newIndex === quoteIndex && quotes.length > 1) {
         newIndex = Math.floor(Math.random() * quotes.length)
@@ -67,16 +65,15 @@ export default function DailyQuote({ compact = false }: DailyQuoteProps) {
 
   if (!quote) {
     return (
-      <div className={compact ? "bg-white/10 rounded-xl p-3" : "bg-card rounded-2xl border border-border p-5"}>
+      <div className={compact ? "bg-white/10 rounded-xl p-3" : "bg-card rounded-xl border border-border p-3"}>
         <div className="animate-pulse">
-          <div className={compact ? "h-3 bg-white/20 rounded w-3/4 mb-2" : "h-4 bg-secondary rounded w-3/4 mb-2"}></div>
-          <div className={compact ? "h-3 bg-white/20 rounded w-1/2" : "h-4 bg-secondary rounded w-1/2"}></div>
+          <div className={compact ? "h-3 bg-white/20 rounded w-3/4 mb-2" : "h-3 bg-secondary rounded w-3/4 mb-1"}></div>
+          <div className={compact ? "h-3 bg-white/20 rounded w-1/2" : "h-3 bg-secondary rounded w-1/2"}></div>
         </div>
       </div>
     )
   }
 
-  // Compact version for sidebar
   if (compact) {
     return (
       <div className="bg-white/10 rounded-xl p-3">
@@ -104,35 +101,31 @@ export default function DailyQuote({ compact = false }: DailyQuoteProps) {
     )
   }
 
-  // Full version - cleaner design
   return (
-    <div className="bg-card rounded-2xl border border-border p-5 relative">
-      <div className="flex items-start gap-4">
-        {/* Quote icon */}
-        <div className="shrink-0 w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-          <svg className="w-5 h-5 text-primary" fill="currentColor" viewBox="0 0 24 24">
+    <div className="bg-card rounded-xl border border-border p-3">
+      <div className="flex items-start gap-3">
+        <div className="shrink-0 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+          <svg className="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 24 24">
             <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
           </svg>
         </div>
         
-        {/* Quote content */}
         <div className="flex-1 min-w-0">
-          <p className={`text-foreground font-medium leading-relaxed transition-opacity duration-300 ${isRefreshing ? "opacity-0" : "opacity-100"}`}>
+          <p className={`text-sm text-foreground leading-relaxed transition-opacity duration-300 ${isRefreshing ? "opacity-0" : "opacity-100"}`}>
             {quote.text}
           </p>
-          <p className={`text-muted-foreground text-sm mt-2 transition-opacity duration-300 ${isRefreshing ? "opacity-0" : "opacity-100"}`}>
+          <p className={`text-xs text-muted-foreground mt-1 transition-opacity duration-300 ${isRefreshing ? "opacity-0" : "opacity-100"}`}>
             — {quote.author}
           </p>
         </div>
         
-        {/* Refresh button */}
         <button
           onClick={getNewQuote}
           disabled={isRefreshing}
-          className="shrink-0 p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition disabled:opacity-50"
+          className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition disabled:opacity-50"
           title="Nova citação"
         >
-          <svg className={`w-5 h-5 ${isRefreshing ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
         </button>

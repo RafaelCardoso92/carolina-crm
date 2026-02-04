@@ -68,10 +68,10 @@ export default function MoodTracker({ compact = false }: MoodTrackerProps) {
 
   if (loading) {
     return (
-      <div className={compact ? "bg-white/10 rounded-xl p-3" : "bg-card rounded-2xl border border-border p-6"}>
+      <div className={compact ? "bg-white/10 rounded-xl p-3" : "bg-card rounded-xl border border-border p-3"}>
         <div className="animate-pulse">
-          <div className={compact ? "h-3 bg-white/20 rounded w-1/3 mb-2" : "h-4 bg-muted rounded w-1/3 mb-2"}></div>
-          <div className={compact ? "h-8 bg-white/20 rounded" : "h-12 bg-muted rounded"}></div>
+          <div className={compact ? "h-3 bg-white/20 rounded w-1/3 mb-2" : "h-3 bg-muted rounded w-1/3 mb-2"}></div>
+          <div className={compact ? "h-6 bg-white/20 rounded" : "h-8 bg-muted rounded"}></div>
         </div>
       </div>
     )
@@ -80,9 +80,8 @@ export default function MoodTracker({ compact = false }: MoodTrackerProps) {
   if (!data) return null
 
   const weekDays = Object.entries(data.weekMoods)
-  const dayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"]
+  const dayNames = ["D", "S", "T", "Q", "Q", "S", "S"]
 
-  // Compact version for sidebar
   if (compact) {
     return (
       <div className="bg-white/10 rounded-xl p-3">
@@ -111,29 +110,28 @@ export default function MoodTracker({ compact = false }: MoodTrackerProps) {
     )
   }
 
-  // Full version
   return (
-    <div className="bg-card rounded-2xl border border-border p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-medium text-foreground">Como te sentes hoje?</h3>
+    <div className="bg-card rounded-xl border border-border p-3">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-medium text-foreground">Como te sentes?</h3>
         {data.weeklyAverage !== null && (
-          <span className="text-sm text-muted-foreground">
-            Media semanal: {data.weeklyAverage.toFixed(1)} {moodEmojis[Math.round(data.weeklyAverage)]}
+          <span className="text-xs text-muted-foreground">
+            Media: {data.weeklyAverage.toFixed(1)} {moodEmojis[Math.round(data.weeklyAverage)]}
           </span>
         )}
       </div>
 
-      {/* Today's mood selector or display */}
       {data.today ? (
-        <div className="text-center py-4">
-          <div className="text-5xl mb-2">{moodEmojis[data.today]}</div>
-          <p className="text-muted-foreground">
-            Hoje: <span className="font-medium text-foreground">{moodLabels[data.today]}</span>
-          </p>
+        <div className="flex items-center gap-3 py-1">
+          <span className="text-3xl">{moodEmojis[data.today]}</span>
+          <div>
+            <p className="text-sm font-medium text-foreground">{moodLabels[data.today]}</p>
+            <p className="text-xs text-muted-foreground">Humor de hoje registado</p>
+          </div>
         </div>
       ) : (
-        <div className="py-4">
-          <div className="flex justify-center gap-3 mb-3">
+        <div className="py-1">
+          <div className="flex justify-center gap-2">
             {[1, 2, 3, 4, 5].map(rating => (
               <button
                 key={rating}
@@ -141,7 +139,7 @@ export default function MoodTracker({ compact = false }: MoodTrackerProps) {
                 onMouseEnter={() => setHoveredRating(rating)}
                 onMouseLeave={() => setHoveredRating(null)}
                 disabled={saving}
-                className={`w-14 h-14 rounded-full flex items-center justify-center text-3xl transition-all transform hover:scale-110 disabled:opacity-50 ${
+                className={`w-10 h-10 rounded-full flex items-center justify-center text-xl transition-all transform hover:scale-110 disabled:opacity-50 ${
                   hoveredRating === rating ? moodColors[rating] : "bg-muted"
                 }`}
               >
@@ -150,29 +148,27 @@ export default function MoodTracker({ compact = false }: MoodTrackerProps) {
             ))}
           </div>
           {hoveredRating && (
-            <p className="text-center text-sm text-muted-foreground">
+            <p className="text-center text-xs text-muted-foreground mt-1">
               {moodLabels[hoveredRating]}
             </p>
           )}
         </div>
       )}
 
-      {/* Week overview */}
-      <div className="mt-4 pt-4 border-t border-border">
-        <p className="text-xs text-muted-foreground mb-2">Ultimos 7 dias</p>
-        <div className="flex justify-between gap-1">
+      <div className="mt-2 pt-2 border-t border-border">
+        <div className="flex justify-between gap-0.5">
           {weekDays.map(([date, mood]) => {
             const dayIndex = new Date(date).getDay()
             const isToday = date === data.todayDate
             return (
               <div key={date} className="flex-1 text-center">
-                <div className="text-xs text-muted-foreground mb-1">
+                <div className="text-[10px] text-muted-foreground mb-0.5">
                   {dayNames[dayIndex]}
                 </div>
                 <div
-                  className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center text-lg ${
+                  className={`w-6 h-6 mx-auto rounded-full flex items-center justify-center text-sm ${
                     mood ? moodColors[mood] : "bg-muted"
-                  } ${isToday ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                  } ${isToday ? "ring-1 ring-primary ring-offset-1" : ""}`}
                 >
                   {mood ? moodEmojis[mood] : "-"}
                 </div>
