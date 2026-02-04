@@ -602,9 +602,9 @@ export default function DefinicoesPage() {
               <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
-              Metas Mensais
+              Metas Anuais e Trimestrais
             </h3>
-            <p className="text-muted-foreground text-sm mb-6">Defina as metas monetarias mensais para cada objetivo vario.</p>
+            <p className="text-muted-foreground text-sm mb-6">Defina as metas monetarias anuais e trimestrais para cada objetivo vario.</p>
             <ObjetivosVariosMetasTable
               objetivosVarios={objetivosVarios}
               metas={objetivosVariosMetas}
@@ -2198,40 +2198,46 @@ function ObjetivosVariosMetasTable({
   const currentYear = new Date().getFullYear()
   const anos = [currentYear - 1, currentYear, currentYear + 1]
 
-  function getMeta(objetivoVarioId: string, mes: number): number | null {
-    const meta = metas.find(m => m.objetivoVarioId === objetivoVarioId && m.mes === mes && m.ano === selectedAno)
+  const periods = [
+    { id: 0, label: "Anual", shortLabel: "Ano" },
+    { id: 1, label: "T1 Jan-Mar", shortLabel: "T1" },
+    { id: 2, label: "T2 Abr-Jun", shortLabel: "T2" },
+    { id: 3, label: "T3 Jul-Set", shortLabel: "T3" },
+    { id: 4, label: "T4 Out-Dez", shortLabel: "T4" }
+  ]
+
+  function getMeta(objetivoVarioId: string, period: number): number | null {
+    const meta = metas.find(m => m.objetivoVarioId === objetivoVarioId && m.mes === period && m.ano === selectedAno)
     return meta ? meta.objetivo : null
   }
 
-  function getMetaId(objetivoVarioId: string, mes: number): string | null {
-    const meta = metas.find(m => m.objetivoVarioId === objetivoVarioId && m.mes === mes && m.ano === selectedAno)
+  function getMetaId(objetivoVarioId: string, period: number): string | null {
+    const meta = metas.find(m => m.objetivoVarioId === objetivoVarioId && m.mes === period && m.ano === selectedAno)
     return meta ? meta.id : null
   }
 
-  function startEdit(objetivoVarioId: string, mes: number) {
-    const cellKey = `${objetivoVarioId}-${mes}`
-    const currentValue = getMeta(objetivoVarioId, mes)
+  function startEdit(objetivoVarioId: string, period: number) {
+    const cellKey = objetivoVarioId + "-" + period
+    const currentValue = getMeta(objetivoVarioId, period)
     setEditingCell(cellKey)
     setEditValue(currentValue !== null ? currentValue.toString() : "")
   }
 
-  async function saveMeta(objetivoVarioId: string, mes: number) {
+  async function saveMeta(objetivoVarioId: string, period: number) {
     setSaving(true)
     try {
       const objetivo = editValue ? parseFloat(editValue) : 0
       
       if (objetivo === 0) {
-        // Delete meta if value is 0 or empty
-        const metaId = getMetaId(objetivoVarioId, mes)
+        const metaId = getMetaId(objetivoVarioId, period)
         if (metaId) {
-          await fetch(`/api/objetivos-varios-metas?id=${metaId}`, { method: "DELETE" })
+          await fetch("/api/objetivos-varios-metas?id=" + metaId, { method: "DELETE" })
         }
       } else {
-        // Create or update meta
         await fetch("/api/objetivos-varios-metas", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ objetivoVarioId, mes, ano: selectedAno, objetivo })
+          body: JSON.stringify({ objetivoVarioId, mes: period, ano: selectedAno, objetivo })
         })
       }
       
@@ -2245,22 +2251,17 @@ function ObjetivosVariosMetasTable({
     }
   }
 
-  function handleKeyDown(e: React.KeyboardEvent, objetivoVarioId: string, mes: number) {
+  function handleKeyDown(e: React.KeyboardEvent, objetivoVarioId: string, period: number) {
     if (e.key === "Enter") {
       e.preventDefault()
-      saveMeta(objetivoVarioId, mes)
+      saveMeta(objetivoVarioId, period)
     } else if (e.key === "Escape") {
       setEditingCell(null)
     }
   }
 
-  // Calculate totals
-  function getTotalForMonth(mes: number): number {
-    return activeObjetivos.reduce((sum, o) => sum + (getMeta(o.id, mes) || 0), 0)
-  }
-
-  function getTotalForObjetivo(objetivoVarioId: string): number {
-    return Array.from({ length: 12 }, (_, i) => i + 1).reduce((sum, mes) => sum + (getMeta(objetivoVarioId, mes) || 0), 0)
+  function getTrimestralTotal(objetivoVarioId: string): number {
+    return [1, 2, 3, 4].reduce((sum, t) => sum + (getMeta(objetivoVarioId, t) || 0), 0)
   }
 
   if (activeObjetivos.length === 0) {
@@ -2274,7 +2275,6 @@ function ObjetivosVariosMetasTable({
 
   return (
     <div>
-      {/* Year selector */}
       <div className="flex justify-end mb-4">
         <select
           value={selectedAno}
@@ -2287,76 +2287,88 @@ function ObjetivosVariosMetasTable({
         </select>
       </div>
 
-      {/* Metas table */}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-secondary/50">
               <th className="px-3 py-2 text-left font-bold text-foreground">Objetivo</th>
-              {meses.slice(1).map((m, i) => (
-                <th key={i} className="px-2 py-2 text-center font-bold text-foreground text-xs">{m.slice(0, 3)}</th>
+              {periods.map(p => (
+                <th key={p.id} className={"px-3 py-2 text-center font-bold " + (p.id === 0 ? "text-primary bg-primary/10" : "text-foreground")}>
+                  {p.shortLabel}
+                </th>
               ))}
-              <th className="px-3 py-2 text-right font-bold text-primary">Total</th>
+              <th className="px-3 py-2 text-right font-bold text-muted-foreground">Soma Trim.</th>
             </tr>
           </thead>
           <tbody>
             {activeObjetivos.map(objetivo => (
               <tr key={objetivo.id} className="border-b border-border hover:bg-secondary/30">
                 <td className="px-3 py-2 font-medium text-foreground">{objetivo.titulo}</td>
-                {Array.from({ length: 12 }, (_, i) => i + 1).map(mes => {
-                  const cellKey = `${objetivo.id}-${mes}`
+                {periods.map(period => {
+                  const cellKey = objetivo.id + "-" + period.id
                   const isEditing = editingCell === cellKey
-                  const value = getMeta(objetivo.id, mes)
+                  const value = getMeta(objetivo.id, period.id)
                   
                   return (
-                    <td key={mes} className="px-1 py-1 text-center">
+                    <td key={period.id} className={"px-2 py-1 text-center " + (period.id === 0 ? "bg-primary/5" : "")}>
                       {isEditing ? (
                         <input
                           type="number"
                           value={editValue}
                           onChange={(e) => setEditValue(e.target.value)}
-                          onBlur={() => saveMeta(objetivo.id, mes)}
-                          onKeyDown={(e) => handleKeyDown(e, objetivo.id, mes)}
-                          className="w-16 px-1 py-1 text-center border border-primary rounded bg-background text-foreground text-sm"
+                          onBlur={() => saveMeta(objetivo.id, period.id)}
+                          onKeyDown={(e) => handleKeyDown(e, objetivo.id, period.id)}
+                          className="w-20 px-2 py-1 text-center border border-primary rounded bg-background text-foreground text-sm"
                           autoFocus
                           disabled={saving}
                         />
                       ) : (
                         <button
-                          onClick={() => startEdit(objetivo.id, mes)}
-                          className={`w-full px-1 py-1 rounded text-sm transition ${
-                            value ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-secondary"
-                          }`}
+                          onClick={() => startEdit(objetivo.id, period.id)}
+                          className={"w-full px-2 py-1 rounded text-sm transition " + (
+                            value 
+                              ? (period.id === 0 ? "bg-primary/20 text-primary font-bold" : "bg-primary/10 text-primary font-medium")
+                              : "text-muted-foreground hover:bg-secondary"
+                          )}
                         >
-                          {value ? `${value.toLocaleString()}€` : "-"}
+                          {value ? ("€" + value.toLocaleString()) : "-"}
                         </button>
                       )}
                     </td>
                   )
                 })}
-                <td className="px-3 py-2 text-right font-bold text-primary">
-                  {getTotalForObjetivo(objetivo.id).toLocaleString()}€
+                <td className="px-3 py-2 text-right font-medium text-muted-foreground">
+                  €{getTrimestralTotal(objetivo.id).toLocaleString()}
                 </td>
               </tr>
             ))}
-            {/* Totals row */}
-            <tr className="bg-primary/10 font-bold">
+          </tbody>
+          <tfoot>
+            <tr className="bg-secondary/30 font-bold">
               <td className="px-3 py-2 text-foreground">Total</td>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map(mes => (
-                <td key={mes} className="px-2 py-2 text-center text-primary text-xs">
-                  {getTotalForMonth(mes) > 0 ? `${getTotalForMonth(mes).toLocaleString()}€` : "-"}
-                </td>
-              ))}
-              <td className="px-3 py-2 text-right text-primary">
-                {activeObjetivos.reduce((sum, o) => sum + getTotalForObjetivo(o.id), 0).toLocaleString()}€
+              {periods.map(period => {
+                const total = activeObjetivos.reduce((sum, o) => sum + (getMeta(o.id, period.id) || 0), 0)
+                return (
+                  <td key={period.id} className={"px-2 py-2 text-center " + (period.id === 0 ? "text-primary" : "text-foreground")}>
+                    {total > 0 ? ("€" + total.toLocaleString()) : "-"}
+                  </td>
+                )
+              })}
+              <td className="px-3 py-2 text-right text-muted-foreground">
+                €{activeObjetivos.reduce((sum, o) => sum + getTrimestralTotal(o.id), 0).toLocaleString()}
               </td>
             </tr>
-          </tbody>
+          </tfoot>
         </table>
       </div>
+      
+      <p className="text-xs text-muted-foreground mt-4">
+        Clique numa celula para editar. O valor anual e o objetivo total do ano. Os valores trimestrais T1-T4 sao as metas por trimestre.
+      </p>
     </div>
   )
 }
+
 
 function NovosClientesAnuaisTable({
   anuais,
