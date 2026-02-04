@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import Swal from "sweetalert2"
 
 type Cliente = {
+  user?: { id: string; name: string | null; email: string } | null
   id: string
   nome: string
   codigo: string | null
@@ -19,7 +20,7 @@ type Cliente = {
   }
 }
 
-export default function ClientesList({ clientes }: { clientes: Cliente[] }) {
+export default function ClientesList({ clientes, showSeller = false }: { clientes: Cliente[]; showSeller?: boolean }) {
   const router = useRouter()
   const [search, setSearch] = useState("")
   const [showInactive, setShowInactive] = useState(false)
@@ -185,6 +186,7 @@ export default function ClientesList({ clientes }: { clientes: Cliente[] }) {
             <tr>
               <th className="px-4 lg:px-6 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Nome</th>
               <th className="px-4 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Código</th>
+              {showSeller && <th className="px-4 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Vendedor</th>}
               <th className="px-4 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider hidden xl:table-cell">Contacto</th>
               <th className="px-4 py-4 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">Vendas</th>
               <th className="px-4 py-4 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">Estado</th>
@@ -203,6 +205,7 @@ export default function ClientesList({ clientes }: { clientes: Cliente[] }) {
                   </span>
                 </td>
                 <td className="px-4 py-4 text-muted-foreground hidden lg:table-cell">{cliente.codigo || "-"}</td>
+                {showSeller && <td className="px-4 py-4 text-muted-foreground hidden md:table-cell"><span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">{cliente.user?.name || cliente.user?.email?.split("@")[0] || "-"}</span></td>}
                 <td className="px-4 py-4 text-muted-foreground hidden xl:table-cell">
                   {cliente.telefone || cliente.email || "-"}
                 </td>
@@ -278,6 +281,9 @@ export default function ClientesList({ clientes }: { clientes: Cliente[] }) {
                 </Link>
                 {cliente.codigo && (
                   <span className="text-muted-foreground text-xs">Código: {cliente.codigo}</span>
+                )}
+                {showSeller && cliente.user && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 ml-2">{cliente.user.name || cliente.user.email?.split("@")[0]}</span>
                 )}
               </div>
               <button

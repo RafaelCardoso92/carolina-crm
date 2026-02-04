@@ -1,21 +1,30 @@
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
-import { userScopedWhere } from "@/lib/permissions"
+import { userScopedWhere, isAdminOrHigher } from "@/lib/permissions"
 
 export const dynamic = 'force-dynamic'
 import Link from "next/link"
 import ClientesList from "./ClientesList"
+import SellerTabs from "@/components/SellerTabs"
 
-export default async function ClientesPage() {
+export default async function ClientesPage({
+  searchParams
+}: {
+  searchParams: Promise<{ seller?: string }>
+}) {
   const session = await auth()
 
   if (!session?.user) {
     redirect("/login")
   }
 
+  const params = await searchParams
+  const selectedSeller = params.seller || null
+  const showSellerTabs = isAdminOrHigher(session.user.role)
+
   const clientes = await prisma.cliente.findMany({
-    where: userScopedWhere(session),
+    where: userScopedWhere(session, selectedSeller),
     orderBy: { nome: "asc" },
     select: {
       id: true,
@@ -25,6 +34,12 @@ export default async function ClientesPage() {
       email: true,
       cidade: true,
       ativo: true,
+      userId: true,
+      ...(showSellerTabs ? {
+        user: {
+          select: { id: true, name: true, email: true }
+        }
+      } : {}),
       _count: {
         select: { vendas: true, cobrancas: true }
       }
@@ -54,7 +69,9 @@ export default async function ClientesPage() {
         </Link>
       </div>
 
-      <ClientesList clientes={clientes} />
+      {showSellerTabs && <SellerTabs />}
+
+      <ClientesList clientes={clientes} showSeller={showSellerTabs && !selectedSeller} />
     </div>
   )
 }

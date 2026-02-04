@@ -7,8 +7,11 @@ export const PERMISSIONS = {
   MANAGE_USERS: "manage_users",
   IMPERSONATE: "impersonate",
 
-  // View all data (MASTERADMIN only)
+  // View all data (ADMIN and MASTERADMIN)
   VIEW_ALL_DATA: "view_all_data",
+
+  // System settings (MASTERADMIN only)
+  SYSTEM_SETTINGS: "system_settings",
 
   // Produtos (shared resource)
   PRODUTOS_READ: "produtos_read",
@@ -42,10 +45,8 @@ export const PERMISSIONS = {
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS]
 
-// Role permission mapping
-// SELLER and ADMIN have the same permissions - full CRM access to their own data
-// MASTERADMIN has additional permissions: user management, impersonation, view all data
-const STANDARD_USER_PERMISSIONS: Permission[] = [
+// SELLER permissions - full CRM access to their own data
+const SELLER_PERMISSIONS: Permission[] = [
   PERMISSIONS.PRODUTOS_READ,
   PERMISSIONS.PRODUTOS_WRITE,
   PERMISSIONS.CLIENTES_READ,
@@ -73,10 +74,24 @@ const STANDARD_USER_PERMISSIONS: Permission[] = [
   PERMISSIONS.DEFINICOES_WRITE,
 ]
 
+// ADMIN permissions - can view all sellers' data
+const ADMIN_PERMISSIONS: Permission[] = [
+  ...SELLER_PERMISSIONS,
+  PERMISSIONS.VIEW_ALL_DATA,
+]
+
+// MASTERADMIN (Developer) - everything including system management
+const MASTERADMIN_PERMISSIONS: Permission[] = [
+  ...ADMIN_PERMISSIONS,
+  PERMISSIONS.MANAGE_USERS,
+  PERMISSIONS.IMPERSONATE,
+  PERMISSIONS.SYSTEM_SETTINGS,
+]
+
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
-  MASTERADMIN: Object.values(PERMISSIONS),
-  ADMIN: STANDARD_USER_PERMISSIONS,
-  SELLER: STANDARD_USER_PERMISSIONS,
+  MASTERADMIN: MASTERADMIN_PERMISSIONS,
+  ADMIN: ADMIN_PERMISSIONS,
+  SELLER: SELLER_PERMISSIONS,
 }
 
 /**
@@ -90,6 +105,27 @@ export function hasPermission(role: UserRole, permission: Permission): boolean {
  * Check if user can view all data (not just their own)
  */
 export function canViewAllData(role: UserRole): boolean {
+  return role === "MASTERADMIN" || role === "ADMIN"
+}
+
+/**
+ * Check if user is a seller (sees only their own data)
+ */
+export function isSeller(role: UserRole): boolean {
+  return role === "SELLER"
+}
+
+/**
+ * Check if user is admin or higher
+ */
+export function isAdminOrHigher(role: UserRole): boolean {
+  return role === "ADMIN" || role === "MASTERADMIN"
+}
+
+/**
+ * Check if user is developer (MASTERADMIN)
+ */
+export function isDeveloper(role: UserRole): boolean {
   return role === "MASTERADMIN"
 }
 
@@ -109,21 +145,33 @@ export function isImpersonating(session: Session): boolean {
 
 /**
  * Build a Prisma where clause scoped to user's data
- * MASTERADMIN sees all, others see only their own data
+ * ADMIN/MASTERADMIN see all (or filtered by selectedSellerId), SELLER sees only their own
  * Returns a plain object that can be spread into any Prisma where clause
  */
-export function userScopedWhere(session: Session): { userId?: string } {
-  const role = session.user.role || "ADMIN"
-  if (canViewAllData(role) && !session.user.impersonating) {
-    return {} // No filtering for MASTERADMIN (unless impersonating)
+export function userScopedWhere(session: Session, selectedSellerId?: string | null): { userId?: string } {
+  const role = session.user.role || "SELLER"
+  
+  // If impersonating, always filter by impersonated user
+  if (session.user.impersonating) {
+    return { userId: session.user.impersonating.id }
   }
-  return { userId: getEffectiveUserId(session) }
+  
+  // If admin/masteradmin viewing all data
+  if (canViewAllData(role)) {
+    // If a specific seller is selected, filter by that seller
+    if (selectedSellerId) {
+      return { userId: selectedSellerId }
+    }
+    // Otherwise show all data (no userId filter)
+    return {}
+  }
+  
+  // Regular sellers see only their own data
+  return { userId: session.user.id }
 }
 
 /**
  * Routes that each role can access
- * SELLER and ADMIN have the same routes - full CRM access
- * MASTERADMIN additionally has /admin for user management
  */
 const STANDARD_USER_ROUTES = [
   "/",
@@ -138,14 +186,19 @@ const STANDARD_USER_ROUTES = [
   "/rotas",
   "/orcamentos",
   "/campanhas",
+  "/ficheiros",
 ]
 
 export const ROLE_ROUTES: Record<UserRole, string[]> = {
   MASTERADMIN: [
     ...STANDARD_USER_ROUTES,
     "/admin",
+    "/developer",
   ],
-  ADMIN: STANDARD_USER_ROUTES,
+  ADMIN: [
+    ...STANDARD_USER_ROUTES,
+    "/admin",
+  ],
   SELLER: STANDARD_USER_ROUTES,
 }
 
