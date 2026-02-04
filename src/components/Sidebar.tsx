@@ -9,6 +9,7 @@ import { UserRole } from "@prisma/client"
 
 interface MenuItem {
   href: string
+  badge?: string
   label: string
   icon: string
   roles?: UserRole[]
@@ -73,6 +74,12 @@ const menuGroups: MenuGroup[] = [
         href: "/reconciliacao",
         label: "Reconciliacao",
         icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+      },
+      {
+        href: "/despesas",
+        label: "Despesas",
+        icon: "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z",
+        badge: "α"
       },
     ]
   },
@@ -217,6 +224,11 @@ export default function Sidebar() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={item.icon} />
                       </svg>
                       <span className="text-sm">{item.label}</span>
+                      {item.badge && (
+                        <span className="ml-1.5 px-1.5 py-0.5 text-[9px] font-bold bg-amber-500/20 text-amber-400 rounded">
+                          {item.badge}
+                        </span>
+                      )}
                     </Link>
                   </li>
                 )
