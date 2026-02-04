@@ -5,7 +5,7 @@ import { join } from "path"
 import { randomUUID } from "crypto"
 import type { ImageUploadResponse } from "@/types/devolucao"
 
-const UPLOADS_DIR = process.env.UPLOADS_DIR || "/uploads"
+const UPLOADS_DIR = process.env.UPLOADS_DIR || "/app/uploads"
 const MAX_FILE_SIZE = 5 * 1024 * 1024  // 5MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
 

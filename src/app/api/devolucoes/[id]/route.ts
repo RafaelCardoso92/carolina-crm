@@ -4,7 +4,7 @@ import { unlink } from "fs/promises"
 import { join } from "path"
 import type { UpdateDevolucaoRequest, DevolucaoResponse } from "@/types/devolucao"
 
-const UPLOADS_DIR = process.env.UPLOADS_DIR || "/uploads"
+const UPLOADS_DIR = process.env.UPLOADS_DIR || "/app/uploads"
 
 // GET - Get single return with full details
 export async function GET(
