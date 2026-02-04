@@ -66,7 +66,6 @@ export default function ReconciliacaoView({ reconciliacoes: initialReconciliacoe
     } catch (err) {
       console.error("Error refetching reconciliacoes:", err)
     }
-    refetchReconciliacoes() // Backup sync
   }
 
   const formatCurrency = (value: number | unknown) =>
