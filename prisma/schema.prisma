@@ -471,6 +471,7 @@ model Tarefa {
   @@index([estado])
   @@index([dataVencimento])
   @@index([prioridade])
+  @@index([userId, estado, dataVencimento])
 }
 
 model Comunicacao {
@@ -1017,4 +1018,23 @@ model ObjetivoVarioMeta {
   @@unique([objetivoVarioId, mes, ano])
   @@index([objetivoVarioId])
   @@index([mes, ano])
+}
+
+model ObjetivoNovosClientesAnual {
+  id        String   @id @default(cuid())
+  ano       Int      @unique
+  objetivo  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ObjetivoNovosClientesTrimestral {
+  id        String   @id @default(cuid())
+  trimestre Int
+  ano       Int
+  objetivo  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([trimestre, ano])
 }

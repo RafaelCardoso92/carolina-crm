@@ -94,6 +94,29 @@ type ObjetivoVario = {
   }>
 }
 
+type ObjetivoVarioMeta = {
+  id: string;
+  objetivoVarioId: string;
+  mes: number;
+  ano: number;
+  objetivo: number;
+  objetivoVario?: { id: string; titulo: string };
+};
+
+type ObjetivoNovosClientesAnual = {
+  id: string;
+  ano: number;
+  objetivo: number;
+};
+
+
+type ObjetivoNovosClientesTrimestral = {
+  id: string;
+  trimestre: number;
+  ano: number;
+  objetivo: number;
+};
+
 type SettingsData = {
   configuracoes: Record<string, string>
   premiosMensais: Premio[]
@@ -117,10 +140,13 @@ export default function DefinicoesPage() {
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [campanhas, setCampanhas] = useState<Campanha[]>([])
   const [objetivosVarios, setObjetivosVarios] = useState<ObjetivoVario[]>([])
+  const [objetivosVariosMetas, setObjetivosVariosMetas] = useState<ObjetivoVarioMeta[]>([])
+  const [novosClientesAnuais, setNovosClientesAnuais] = useState<ObjetivoNovosClientesAnual[]>([])
+  const [novosClientesTrimestrais, setNovosClientesTrimestrais] = useState<ObjetivoNovosClientesTrimestral[]>([])
   const [loading, setLoading] = useState(true)
   const [userRole, setUserRole] = useState<string>("")
   const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<"config" | "objetivos" | "objetivos-varios" | "premios" | "produtos" | "campanhas" | "display" | "tokens">("config")
+  const [activeTab, setActiveTab] = useState<"config" | "objetivos" | "objetivos-varios" | "novos-clientes" | "premios" | "produtos" | "campanhas" | "display" | "tokens">("config")
 
   // Form states
   const [iva, setIva] = useState("")
@@ -142,17 +168,21 @@ export default function DefinicoesPage() {
   }, [searchParams])
   async function fetchData() {
     try {
-      const [defRes, prodRes, campRes, objVarRes, meRes] = await Promise.all([
+      const [defRes, prodRes, campRes, objVarRes, objVarMetasRes, novosClientesRes, meRes] = await Promise.all([
         fetch("/api/definicoes"),
         fetch("/api/produtos?limit=1000"),
         fetch("/api/campanhas?limit=1000"),
         fetch("/api/objetivos-varios?limit=1000"),
+        fetch("/api/objetivos-varios-metas"),
+        fetch("/api/objetivos-novos-clientes"),
         fetch("/api/me")
       ])
       const json = await defRes.json()
       const produtosRaw = await prodRes.json()
       const campanhasRaw = campRes.ok ? await campRes.json() : []
       const objetivosVariosRaw = objVarRes.ok ? await objVarRes.json() : []
+      const objetivosVariosMetasRaw = objVarMetasRes.ok ? await objVarMetasRes.json() : []
+      const novosClientesData = novosClientesRes.ok ? await novosClientesRes.json() : { anuais: [], trimestrais: [] }
       const meData = meRes.ok ? await meRes.json() : null
       if (meData?.role) setUserRole(meData.role)
 
@@ -165,6 +195,9 @@ export default function DefinicoesPage() {
       setProdutos(produtosData)
       setCampanhas(campanhasData)
       setObjetivosVarios(objetivosVariosData)
+      setObjetivosVariosMetas(Array.isArray(objetivosVariosMetasRaw) ? objetivosVariosMetasRaw : [])
+      setNovosClientesAnuais(novosClientesData.anuais || [])
+      setNovosClientesTrimestrais(novosClientesData.trimestrais || [])
       setIva(json.configuracoes.IVA_PERCENTAGEM || "23")
       setComissao(json.configuracoes.COMISSAO_PERCENTAGEM || "3.5")
     } catch (error) {
@@ -296,6 +329,7 @@ export default function DefinicoesPage() {
           { id: "config", label: "Configurações", shortLabel: "Config", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" },
           { id: "objetivos", label: "Objetivos", shortLabel: "Obj.", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
           { id: "objetivos-varios", label: "Objetivos Varios", shortLabel: "Varios", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" },
+          { id: "novos-clientes", label: "Novos Clientes", shortLabel: "Novos", icon: "M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" },
           { id: "premios", label: "Tabela Prémios", shortLabel: "Prémios", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
           { id: "produtos", label: "Produtos", shortLabel: "Prod.", icon: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" },
           { id: "campanhas", label: "Campanhas", shortLabel: "Camp.", icon: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" },
@@ -561,22 +595,74 @@ export default function DefinicoesPage() {
 
       {/* Objetivos Varios Tab */}
       {activeTab === "objetivos-varios" && (
-        <div className="bg-card rounded-xl shadow-sm p-6 border border-border">
-          <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-            <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-            </svg>
-            Objetivos Varios
-          </h3>
-          <p className="text-muted-foreground text-sm mb-6">Defina objetivos personalizados com produtos. Os precos sao sem IVA.</p>
-          <ObjetivosVariosTable
-            objetivos={objetivosVarios}
-            produtos={produtos}
-            meses={meses}
-            onRefresh={fetchData}
-            saving={saving}
-            setSaving={setSaving}
-          />
+        <div className="space-y-6">
+          {/* Metas Section */}
+          <div className="bg-card rounded-xl shadow-sm p-6 border border-border">
+            <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Metas Mensais
+            </h3>
+            <p className="text-muted-foreground text-sm mb-6">Defina as metas monetarias mensais para cada objetivo vario.</p>
+            <ObjetivosVariosMetasTable
+              objetivosVarios={objetivosVarios}
+              metas={objetivosVariosMetas}
+              meses={meses}
+              onRefresh={fetchData}
+              saving={saving}
+              setSaving={setSaving}
+            />
+          </div>
+          
+          {/* Produtos Section */}
+          <div className="bg-card rounded-xl shadow-sm p-6 border border-border">
+            <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+              Produtos dos Objetivos
+            </h3>
+            <p className="text-muted-foreground text-sm mb-6">Defina os produtos associados a cada objetivo vario. Os precos sao sem IVA.</p>
+            <ObjetivosVariosTable
+              objetivos={objetivosVarios}
+              produtos={produtos}
+              meses={meses}
+              onRefresh={fetchData}
+              saving={saving}
+              setSaving={setSaving}
+            />
+          </div>
+        </div>
+      )}
+
+
+      {/* Novos Clientes Tab */}
+      {activeTab === "novos-clientes" && (
+        <div className="space-y-6">
+          {/* Objetivos Anuais */}
+          <div className="bg-card rounded-xl shadow-sm p-6 border border-border">
+            <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+              Objetivos Anuais - Novos Clientes
+            </h3>
+            <p className="text-muted-foreground text-sm mb-4">Defina quantos novos clientes pretende converter por ano.</p>
+            <NovosClientesAnuaisTable anuais={novosClientesAnuais} onRefresh={fetchData} />
+          </div>
+
+          {/* Objetivos Trimestrais */}
+          <div className="bg-card rounded-xl shadow-sm p-6 border border-border">
+            <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Objetivos Trimestrais - Novos Clientes
+            </h3>
+            <p className="text-muted-foreground text-sm mb-4">Defina quantos novos clientes pretende converter por trimestre.</p>
+            <NovosClientesTrimestraisTable trimestrais={novosClientesTrimestrais} onRefresh={fetchData} />
+          </div>
         </div>
       )}
 
@@ -2084,6 +2170,440 @@ function ObjetivosVariosTable({
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+// Objetivos Varios Metas Table Component
+function ObjetivosVariosMetasTable({
+  objetivosVarios,
+  metas,
+  meses,
+  onRefresh,
+  saving,
+  setSaving
+}: {
+  objetivosVarios: ObjetivoVario[]
+  metas: ObjetivoVarioMeta[]
+  meses: string[]
+  onRefresh: () => void
+  saving: boolean
+  setSaving: (s: boolean) => void
+}) {
+  const [selectedAno, setSelectedAno] = useState(new Date().getFullYear())
+  const [editingCell, setEditingCell] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState("")
+
+  const activeObjetivos = objetivosVarios.filter(o => o.ativo)
+  const currentYear = new Date().getFullYear()
+  const anos = [currentYear - 1, currentYear, currentYear + 1]
+
+  function getMeta(objetivoVarioId: string, mes: number): number | null {
+    const meta = metas.find(m => m.objetivoVarioId === objetivoVarioId && m.mes === mes && m.ano === selectedAno)
+    return meta ? meta.objetivo : null
+  }
+
+  function getMetaId(objetivoVarioId: string, mes: number): string | null {
+    const meta = metas.find(m => m.objetivoVarioId === objetivoVarioId && m.mes === mes && m.ano === selectedAno)
+    return meta ? meta.id : null
+  }
+
+  function startEdit(objetivoVarioId: string, mes: number) {
+    const cellKey = `${objetivoVarioId}-${mes}`
+    const currentValue = getMeta(objetivoVarioId, mes)
+    setEditingCell(cellKey)
+    setEditValue(currentValue !== null ? currentValue.toString() : "")
+  }
+
+  async function saveMeta(objetivoVarioId: string, mes: number) {
+    setSaving(true)
+    try {
+      const objetivo = editValue ? parseFloat(editValue) : 0
+      
+      if (objetivo === 0) {
+        // Delete meta if value is 0 or empty
+        const metaId = getMetaId(objetivoVarioId, mes)
+        if (metaId) {
+          await fetch(`/api/objetivos-varios-metas?id=${metaId}`, { method: "DELETE" })
+        }
+      } else {
+        // Create or update meta
+        await fetch("/api/objetivos-varios-metas", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ objetivoVarioId, mes, ano: selectedAno, objetivo })
+        })
+      }
+      
+      setEditingCell(null)
+      onRefresh()
+    } catch (error) {
+      console.error("Error saving meta:", error)
+      Swal.fire({ icon: "error", title: "Erro", text: "Erro ao guardar meta", confirmButtonColor: "#b8860b" })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent, objetivoVarioId: string, mes: number) {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      saveMeta(objetivoVarioId, mes)
+    } else if (e.key === "Escape") {
+      setEditingCell(null)
+    }
+  }
+
+  // Calculate totals
+  function getTotalForMonth(mes: number): number {
+    return activeObjetivos.reduce((sum, o) => sum + (getMeta(o.id, mes) || 0), 0)
+  }
+
+  function getTotalForObjetivo(objetivoVarioId: string): number {
+    return Array.from({ length: 12 }, (_, i) => i + 1).reduce((sum, mes) => sum + (getMeta(objetivoVarioId, mes) || 0), 0)
+  }
+
+  if (activeObjetivos.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <p>Nao existem objetivos varios ativos.</p>
+        <p className="text-sm">Crie objetivos varios na seccao de produtos abaixo.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {/* Year selector */}
+      <div className="flex justify-end mb-4">
+        <select
+          value={selectedAno}
+          onChange={(e) => setSelectedAno(parseInt(e.target.value))}
+          className="px-3 py-2 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+        >
+          {anos.map(a => (
+            <option key={a} value={a}>{a}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Metas table */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-secondary/50">
+              <th className="px-3 py-2 text-left font-bold text-foreground">Objetivo</th>
+              {meses.slice(1).map((m, i) => (
+                <th key={i} className="px-2 py-2 text-center font-bold text-foreground text-xs">{m.slice(0, 3)}</th>
+              ))}
+              <th className="px-3 py-2 text-right font-bold text-primary">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {activeObjetivos.map(objetivo => (
+              <tr key={objetivo.id} className="border-b border-border hover:bg-secondary/30">
+                <td className="px-3 py-2 font-medium text-foreground">{objetivo.titulo}</td>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map(mes => {
+                  const cellKey = `${objetivo.id}-${mes}`
+                  const isEditing = editingCell === cellKey
+                  const value = getMeta(objetivo.id, mes)
+                  
+                  return (
+                    <td key={mes} className="px-1 py-1 text-center">
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={() => saveMeta(objetivo.id, mes)}
+                          onKeyDown={(e) => handleKeyDown(e, objetivo.id, mes)}
+                          className="w-16 px-1 py-1 text-center border border-primary rounded bg-background text-foreground text-sm"
+                          autoFocus
+                          disabled={saving}
+                        />
+                      ) : (
+                        <button
+                          onClick={() => startEdit(objetivo.id, mes)}
+                          className={`w-full px-1 py-1 rounded text-sm transition ${
+                            value ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-secondary"
+                          }`}
+                        >
+                          {value ? `${value.toLocaleString()}€` : "-"}
+                        </button>
+                      )}
+                    </td>
+                  )
+                })}
+                <td className="px-3 py-2 text-right font-bold text-primary">
+                  {getTotalForObjetivo(objetivo.id).toLocaleString()}€
+                </td>
+              </tr>
+            ))}
+            {/* Totals row */}
+            <tr className="bg-primary/10 font-bold">
+              <td className="px-3 py-2 text-foreground">Total</td>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map(mes => (
+                <td key={mes} className="px-2 py-2 text-center text-primary text-xs">
+                  {getTotalForMonth(mes) > 0 ? `${getTotalForMonth(mes).toLocaleString()}€` : "-"}
+                </td>
+              ))}
+              <td className="px-3 py-2 text-right text-primary">
+                {activeObjetivos.reduce((sum, o) => sum + getTotalForObjetivo(o.id), 0).toLocaleString()}€
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function NovosClientesAnuaisTable({
+  anuais,
+  onRefresh
+}: {
+  anuais: ObjetivoNovosClientesAnual[]
+  onRefresh: () => void
+}) {
+  const [editingYear, setEditingYear] = useState<number | null>(null)
+  const [editValue, setEditValue] = useState("")
+  const [saving, setSaving] = useState(false)
+
+  const currentYear = new Date().getFullYear()
+  const years = [currentYear - 1, currentYear, currentYear + 1, currentYear + 2]
+
+  function getObjetivo(ano: number): number | null {
+    const obj = anuais.find(a => a.ano === ano)
+    return obj ? obj.objetivo : null
+  }
+
+  function startEdit(ano: number) {
+    const currentValue = getObjetivo(ano)
+    setEditingYear(ano)
+    setEditValue(currentValue !== null ? currentValue.toString() : "")
+  }
+
+  async function saveObjetivo(ano: number) {
+    setSaving(true)
+    try {
+      const objetivo = editValue ? parseInt(editValue) : 0
+      
+      if (objetivo === 0) {
+        const existing = anuais.find(a => a.ano === ano)
+        if (existing) {
+          await fetch(`/api/objetivos-novos-clientes?id=${existing.id}&tipo=anual`, { method: "DELETE" })
+        }
+      } else {
+        await fetch("/api/objetivos-novos-clientes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tipo: "anual", ano, objetivo })
+        })
+      }
+      
+      setEditingYear(null)
+      onRefresh()
+    } catch (error) {
+      console.error("Error saving objetivo:", error)
+      Swal.fire({ icon: "error", title: "Erro", text: "Erro ao guardar objetivo", confirmButtonColor: "#b8860b" })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent, ano: number) {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      saveObjetivo(ano)
+    } else if (e.key === "Escape") {
+      setEditingYear(null)
+    }
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-border">
+            <th className="text-left px-4 py-3 text-muted-foreground font-medium">Ano</th>
+            <th className="text-center px-4 py-3 text-muted-foreground font-medium">Objetivo (Clientes)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {years.map(ano => {
+            const objetivo = getObjetivo(ano)
+            const isEditing = editingYear === ano
+            
+            return (
+              <tr key={ano} className="border-b border-border hover:bg-secondary/50">
+                <td className="px-4 py-3 font-medium text-foreground">{ano}</td>
+                <td className="px-4 py-3 text-center">
+                  {isEditing ? (
+                    <input
+                      type="number"
+                      min="0"
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(e, ano)}
+                      onBlur={() => saveObjetivo(ano)}
+                      autoFocus
+                      disabled={saving}
+                      className="w-24 px-2 py-1 text-center border border-primary rounded bg-background text-foreground"
+                    />
+                  ) : (
+                    <button
+                      onClick={() => startEdit(ano)}
+                      className="w-24 px-2 py-1 text-center hover:bg-primary/10 rounded cursor-pointer"
+                    >
+                      {objetivo !== null ? objetivo : "-"}
+                    </button>
+                  )}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function NovosClientesTrimestraisTable({
+  trimestrais,
+  onRefresh
+}: {
+  trimestrais: ObjetivoNovosClientesTrimestral[]
+  onRefresh: () => void
+}) {
+  const [editingCell, setEditingCell] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState("")
+  const [saving, setSaving] = useState(false)
+  const [selectedAno, setSelectedAno] = useState(new Date().getFullYear())
+
+  const currentYear = new Date().getFullYear()
+  const anos = [currentYear - 1, currentYear, currentYear + 1, currentYear + 2]
+  const trimestres = [1, 2, 3, 4]
+  const trimestreLabels = ["Q1 (Jan-Mar)", "Q2 (Abr-Jun)", "Q3 (Jul-Set)", "Q4 (Out-Dez)"]
+
+  function getObjetivo(trimestre: number): number | null {
+    const obj = trimestrais.find(t => t.trimestre === trimestre && t.ano === selectedAno)
+    return obj ? obj.objetivo : null
+  }
+
+  function getObjetivoId(trimestre: number): string | null {
+    const obj = trimestrais.find(t => t.trimestre === trimestre && t.ano === selectedAno)
+    return obj ? obj.id : null
+  }
+
+  function startEdit(trimestre: number) {
+    setEditingCell(`${trimestre}`)
+    const currentValue = getObjetivo(trimestre)
+    setEditValue(currentValue !== null ? currentValue.toString() : "")
+  }
+
+  async function saveObjetivo(trimestre: number) {
+    setSaving(true)
+    try {
+      const objetivo = editValue ? parseInt(editValue) : 0
+      
+      if (objetivo === 0) {
+        const id = getObjetivoId(trimestre)
+        if (id) {
+          await fetch(`/api/objetivos-novos-clientes?id=${id}&tipo=trimestral`, { method: "DELETE" })
+        }
+      } else {
+        await fetch("/api/objetivos-novos-clientes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tipo: "trimestral", trimestre, ano: selectedAno, objetivo })
+        })
+      }
+      
+      setEditingCell(null)
+      onRefresh()
+    } catch (error) {
+      console.error("Error saving objetivo:", error)
+      Swal.fire({ icon: "error", title: "Erro", text: "Erro ao guardar objetivo", confirmButtonColor: "#b8860b" })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent, trimestre: number) {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      saveObjetivo(trimestre)
+    } else if (e.key === "Escape") {
+      setEditingCell(null)
+    }
+  }
+
+  const totalAno = trimestres.reduce((sum, t) => sum + (getObjetivo(t) || 0), 0)
+
+  return (
+    <div>
+      <div className="flex items-center gap-4 mb-4">
+        <label className="text-sm text-muted-foreground">Ano:</label>
+        <select
+          value={selectedAno}
+          onChange={(e) => setSelectedAno(parseInt(e.target.value))}
+          className="px-3 py-2 rounded-lg border border-border bg-background text-foreground"
+        >
+          {anos.map(ano => (
+            <option key={ano} value={ano}>{ano}</option>
+          ))}
+        </select>
+        {totalAno > 0 && (
+          <span className="text-sm text-primary font-medium ml-auto">
+            Total Ano: {totalAno} clientes
+          </span>
+        )}
+      </div>
+      
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="text-left px-4 py-3 text-muted-foreground font-medium">Trimestre</th>
+              <th className="text-center px-4 py-3 text-muted-foreground font-medium">Objetivo (Clientes)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {trimestres.map((trimestre, idx) => {
+              const objetivo = getObjetivo(trimestre)
+              const isEditing = editingCell === `${trimestre}`
+              
+              return (
+                <tr key={trimestre} className="border-b border-border hover:bg-secondary/50">
+                  <td className="px-4 py-3 font-medium text-foreground">{trimestreLabels[idx]}</td>
+                  <td className="px-4 py-3 text-center">
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        min="0"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(e, trimestre)}
+                        onBlur={() => saveObjetivo(trimestre)}
+                        autoFocus
+                        disabled={saving}
+                        className="w-24 px-2 py-1 text-center border border-primary rounded bg-background text-foreground"
+                      />
+                    ) : (
+                      <button
+                        onClick={() => startEdit(trimestre)}
+                        className="w-24 px-2 py-1 text-center hover:bg-primary/10 rounded cursor-pointer"
+                      >
+                        {objetivo !== null ? objetivo : "-"}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

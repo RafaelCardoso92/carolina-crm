@@ -1140,11 +1140,14 @@ export default function RoutePlannerAdvanced() {
     setLoadingNearby(false)
 
     if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-      // Filter GPL stations - only show ones with GPL in name
-      const filteredResults = type === "gas_station" 
+      // Filter GPL stations - only show ones with GPL in name AND from approved companies
+      const allowedCompanies = ["bp", "galp", "shell", "prio", "moeve"]
+      const filteredResults = type === "gas_station"
         ? results.filter(p => {
             const name = (p.name || "").toLowerCase()
-            return name.includes("gpl") || name.includes("autogás") || name.includes("autogas") || name.includes("glp")
+            const hasGPL = name.includes("gpl") || name.includes("autogás") || name.includes("autogas") || name.includes("glp")
+            const isAllowedCompany = allowedCompanies.some(company => name.includes(company))
+            return hasGPL && isAllowedCompany
           })
         : results
 
