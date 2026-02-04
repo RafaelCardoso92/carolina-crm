@@ -272,15 +272,14 @@ export default function FicheirosView() {
           {filteredFiles.map(file => {
             const { icon, color } = getFileIcon(file.mimeType)
             return (
-              <div key={file.id} className="bg-white rounded-xl border border-border p-4 hover:shadow-md transition-shadow group">
+              <div key={file.id} className="bg-white rounded-xl border border-border p-4 hover:shadow-md transition-shadow group cursor-pointer" onClick={() => setPreviewFile(file)}>
                 <div className="flex flex-col items-center">
                   {file.mimeType.startsWith("image/") ? (
-                    <div className="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden cursor-pointer" onClick={() => setPreviewFile(file)}>
+                    <div className="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden">
                       <img src={`/api/files/${file.id}`} alt={file.filename} className="w-full h-full object-cover" />
                     </div>
                   ) : (
-                    <div className={`w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center ${isPreviewable(file.mimeType) ? "cursor-pointer" : ""}`}
-                      onClick={() => isPreviewable(file.mimeType) && setPreviewFile(file)}>
+                    <div className="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center">
                       <svg className={`w-8 h-8 ${color}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} />
                       </svg>
@@ -288,12 +287,13 @@ export default function FicheirosView() {
                   )}
                   <p className="mt-2 text-sm font-medium text-gray-800 text-center truncate w-full" title={file.filename}>{file.filename}</p>
                   <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                  <p className="text-xs text-gray-400 mt-1">{formatDate(file.createdAt)}</p>
                 </div>
                 <div className="flex justify-center gap-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => downloadFile(file)} className="p-1.5 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200" title="Descarregar">
+                  <button onClick={(e) => { e.stopPropagation(); downloadFile(file) }} className="p-1.5 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200" title="Descarregar">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                   </button>
-                  <button onClick={() => deleteFile(file)} className="p-1.5 rounded-lg bg-red-100 text-red-600 hover:bg-red-200" title="Eliminar">
+                  <button onClick={(e) => { e.stopPropagation(); deleteFile(file) }} className="p-1.5 rounded-lg bg-red-100 text-red-600 hover:bg-red-200" title="Eliminar">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                   </button>
                 </div>
@@ -316,11 +316,10 @@ export default function FicheirosView() {
               {filteredFiles.map(file => {
                 const { icon, color } = getFileIcon(file.mimeType)
                 return (
-                  <tr key={file.id} className="hover:bg-gray-50">
+                  <tr key={file.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setPreviewFile(file)}>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 ${isPreviewable(file.mimeType) ? "cursor-pointer" : ""}`}
-                          onClick={() => isPreviewable(file.mimeType) && setPreviewFile(file)}>
+                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
                           {file.mimeType.startsWith("image/") ? (
                             <img src={`/api/files/${file.id}`} alt={file.filename} className="w-full h-full object-cover rounded-lg" />
                           ) : (
@@ -334,10 +333,10 @@ export default function FicheirosView() {
                     <td className="px-4 py-3 text-sm text-gray-600 hidden md:table-cell">{formatDate(file.createdAt)}</td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
-                        <button onClick={() => downloadFile(file)} className="p-1.5 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200" title="Descarregar">
+                        <button onClick={(e) => { e.stopPropagation(); downloadFile(file) }} className="p-1.5 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200" title="Descarregar">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                         </button>
-                        <button onClick={() => deleteFile(file)} className="p-1.5 rounded-lg bg-red-100 text-red-600 hover:bg-red-200" title="Eliminar">
+                        <button onClick={(e) => { e.stopPropagation(); deleteFile(file) }} className="p-1.5 rounded-lg bg-red-100 text-red-600 hover:bg-red-200" title="Eliminar">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>
                       </div>
