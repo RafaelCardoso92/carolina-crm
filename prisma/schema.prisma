@@ -692,6 +692,7 @@ model ObjetivoVario {
   user      User?                  @relation(fields: [userId], references: [id])
   produtos  ObjetivoVarioProduto[]
   vendas    Venda[]
+  metas     ObjetivoVarioMeta[]
 
   @@index([userId])
   @@index([ativo])
@@ -1001,4 +1002,19 @@ model UserFile {
 
   @@index([userId])
   @@index([userId, createdAt])
+}
+
+model ObjetivoVarioMeta {
+  id              String        @id @default(cuid())
+  objetivoVarioId String
+  mes             Int
+  ano             Int
+  objetivo        Decimal       @db.Decimal(10, 2)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  objetivoVario   ObjetivoVario @relation(fields: [objetivoVarioId], references: [id], onDelete: Cascade)
+
+  @@unique([objetivoVarioId, mes, ano])
+  @@index([objetivoVarioId])
+  @@index([mes, ano])
 }
