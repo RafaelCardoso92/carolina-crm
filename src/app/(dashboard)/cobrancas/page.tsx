@@ -14,9 +14,13 @@ function serializeDecimal(value: unknown): number | null {
 }
 
 async function getCobrancasData(ano: number | null, userFilter: { userId?: string }) {
-  const whereClause: Record<string, unknown> = { ...userFilter }
+  // Build where clause for cobrancas - filter through cliente relation
+  const cobrancaWhere: Record<string, unknown> = {}
+  if (userFilter.userId) {
+    cobrancaWhere.cliente = { userId: userFilter.userId }
+  }
   if (ano) {
-    whereClause.dataEmissao = {
+    cobrancaWhere.dataEmissao = {
       gte: new Date(`${ano}-01-01`),
       lt: new Date(`${ano + 1}-01-01`)
     }
@@ -24,7 +28,7 @@ async function getCobrancasData(ano: number | null, userFilter: { userId?: strin
 
   const [cobrancas, clientes] = await Promise.all([
     prisma.cobranca.findMany({
-      where: whereClause,
+      where: cobrancaWhere,
       include: {
         cliente: true,
         parcelas: {

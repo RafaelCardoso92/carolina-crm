@@ -4,7 +4,7 @@ import { unlink } from "fs/promises"
 import { join } from "path"
 import type { ReconciliacaoResponse, UpdateReconciliacaoRequest } from "@/types/reconciliacao"
 
-const UPLOADS_DIR = process.env.UPLOADS_DIR || "/uploads"
+const UPLOADS_DIR = process.env.UPLOADS_DIR || "/app/uploads"
 
 // GET - Get single reconciliation with full details
 export async function GET(

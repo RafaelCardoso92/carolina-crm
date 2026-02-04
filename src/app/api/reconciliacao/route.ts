@@ -14,7 +14,7 @@ import type {
 
 const execAsync = promisify(exec)
 
-const UPLOADS_DIR = process.env.UPLOADS_DIR || "/uploads"
+const UPLOADS_DIR = process.env.UPLOADS_DIR || "/app/uploads"
 
 // Parse MAPA 104 PDF text content
 function parseMapaPdfText(text: string): ParsedMapaPdf {
