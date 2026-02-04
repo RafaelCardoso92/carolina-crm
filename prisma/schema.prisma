@@ -46,6 +46,7 @@ model User {
   moodEntries     MoodEntry[]
   objetivosVarios ObjetivoVario[]
   tokenBalance    TokenBalance?
+  files           UserFile[]
 
   @@index([role])
   @@index([status])
@@ -985,4 +986,19 @@ model BaborellaChat {
   @@unique([userId, entityType, entityId])
   @@index([userId])
   @@index([entityType, entityId])
+}
+
+model UserFile {
+  id         String   @id @default(cuid())
+  userId     String
+  filename   String
+  storedName String   @unique
+  mimeType   String
+  size       Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
 }
