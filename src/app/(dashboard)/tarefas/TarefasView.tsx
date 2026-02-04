@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 
 interface Tarefa {
@@ -30,6 +31,8 @@ const estadoColors = {
 }
 
 export default function TarefasView() {
+  const searchParams = useSearchParams()
+  const seller = searchParams.get("seller")
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<"todas" | "pendentes" | "hoje" | "atrasadas">("pendentes")
@@ -44,7 +47,7 @@ export default function TarefasView() {
 
   useEffect(() => {
     fetchTarefas()
-  }, [filter])
+  }, [filter, seller])
 
   async function fetchTarefas() {
     setLoading(true)
@@ -53,6 +56,7 @@ export default function TarefasView() {
       if (filter === "pendentes") url += "&pendentes=true"
       if (filter === "hoje") url += "&hoje=true"
       if (filter === "atrasadas") url += "&atrasadas=true"
+      if (seller) url += `&seller=${seller}`
       
       const res = await fetch(url)
       const data = await res.json()

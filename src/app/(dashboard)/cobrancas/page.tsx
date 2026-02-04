@@ -1,7 +1,11 @@
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
+import { redirect } from "next/navigation"
+import { userScopedWhere, isAdminOrHigher } from "@/lib/permissions"
 
 export const dynamic = 'force-dynamic'
 import CobrancasView from "./CobrancasView"
+import SellerTabs from "@/components/SellerTabs"
 
 // Helper to serialize Decimal to number
 function serializeDecimal(value: unknown): number | null {
@@ -9,13 +13,14 @@ function serializeDecimal(value: unknown): number | null {
   return Number(value)
 }
 
-async function getCobrancasData(ano: number | null) {
-  const whereClause = ano ? {
-    dataEmissao: {
+async function getCobrancasData(ano: number | null, userFilter: { userId?: string }) {
+  const whereClause: Record<string, unknown> = { ...userFilter }
+  if (ano) {
+    whereClause.dataEmissao = {
       gte: new Date(`${ano}-01-01`),
       lt: new Date(`${ano + 1}-01-01`)
     }
-  } : {}
+  }
 
   const [cobrancas, clientes] = await Promise.all([
     prisma.cobranca.findMany({
@@ -29,7 +34,7 @@ async function getCobrancasData(ano: number | null) {
       orderBy: [{ pago: "asc" }, { dataEmissao: "desc" }]
     }),
     prisma.cliente.findMany({
-      where: { ativo: true },
+      where: { ativo: true, ...userFilter },
       orderBy: { nome: "asc" }
     })
   ])
@@ -50,10 +55,8 @@ async function getCobrancasData(ano: number | null) {
   const pagas = cobrancas.filter(c => c.pago)
   const totalPendente = pendentes.reduce((sum, c) => sum + Number(c.valor), 0)
   
-  // Total paid
   const totalPago = pagas.reduce((sum, c) => sum + Number(c.valor), 0)
   
-  // Paid this month and last month
   const now = new Date()
   const currentMonth = now.getMonth()
   const currentYear = now.getFullYear()
@@ -72,7 +75,6 @@ async function getCobrancasData(ano: number | null) {
     return d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear
   }).reduce((sum, c) => sum + Number(c.valor), 0)
   
-  // Amount in overdue parcelas
   const valorEmAtraso = cobrancas.reduce((sum, c) => {
     return sum + c.parcelas
       .filter(p => !p.pago && new Date() > new Date(p.dataVencimento))
@@ -93,11 +95,21 @@ async function getCobrancasData(ano: number | null) {
 export default async function CobrancasPage({
   searchParams
 }: {
-  searchParams: Promise<{ ano?: string }>
+  searchParams: Promise<{ ano?: string; seller?: string }>
 }) {
+  const session = await auth()
+  
+  if (!session?.user) {
+    redirect("/login")
+  }
+
   const params = await searchParams
   const ano = params.ano ? parseInt(params.ano) : null
-  const data = await getCobrancasData(ano)
+  const selectedSeller = params.seller || null
+  const showSellerTabs = isAdminOrHigher(session.user.role)
+  
+  const userFilter = userScopedWhere(session, selectedSeller)
+  const data = await getCobrancasData(ano, userFilter)
 
   return (
     <div>
@@ -110,6 +122,8 @@ export default async function CobrancasPage({
           Gestão de faturas e pagamentos
         </p>
       </div>
+
+      {showSellerTabs && <SellerTabs />}
 
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <CobrancasView

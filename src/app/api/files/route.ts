@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { userScopedWhere, getEffectiveUserId } from "@/lib/permissions"
 import { writeFile, mkdir, unlink } from "fs/promises"
 import { existsSync } from "fs"
 import path from "path"
@@ -9,23 +10,26 @@ import crypto from "crypto"
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "/app/uploads"
 const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
 
-// Ensure upload directory exists
 async function ensureUploadDir() {
   if (!existsSync(UPLOAD_DIR)) {
     await mkdir(UPLOAD_DIR, { recursive: true })
   }
 }
 
-// GET - List user's files
-export async function GET() {
+// GET - List files
+export async function GET(request: NextRequest) {
   try {
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    const { searchParams } = new URL(request.url)
+    const seller = searchParams.get("seller")
+    const userFilter = userScopedWhere(session, seller)
+
     const files = await prisma.userFile.findMany({
-      where: { userId: session.user.id },
+      where: userFilter,
       orderBy: { createdAt: "desc" }
     })
 
@@ -49,6 +53,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const files = formData.getAll("files") as File[]
     const overwrite = formData.get("overwrite") === "true"
+    const userId = getEffectiveUserId(session)
 
     if (!files || files.length === 0) {
       return NextResponse.json({ error: "Nenhum ficheiro enviado" }, { status: 400 })
@@ -63,17 +68,15 @@ export async function POST(request: NextRequest) {
         }, { status: 400 })
       }
 
-      // Check for existing file with same name
       const existingFile = await prisma.userFile.findFirst({
         where: {
-          userId: session.user.id,
+          userId,
           filename: file.name
         }
       })
 
       if (existingFile) {
         if (!overwrite) {
-          // Return info about duplicates so client can ask for confirmation
           return NextResponse.json({
             error: "duplicate",
             duplicates: [file.name],
@@ -81,7 +84,6 @@ export async function POST(request: NextRequest) {
           }, { status: 409 })
         }
 
-        // Delete existing file
         const existingPath = path.join(UPLOAD_DIR, existingFile.storedName)
         try {
           if (existsSync(existingPath)) {
@@ -96,7 +98,6 @@ export async function POST(request: NextRequest) {
       const bytes = await file.arrayBuffer()
       const buffer = Buffer.from(bytes)
 
-      // Generate unique filename
       const uuid = crypto.randomUUID()
       const storedName = `${uuid}-${file.name}`
       const filePath = path.join(UPLOAD_DIR, storedName)
@@ -105,7 +106,7 @@ export async function POST(request: NextRequest) {
 
       const savedFile = await prisma.userFile.create({
         data: {
-          userId: session.user.id,
+          userId,
           filename: file.name,
           storedName,
           mimeType: file.type || getMimeType(file.name),

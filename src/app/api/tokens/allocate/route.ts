@@ -16,8 +16,8 @@ export async function POST(request: NextRequest) {
       select: { role: true }
     })
 
-    if (currentUser?.role !== "MASTERADMIN") {
-      return NextResponse.json({ error: "Forbidden - MASTERADMIN only" }, { status: 403 })
+    if (currentUser?.role !== "MASTERADMIN" && currentUser?.role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden - Admin only" }, { status: 403 })
     }
 
     const body = await request.json()
@@ -80,8 +80,8 @@ export async function GET(request: NextRequest) {
       select: { role: true }
     })
 
-    if (currentUser?.role !== "MASTERADMIN") {
-      return NextResponse.json({ error: "Forbidden - MASTERADMIN only" }, { status: 403 })
+    if (currentUser?.role !== "MASTERADMIN" && currentUser?.role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden - Admin only" }, { status: 403 })
     }
 
     // Get all users with their balances

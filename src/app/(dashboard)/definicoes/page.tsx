@@ -813,7 +813,7 @@ export default function DefinicoesPage() {
 
       {/* Tokens Tab */}
       {activeTab === "tokens" && (
-        <TokensTab isAdmin={userRole === "MASTERADMIN"} />
+        <TokensTab isAdmin={userRole === "MASTERADMIN" || userRole === "ADMIN"} />
       )}
     </div>
   )

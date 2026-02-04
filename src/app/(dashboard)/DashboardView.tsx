@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import SalesCharts from "./SalesCharts"
 import { TarefasWidget, FollowUpWidget } from "@/components/DashboardWidgets"
 import { NotificationsWidget, ForecastWidget, HealthScoresWidget, QuickStatsWidget, AcordosWidget } from "@/components/EnhancedDashboardWidgets"
@@ -80,6 +81,8 @@ interface DashboardData {
 }
 
 export default function DashboardView() {
+  const searchParams = useSearchParams()
+  const seller = searchParams.get("seller")
   const currentDate = new Date()
   const [ano, setAno] = useState(currentDate.getFullYear())
   const [mes, setMes] = useState(currentDate.getMonth() + 1)
@@ -91,12 +94,12 @@ export default function DashboardView() {
   useEffect(() => {
     fetchData()
     fetch("/api/auto-followup", { method: "POST" })
-  }, [ano, mes])
+  }, [ano, mes, seller])
 
   async function fetchData() {
     setLoading(true)
     try {
-      const res = await fetch(`/api/dashboard?ano=${ano}&mes=${mes}`)
+      const res = await fetch(`/api/dashboard?ano=${ano}&mes=${mes}${seller ? `&seller=${seller}` : ""}`)
       const json = await res.json()
       setData(json)
     } catch (error) {

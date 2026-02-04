@@ -1,20 +1,29 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
+import { userScopedWhere, getEffectiveUserId } from "@/lib/permissions"
 
 // GET - List tasks with optional filters
 export async function GET(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const estado = searchParams.get("estado")
     const prioridade = searchParams.get("prioridade")
     const clienteId = searchParams.get("clienteId")
     const prospectoId = searchParams.get("prospectoId")
-    const pendentes = searchParams.get("pendentes") // Get only pending tasks
-    const hoje = searchParams.get("hoje") // Get tasks due today
-    const atrasadas = searchParams.get("atrasadas") // Get overdue tasks
+    const pendentes = searchParams.get("pendentes")
+    const hoje = searchParams.get("hoje")
+    const atrasadas = searchParams.get("atrasadas")
     const limit = parseInt(searchParams.get("limit") || "50")
+    const seller = searchParams.get("seller")
 
-    const where: Record<string, unknown> = {}
+    const userFilter = userScopedWhere(session, seller)
+    const where: Record<string, unknown> = { ...userFilter }
 
     if (estado) {
       where.estado = estado
@@ -83,6 +92,11 @@ export async function GET(request: NextRequest) {
 // POST - Create a new task
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const body = await request.json()
     const {
       titulo,
@@ -102,8 +116,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const userId = getEffectiveUserId(session)
+
     const tarefa = await prisma.tarefa.create({
       data: {
+        userId,
         titulo,
         descricao,
         tipo,

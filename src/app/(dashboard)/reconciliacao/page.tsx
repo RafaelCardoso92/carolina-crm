@@ -1,4 +1,7 @@
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
+import { redirect } from "next/navigation"
+import { isAdminOrHigher } from "@/lib/permissions"
 import ReconciliacaoView from "./ReconciliacaoView"
 
 export const dynamic = "force-dynamic"
@@ -9,10 +12,21 @@ const meses = [
 ]
 
 export default async function ReconciliacaoPage() {
+  const session = await auth()
+  
+  if (!session?.user) {
+    redirect("/login")
+  }
+
+  // Reconciliation is admin-only (company-wide data)
+  if (!isAdminOrHigher(session.user.role)) {
+    redirect("/")
+  }
+
   const now = new Date()
   const currentYear = now.getFullYear()
 
-  // Fetch all reconciliations
+  // Fetch all reconciliations (admin-only page)
   const reconciliacoes = await prisma.reconciliacaoMensal.findMany({
     include: {
       itens: {
@@ -33,7 +47,6 @@ export default async function ReconciliacaoPage() {
     orderBy: [{ ano: "desc" }, { mes: "desc" }]
   })
 
-  // Get available years
   const anosDisponiveis = [currentYear, currentYear - 1, currentYear - 2]
 
   return (

@@ -1,7 +1,13 @@
-export const dynamic = 'force-dynamic'
+"use client"
+
+import { useSession } from "next-auth/react"
 import FicheirosView from "./FicheirosView"
+import SellerTabs from "@/components/SellerTabs"
 
 export default function FicheirosPage() {
+  const { data: session } = useSession()
+  const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "MASTERADMIN"
+
   return (
     <div>
       <div className="mb-6 md:mb-8">
@@ -13,6 +19,8 @@ export default function FicheirosPage() {
           Gestao de documentos e ficheiros
         </p>
       </div>
+
+      {isAdmin && <SellerTabs />}
 
       <FicheirosView />
     </div>

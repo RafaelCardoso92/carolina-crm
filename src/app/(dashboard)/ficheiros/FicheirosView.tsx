@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
+import { useSearchParams } from "next/navigation"
 import Swal from "sweetalert2"
 
 type UserFile = {
@@ -83,6 +84,8 @@ function TextPreview({ fileId }: { fileId: string }) {
 }
 
 export default function FicheirosView() {
+  const searchParams = useSearchParams()
+  const seller = searchParams.get("seller")
   const [files, setFiles] = useState<UserFile[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
@@ -94,7 +97,7 @@ export default function FicheirosView() {
 
   const fetchFiles = useCallback(async () => {
     try {
-      const res = await fetch("/api/files")
+      const res = await fetch("/api/files" + (seller ? "?seller=" + seller : ""))
       if (res.ok) {
         const data = await res.json()
         setFiles(data.files || [])
@@ -104,7 +107,7 @@ export default function FicheirosView() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [seller])
 
   useEffect(() => { fetchFiles() }, [fetchFiles])
 
