@@ -4,16 +4,10 @@ import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Swal from "sweetalert2"
+import { useEstadoColors } from "@/hooks/useEstadoColors"
+import EstadoColorSettings from "./EstadoColorSettings"
 
-const ESTADOS_PIPELINE = [
-  { value: "NOVO", label: "Novo", color: "bg-slate-500", textColor: "text-slate-700 dark:text-slate-200", bgLight: "bg-slate-100 dark:bg-slate-800" },
-  { value: "CONTACTADO", label: "Contactado", color: "bg-blue-500", textColor: "text-blue-700 dark:text-blue-200", bgLight: "bg-blue-100 dark:bg-blue-900/50" },
-  { value: "REUNIAO", label: "Reuniao", color: "bg-amber-500", textColor: "text-amber-700 dark:text-amber-200", bgLight: "bg-amber-100 dark:bg-amber-900/50" },
-  { value: "PROPOSTA", label: "Proposta", color: "bg-orange-500", textColor: "text-orange-700 dark:text-orange-200", bgLight: "bg-orange-100 dark:bg-orange-900/50" },
-  { value: "NEGOCIACAO", label: "Negociacao", color: "bg-purple-500", textColor: "text-purple-700 dark:text-purple-200", bgLight: "bg-purple-100 dark:bg-purple-900/50" },
-  { value: "GANHO", label: "Ganho", color: "bg-emerald-500", textColor: "text-emerald-700 dark:text-emerald-200", bgLight: "bg-emerald-100 dark:bg-emerald-900/50" },
-  { value: "PERDIDO", label: "Perdido", color: "bg-red-500", textColor: "text-red-700 dark:text-red-200", bgLight: "bg-red-100 dark:bg-red-900/50" },
-]
+const ESTADO_VALUES = ["NOVO", "CONTACTADO", "REUNIAO", "PROPOSTA", "NEGOCIACAO", "GANHO", "PERDIDO"]
 
 type Prospecto = {
   id: string
@@ -37,6 +31,9 @@ export default function ProspectosList() {
   const [filtroEstado, setFiltroEstado] = useState<string>("")
   const [search, setSearch] = useState("")
   const [cityFilter, setCityFilter] = useState("")
+  const [showColorSettings, setShowColorSettings] = useState(false)
+
+  const { colors, getColor, getLabel } = useEstadoColors()
 
   useEffect(() => {
     fetchProspectos()
@@ -50,7 +47,6 @@ export default function ProspectosList() {
       if (search) params.set("search", search)
       params.set("ativo", "true")
       if (seller) params.set("seller", seller)
-
       params.set("limit", "1000")
       const res = await fetch(`/api/prospectos?${params}`)
       if (res.ok) {
@@ -91,23 +87,13 @@ export default function ProspectosList() {
       confirmButtonText: "Sim, arquivar",
       cancelButtonText: "Cancelar"
     })
-
     if (!result.isConfirmed) return
-
     try {
-      const res = await fetch(`/api/prospectos/${id}`, {
-        method: "DELETE",
-      })
-      if (res.ok) {
-        fetchProspectos()
-      }
+      const res = await fetch(`/api/prospectos/${id}`, { method: "DELETE" })
+      if (res.ok) fetchProspectos()
     } catch (error) {
       console.error("Error deleting prospecto:", error)
     }
-  }
-
-  const getEstadoInfo = (estado: string) => {
-    return ESTADOS_PIPELINE.find((e) => e.value === estado) || ESTADOS_PIPELINE[0]
   }
 
   // Get unique cities
@@ -120,7 +106,7 @@ export default function ProspectosList() {
     ? prospectos.filter(p => p.cidade === cityFilter)
     : prospectos
 
-  const stats = ESTADOS_PIPELINE.map((estado) => ({
+  const stats = colors.map((estado) => ({
     ...estado,
     count: prospectos.filter((p) => p.estado === estado.value).length,
   }))
@@ -129,11 +115,22 @@ export default function ProspectosList() {
 
   return (
     <div className="space-y-4">
-      {/* Pipeline Stats - Compact horizontal cards */}
+      {/* Pipeline Stats */}
       <div className="bg-card rounded-xl border border-border p-3 md:p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-foreground">Pipeline</h3>
-          <span className="text-xs text-muted-foreground">{totalValue} prospectos</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">{totalValue} prospectos</span>
+            <button
+              onClick={() => setShowColorSettings(true)}
+              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition"
+              title="Personalizar cores"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+              </svg>
+            </button>
+          </div>
         </div>
         <div className="grid grid-cols-4 md:grid-cols-7 gap-2">
           {stats.map((estado) => (
@@ -142,14 +139,16 @@ export default function ProspectosList() {
               onClick={() => setFiltroEstado(filtroEstado === estado.value ? "" : estado.value)}
               className={`relative flex flex-col items-center p-2 md:p-3 rounded-lg transition-all ${
                 filtroEstado === estado.value
-                  ? `${estado.bgLight} ring-2 ring-offset-1 ring-offset-card ring-current ${estado.textColor}`
+                  ? "ring-2 ring-offset-1 ring-offset-card"
                   : "bg-secondary/50 hover:bg-secondary"
               }`}
+              style={{
+                backgroundColor: filtroEstado === estado.value ? `${estado.color}15` : undefined,
+                borderColor: filtroEstado === estado.value ? estado.color : undefined,
+              }}
             >
-              <div className={`w-2 h-2 rounded-full ${estado.color} mb-1.5`} />
-              <span className={`text-lg md:text-xl font-bold ${filtroEstado === estado.value ? estado.textColor : 'text-foreground'}`}>
-                {estado.count}
-              </span>
+              <div className="w-2 h-2 rounded-full mb-1.5" style={{ backgroundColor: estado.color }} />
+              <span className="text-lg md:text-xl font-bold text-foreground">{estado.count}</span>
               <span className="text-[9px] md:text-[10px] text-muted-foreground text-center leading-tight">
                 {estado.label}
               </span>
@@ -161,7 +160,6 @@ export default function ProspectosList() {
       {/* Search and Filters */}
       <div className="bg-card rounded-xl border border-border p-3 md:p-4">
         <div className="flex flex-col md:flex-row gap-3">
-          {/* Search Input */}
           <div className="flex-1 relative">
             <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -174,10 +172,7 @@ export default function ProspectosList() {
               className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground bg-background text-sm"
             />
           </div>
-
-          {/* Filters Row */}
           <div className="flex gap-2 flex-wrap md:flex-nowrap">
-            {/* Estado Filter */}
             <div className="relative flex-1 md:flex-none">
               <select
                 value={filtroEstado}
@@ -185,18 +180,14 @@ export default function ProspectosList() {
                 className="w-full md:w-auto pl-3 pr-8 py-2.5 border border-border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground bg-background text-sm appearance-none cursor-pointer"
               >
                 <option value="">Todos estados</option>
-                {ESTADOS_PIPELINE.map((estado) => (
-                  <option key={estado.value} value={estado.value}>
-                    {estado.label}
-                  </option>
+                {colors.map((estado) => (
+                  <option key={estado.value} value={estado.value}>{estado.label}</option>
                 ))}
               </select>
               <svg className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </div>
-
-            {/* City Filter */}
             {uniqueCities.length > 0 && (
               <div className="relative flex-1 md:flex-none">
                 <select
@@ -214,8 +205,6 @@ export default function ProspectosList() {
                 </svg>
               </div>
             )}
-
-            {/* New Prospecto Button */}
             <Link
               href="/prospectos/novo"
               className="bg-purple-600 text-white px-4 py-2.5 rounded-lg font-medium hover:bg-purple-700 transition flex items-center justify-center gap-2 text-sm whitespace-nowrap"
@@ -227,27 +216,28 @@ export default function ProspectosList() {
             </Link>
           </div>
         </div>
-
-        {/* Active Filters */}
         {(filtroEstado || cityFilter || search) && (
           <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-border">
             <span className="text-xs text-muted-foreground">Filtros:</span>
             {search && (
               <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200 rounded-md text-xs">
                 "{search}"
-                <button onClick={() => setSearch("")} className="hover:opacity-70 ml-1">×</button>
+                <button onClick={() => setSearch("")} className="hover:opacity-70 ml-1">x</button>
               </span>
             )}
             {filtroEstado && (
-              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs ${getEstadoInfo(filtroEstado).bgLight} ${getEstadoInfo(filtroEstado).textColor}`}>
-                {getEstadoInfo(filtroEstado).label}
-                <button onClick={() => setFiltroEstado("")} className="hover:opacity-70 ml-1">×</button>
+              <span
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs text-white"
+                style={{ backgroundColor: getColor(filtroEstado) }}
+              >
+                {getLabel(filtroEstado)}
+                <button onClick={() => setFiltroEstado("")} className="hover:opacity-70 ml-1">x</button>
               </span>
             )}
             {cityFilter && (
               <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200 rounded-md text-xs">
                 {cityFilter}
-                <button onClick={() => setCityFilter("")} className="hover:opacity-70 ml-1">×</button>
+                <button onClick={() => setCityFilter("")} className="hover:opacity-70 ml-1">x</button>
               </span>
             )}
             <button
@@ -290,16 +280,14 @@ export default function ProspectosList() {
           {/* Mobile Cards */}
           <div className="md:hidden space-y-3">
             {filteredProspectos.map((prospecto) => {
-              const estadoInfo = getEstadoInfo(prospecto.estado)
+              const estadoColor = getColor(prospecto.estado)
+              const estadoLabel = getLabel(prospecto.estado)
               const isOverdue = prospecto.dataProximaAccao && new Date(prospecto.dataProximaAccao) < new Date()
 
               return (
                 <div key={prospecto.id} className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
-                  {/* Header with estado indicator */}
-                  <div className={`h-1.5 ${estadoInfo.color}`} />
-
+                  <div className="h-1.5" style={{ backgroundColor: estadoColor }} />
                   <div className="p-4">
-                    {/* Company Name & Estado */}
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <Link href={`/prospectos/${prospecto.id}`} className="flex-1 min-w-0">
                         <h3 className="font-bold text-foreground text-base leading-tight hover:text-purple-600 transition">
@@ -312,17 +300,15 @@ export default function ProspectosList() {
                       <select
                         value={prospecto.estado}
                         onChange={(e) => handleEstadoChange(prospecto.id, e.target.value)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${estadoInfo.bgLight} ${estadoInfo.textColor} border-0 focus:ring-2 focus:ring-purple-500`}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white border-0 focus:ring-2 focus:ring-purple-500"
+                        style={{ backgroundColor: estadoColor }}
                       >
-                        {ESTADOS_PIPELINE.map((estado) => (
-                          <option key={estado.value} value={estado.value}>
-                            {estado.label}
-                          </option>
+                        {colors.map((estado) => (
+                          <option key={estado.value} value={estado.value}>{estado.label}</option>
                         ))}
                       </select>
                     </div>
 
-                    {/* Contact Info - More Prominent */}
                     <div className="space-y-2 mb-3">
                       {prospecto.nomeContacto && (
                         <div className="flex items-center gap-2 text-sm text-foreground">
@@ -346,7 +332,6 @@ export default function ProspectosList() {
                       )}
                     </div>
 
-                    {/* Next Action - More Visible */}
                     {(prospecto.proximaAccao || prospecto.dataProximaAccao) && (
                       <div className={`p-3 rounded-xl mb-3 ${isOverdue ? 'bg-red-600 dark:bg-red-700' : 'bg-secondary/70'}`}>
                         <div className="flex items-start gap-2">
@@ -368,7 +353,6 @@ export default function ProspectosList() {
                       </div>
                     )}
 
-                    {/* Phone CTA - Prominent */}
                     {prospecto.telefone && (
                       <a
                         href={`tel:${prospecto.telefone}`}
@@ -381,7 +365,6 @@ export default function ProspectosList() {
                       </a>
                     )}
 
-                    {/* Actions Footer - Larger Touch Targets */}
                     <div className="flex items-center justify-between pt-3 border-t border-border">
                       <Link
                         href={`/prospectos/${prospecto.id}`}
@@ -394,18 +377,12 @@ export default function ProspectosList() {
                         Ver
                       </Link>
                       <div className="flex items-center gap-1">
-                        <Link
-                          href={`/prospectos/${prospecto.id}/editar`}
-                          className="p-2.5 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition"
-                        >
+                        <Link href={`/prospectos/${prospecto.id}/editar`} className="p-2.5 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition">
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
                         </Link>
-                        <button
-                          onClick={() => handleDelete(prospecto.id)}
-                          className="p-2.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
-                        >
+                        <button onClick={() => handleDelete(prospecto.id)} className="p-2.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition">
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                           </svg>
@@ -434,7 +411,8 @@ export default function ProspectosList() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filteredProspectos.map((prospecto) => {
-                    const estadoInfo = getEstadoInfo(prospecto.estado)
+                    const estadoColor = getColor(prospecto.estado)
+                    const estadoLabel = getLabel(prospecto.estado)
                     const isOverdue = prospecto.dataProximaAccao && new Date(prospecto.dataProximaAccao) < new Date()
 
                     return (
@@ -442,33 +420,24 @@ export default function ProspectosList() {
                         <td className="px-4 py-3">
                           <Link href={`/prospectos/${prospecto.id}`} className="block hover:text-purple-600 transition">
                             <div className="font-medium text-foreground">{prospecto.nomeEmpresa}</div>
-                            {prospecto.tipoNegocio && (
-                              <div className="text-sm text-muted-foreground">{prospecto.tipoNegocio}</div>
-                            )}
+                            {prospecto.tipoNegocio && <div className="text-sm text-muted-foreground">{prospecto.tipoNegocio}</div>}
                           </Link>
                         </td>
                         <td className="px-4 py-3">
                           <div className="text-foreground">{prospecto.nomeContacto || "-"}</div>
-                          {prospecto.telefone && (
-                            <a href={`tel:${prospecto.telefone}`} className="text-sm text-purple-600 hover:underline">
-                              {prospecto.telefone}
-                            </a>
-                          )}
-                          {!prospecto.telefone && prospecto.email && (
-                            <div className="text-sm text-muted-foreground">{prospecto.email}</div>
-                          )}
+                          {prospecto.telefone && <a href={`tel:${prospecto.telefone}`} className="text-sm text-purple-600 hover:underline">{prospecto.telefone}</a>}
+                          {!prospecto.telefone && prospecto.email && <div className="text-sm text-muted-foreground">{prospecto.email}</div>}
                         </td>
                         <td className="px-4 py-3 text-foreground">{prospecto.cidade || "-"}</td>
                         <td className="px-4 py-3">
                           <select
                             value={prospecto.estado}
                             onChange={(e) => handleEstadoChange(prospecto.id, e.target.value)}
-                            className={`px-2.5 py-1.5 rounded-lg text-xs font-medium ${estadoInfo.bgLight} ${estadoInfo.textColor} border-0 focus:ring-2 focus:ring-purple-500 cursor-pointer`}
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-white border-0 focus:ring-2 focus:ring-purple-500 cursor-pointer"
+                            style={{ backgroundColor: estadoColor }}
                           >
-                            {ESTADOS_PIPELINE.map((estado) => (
-                              <option key={estado.value} value={estado.value}>
-                                {estado.label}
-                              </option>
+                            {colors.map((estado) => (
+                              <option key={estado.value} value={estado.value}>{estado.label}</option>
                             ))}
                           </select>
                         </td>
@@ -483,36 +452,22 @@ export default function ProspectosList() {
                                 </div>
                               )}
                             </div>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
+                          ) : <span className="text-muted-foreground">-</span>}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-end gap-1">
-                            <Link
-                              href={`/prospectos/${prospecto.id}`}
-                              className="p-2 text-muted-foreground hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition"
-                              title="Ver detalhes"
-                            >
+                            <Link href={`/prospectos/${prospecto.id}`} className="p-2 text-muted-foreground hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition" title="Ver detalhes">
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                               </svg>
                             </Link>
-                            <Link
-                              href={`/prospectos/${prospecto.id}/editar`}
-                              className="p-2 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition"
-                              title="Editar"
-                            >
+                            <Link href={`/prospectos/${prospecto.id}/editar`} className="p-2 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition" title="Editar">
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                               </svg>
                             </Link>
-                            <button
-                              onClick={() => handleDelete(prospecto.id)}
-                              className="p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
-                              title="Arquivar"
-                            >
+                            <button onClick={() => handleDelete(prospecto.id)} className="p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition" title="Arquivar">
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                               </svg>
@@ -526,13 +481,14 @@ export default function ProspectosList() {
               </table>
             </div>
           </div>
-
-          {/* Results count */}
           <div className="text-center text-xs text-muted-foreground">
             {filteredProspectos.length} prospecto{filteredProspectos.length !== 1 ? 's' : ''} encontrado{filteredProspectos.length !== 1 ? 's' : ''}
           </div>
         </>
       )}
+
+      {/* Color Settings Modal */}
+      <EstadoColorSettings isOpen={showColorSettings} onClose={() => setShowColorSettings(false)} />
     </div>
   )
 }
