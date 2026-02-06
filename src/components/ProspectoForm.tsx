@@ -1,7 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import { useJsApiLoader } from "@react-google-maps/api"
+import { GOOGLE_MAPS_CONFIG } from "@/lib/google-maps"
 
 const ESTADOS_PIPELINE = [
   { value: "NOVO", label: "Novo", color: "bg-gray-500" },
@@ -39,37 +41,89 @@ type ProspectoData = {
 export default function ProspectoForm({ prospecto }: { prospecto?: ProspectoData }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [geocoding, setGeocoding] = useState(false)
   const [error, setError] = useState("")
+
+  // Address state
+  const [morada, setMorada] = useState(prospecto?.morada || "")
+  const [cidade, setCidade] = useState(prospecto?.cidade || "")
+  const [codigoPostal, setCodigoPostal] = useState(prospecto?.codigoPostal || "")
   const [coordinates, setCoordinates] = useState<{ lat: number | null; lng: number | null }>({
     lat: prospecto?.latitude || null,
     lng: prospecto?.longitude || null,
   })
 
+  // Places autocomplete
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null)
+  const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_CONFIG)
+
   const isEditing = !!prospecto?.id
 
-  async function handleGeocode(e: React.MouseEvent) {
-    e.preventDefault()
-    setGeocoding(true)
-    setError("")
+  // Initialize Google Places Autocomplete
+  useEffect(() => {
+    if (!isLoaded || !searchInputRef.current) return
 
-    const form = e.currentTarget.closest("form")
-    if (!form) return
+    const autocomplete = new google.maps.places.Autocomplete(searchInputRef.current, {
+      componentRestrictions: { country: "pt" },
+      fields: ["address_components", "geometry", "name", "formatted_address", "formatted_phone_number", "website"],
+      types: ["establishment", "geocode"],
+    })
 
-    const formData = new FormData(form)
-    const morada = formData.get("morada") as string
-    const cidade = formData.get("cidade") as string
-    const codigoPostal = formData.get("codigoPostal") as string
+    autocomplete.addListener("place_changed", () => {
+      const place = autocomplete.getPlace()
+      if (!place.geometry?.location) return
 
-    const fullAddress = [morada, cidade, codigoPostal, "Portugal"]
-      .filter(Boolean)
-      .join(", ")
+      // Extract address components
+      let streetNumber = ""
+      let street = ""
+      let city = ""
+      let postalCode = ""
 
-    if (!fullAddress || fullAddress === "Portugal") {
-      setError("Preencha a morada para obter as coordenadas")
-      setGeocoding(false)
+      place.address_components?.forEach((component) => {
+        const types = component.types
+        if (types.includes("street_number")) {
+          streetNumber = component.long_name
+        } else if (types.includes("route")) {
+          street = component.long_name
+        } else if (types.includes("locality") || types.includes("administrative_area_level_2")) {
+          city = component.long_name
+        } else if (types.includes("postal_code")) {
+          postalCode = component.long_name
+        }
+      })
+
+      // Build full address
+      const fullStreet = streetNumber ? `${street}, ${streetNumber}` : street
+
+      setMorada(fullStreet || place.formatted_address || "")
+      setCidade(city)
+      setCodigoPostal(postalCode)
+      setCoordinates({
+        lat: place.geometry.location.lat(),
+        lng: place.geometry.location.lng(),
+      })
+
+      // Clear search input after selection
+      if (searchInputRef.current) {
+        searchInputRef.current.value = ""
+      }
+    })
+
+    autocompleteRef.current = autocomplete
+
+    return () => {
+      google.maps.event.clearInstanceListeners(autocomplete)
+    }
+  }, [isLoaded])
+
+  // Manual geocode fallback
+  const handleManualGeocode = useCallback(async () => {
+    if (!morada && !cidade) {
+      setError("Preencha a morada ou cidade")
       return
     }
+
+    const fullAddress = [morada, cidade, codigoPostal, "Portugal"].filter(Boolean).join(", ")
 
     try {
       const res = await fetch("/api/prospectos/geocode", {
@@ -82,15 +136,12 @@ export default function ProspectoForm({ prospecto }: { prospecto?: ProspectoData
         const data = await res.json()
         setCoordinates({ lat: data.latitude, lng: data.longitude })
       } else {
-        const errorData = await res.json()
-        setError(errorData.error || "Erro ao obter coordenadas")
+        setError("Não foi possível obter as coordenadas")
       }
     } catch {
       setError("Erro ao obter coordenadas")
-    } finally {
-      setGeocoding(false)
     }
-  }
+  }, [morada, cidade, codigoPostal])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -108,9 +159,9 @@ export default function ProspectoForm({ prospecto }: { prospecto?: ProspectoData
       cargoContacto: formData.get("cargoContacto") as string || null,
       telefone: formData.get("telefone") as string || null,
       email: formData.get("email") as string || null,
-      morada: formData.get("morada") as string || null,
-      cidade: formData.get("cidade") as string || null,
-      codigoPostal: formData.get("codigoPostal") as string || null,
+      morada,
+      cidade,
+      codigoPostal,
       latitude: coordinates.lat,
       longitude: coordinates.lng,
       estado: formData.get("estado") as string || "NOVO",
@@ -183,7 +234,7 @@ export default function ProspectoForm({ prospecto }: { prospecto?: ProspectoData
               type="text"
               defaultValue={prospecto?.tipoNegocio || ""}
               className="w-full px-2.5 py-2 border-2 border-border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium bg-card text-sm"
-              placeholder="Ex: Restaurante"
+              placeholder="Ex: Salão de Beleza"
             />
           </div>
 
@@ -277,7 +328,7 @@ export default function ProspectoForm({ prospecto }: { prospecto?: ProspectoData
         </div>
       </div>
 
-      {/* Location */}
+      {/* Location with Google Places Search */}
       <div className="mb-4">
         <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1.5">
           <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -286,13 +337,35 @@ export default function ProspectoForm({ prospecto }: { prospecto?: ProspectoData
           </svg>
           Localização
         </h3>
+
+        {/* Google Places Search Box */}
+        <div className="mb-3">
+          <label className="block text-xs font-bold text-foreground mb-1">
+            <span className="flex items-center gap-1.5">
+              <svg className="w-3.5 h-3.5 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+              </svg>
+              Pesquisar local (Google Maps)
+            </span>
+          </label>
+          <input
+            ref={searchInputRef}
+            type="text"
+            placeholder="Pesquise por nome do estabelecimento ou morada..."
+            className="w-full px-3 py-2.5 border-2 border-blue-200 bg-blue-50 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-foreground font-medium text-sm placeholder:text-blue-400"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Comece a escrever para pesquisar. Selecione um resultado para preencher automaticamente a morada.
+          </p>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="md:col-span-2">
             <label className="block text-xs font-bold text-foreground mb-1">Morada</label>
             <input
-              name="morada"
               type="text"
-              defaultValue={prospecto?.morada || ""}
+              value={morada}
+              onChange={(e) => setMorada(e.target.value)}
               className="w-full px-2.5 py-2 border-2 border-border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium bg-card text-sm"
               placeholder="Morada"
             />
@@ -301,9 +374,9 @@ export default function ProspectoForm({ prospecto }: { prospecto?: ProspectoData
           <div>
             <label className="block text-xs font-bold text-foreground mb-1">Cidade</label>
             <input
-              name="cidade"
               type="text"
-              defaultValue={prospecto?.cidade || ""}
+              value={cidade}
+              onChange={(e) => setCidade(e.target.value)}
               className="w-full px-2.5 py-2 border-2 border-border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium bg-card text-sm"
               placeholder="Cidade"
             />
@@ -312,45 +385,47 @@ export default function ProspectoForm({ prospecto }: { prospecto?: ProspectoData
           <div>
             <label className="block text-xs font-bold text-foreground mb-1">Código Postal</label>
             <input
-              name="codigoPostal"
               type="text"
-              defaultValue={prospecto?.codigoPostal || ""}
+              value={codigoPostal}
+              onChange={(e) => setCodigoPostal(e.target.value)}
               className="w-full px-2.5 py-2 border-2 border-border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium bg-card text-sm"
               placeholder="1234-567"
             />
           </div>
 
-          <div className="md:col-span-2 flex flex-col sm:flex-row sm:items-center gap-2">
-            <button
-              type="button"
-              onClick={handleGeocode}
-              disabled={geocoding}
-              className="px-3 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-hover transition disabled:opacity-50 flex items-center justify-center gap-1.5 text-xs"
-            >
-              {geocoding ? (
-                <>
-                  <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                  </svg>
-                  A obter...
-                </>
-              ) : (
-                <>
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  </svg>
-                  Obter Coordenadas
-                </>
-              )}
-            </button>
-            {coordinates.lat && coordinates.lng && (
-              <span className="text-xs text-green-600 flex items-center gap-1">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {/* Coordinates display and manual geocode */}
+          <div className="md:col-span-2">
+            {coordinates.lat && coordinates.lng ? (
+              <div className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+                <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                {coordinates.lat.toFixed(4)}, {coordinates.lng.toFixed(4)}
-              </span>
+                <span className="text-sm text-green-700 font-medium">
+                  Coordenadas: {coordinates.lat.toFixed(5)}, {coordinates.lng.toFixed(5)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCoordinates({ lat: null, lng: null })}
+                  className="ml-auto text-xs text-green-600 hover:text-green-800"
+                >
+                  Limpar
+                </button>
+              </div>
+            ) : (morada || cidade) ? (
+              <button
+                type="button"
+                onClick={handleManualGeocode}
+                className="w-full sm:w-auto px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition flex items-center justify-center gap-1.5 text-xs"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                </svg>
+                Obter coordenadas da morada
+              </button>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Use a pesquisa acima ou preencha a morada manualmente
+              </p>
             )}
           </div>
         </div>
@@ -417,7 +492,6 @@ export default function ProspectoForm({ prospecto }: { prospecto?: ProspectoData
 
       {/* Hidden fields */}
       <input name="facebook" type="hidden" defaultValue={prospecto?.facebook || ""} />
-      <input name="cargoContacto" type="hidden" defaultValue={prospecto?.cargoContacto || ""} />
 
       {/* Buttons */}
       <div className="flex flex-col-reverse sm:flex-row gap-2">

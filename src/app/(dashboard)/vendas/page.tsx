@@ -141,21 +141,21 @@ async function getVendasData(mes: number, ano: number, userFilter: { userId?: st
       orderBy: { nome: "asc" }
     }),
     prisma.objetivoVario.findMany({
-      where: { ativo: true, mes, ano, ...userFilter },
+      where: { ativo: true, ...userFilter },  // Show all active campaigns regardless of month
       include: {
         produtos: true
       },
-      orderBy: { titulo: "asc" }
+      orderBy: [{ ano: 'desc' }, { mes: 'desc' }, { titulo: 'asc' }]
     }),
     prisma.campanha.findMany({
-      where: { ativo: true, mes, ano, ...userFilter },
+      where: { ativo: true, ...userFilter },  // Show all active campaigns regardless of month
       select: {
         id: true,
         titulo: true,
         mes: true,
         ano: true
       },
-      orderBy: { titulo: "asc" }
+      orderBy: [{ ano: 'desc' }, { mes: 'desc' }, { titulo: 'asc' }]
     })
   ])
 
