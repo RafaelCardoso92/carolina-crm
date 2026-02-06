@@ -51,7 +51,7 @@ export default function EsqueciPasswordPage() {
           <div className="text-center mb-8">
             <Link href="/login" className="inline-block mb-4">
               <h1 className="text-4xl font-bold text-gray-900 dark:text-white tracking-tight hover:text-primary transition">
-                Baboretes
+                Baborette
               </h1>
             </Link>
             <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-300">
@@ -154,7 +154,7 @@ export default function EsqueciPasswordPage() {
 
           {/* Footer */}
           <p className="text-center text-gray-400 dark:text-gray-600 text-sm mt-8">
-            Baboretes &copy; {new Date().getFullYear()}
+            Baborette &copy; {new Date().getFullYear()}
           </p>
         </div>
       </div>

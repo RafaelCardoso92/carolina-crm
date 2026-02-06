@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Baborete CRM",
+  title: "Baborette CRM",
   description: "Sistema de gestao de clientes e vendas BABOR",
   manifest: "/api/pwa/manifest",
   icons: {
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Baborete CRM",
+    title: "Baborette CRM",
   },
   formatDetection: {
     telephone: false,

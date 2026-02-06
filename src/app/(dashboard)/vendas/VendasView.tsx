@@ -74,6 +74,13 @@ type Venda = {
   }[]
   itens?: ItemVenda[]
   devolucoes?: DevolucaoWithRelations[]
+  incidencias?: {
+    id: string
+    valor: number
+    motivo: string
+    notas: string | null
+    dataRegisto: string
+  }[]
   cobranca?: {
     id: string
     valor: number
@@ -127,12 +134,12 @@ function calcularIVA(totalSemIVA: number) {
 // Calculate net total for a venda (accounting for returns)
 function calcularTotalLiquido(venda: Venda): number {
   const vendaTotal = Number(venda.total)
-  if (!venda.devolucoes || venda.devolucoes.length === 0) return vendaTotal
+  
+  const totalDevolvido = venda.devolucoes?.reduce((sum, d) => sum + Number(d.totalDevolvido), 0) || 0
+  const totalSubstituido = venda.devolucoes?.reduce((sum, d) => sum + Number(d.totalSubstituido), 0) || 0
+  const totalIncidencias = venda.incidencias?.reduce((sum, inc) => sum + Number(inc.valor), 0) || 0
 
-  const totalDevolvido = venda.devolucoes.reduce((sum, d) => sum + Number(d.totalDevolvido), 0)
-  const totalSubstituido = venda.devolucoes.reduce((sum, d) => sum + Number(d.totalSubstituido), 0)
-
-  return vendaTotal - totalDevolvido + totalSubstituido
+  return vendaTotal - totalDevolvido + totalSubstituido - totalIncidencias
 }
 
 export default function VendasView({ vendas: initialVendas, clientes, produtos, objetivosVarios, campanhas, objetivo, total, mes, ano, meses }: Props) {
@@ -166,6 +173,13 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
   const [showDevolucaoForm, setShowDevolucaoForm] = useState(false)
   const [selectedVendaForDevolucao, setSelectedVendaForDevolucao] = useState<Venda | null>(null)
   const [expandedDevolucoes, setExpandedDevolucoes] = useState<string | null>(null)
+
+  // Incidencias state
+  const [showIncidenciaForm, setShowIncidenciaForm] = useState(false)
+  const [selectedVendaForIncidencia, setSelectedVendaForIncidencia] = useState<Venda | null>(null)
+  const [incidenciaValor, setIncidenciaValor] = useState("")
+  const [incidenciaMotivo, setIncidenciaMotivo] = useState("")
+  const [incidenciaNotas, setIncidenciaNotas] = useState("")
 
   // Calculate total liquido (accounting for returns)
   const totalLiquido = useMemo(() => {
@@ -481,6 +495,100 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
     setSelectedVendaForDevolucao(null)
     setShowDevolucaoForm(false)
   }
+
+  function openIncidenciaForm(venda: Venda) {
+    setSelectedVendaForIncidencia(venda)
+    setIncidenciaValor("")
+    setIncidenciaMotivo("")
+    setIncidenciaNotas("")
+    setShowIncidenciaForm(true)
+  }
+
+  function closeIncidenciaForm() {
+    setSelectedVendaForIncidencia(null)
+    setShowIncidenciaForm(false)
+    setIncidenciaValor("")
+    setIncidenciaMotivo("")
+    setIncidenciaNotas("")
+  }
+
+  async function handleIncidenciaSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selectedVendaForIncidencia) return
+
+    try {
+      const res = await fetch("/api/incidencias", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          vendaId: selectedVendaForIncidencia.id,
+          valor: parseFloat(incidenciaValor),
+          motivo: incidenciaMotivo,
+          notas: incidenciaNotas || null
+        })
+      })
+
+      if (!res.ok) throw new Error("Falha ao criar incidencia")
+
+      closeIncidenciaForm()
+      refetchVendas()
+      Swal.fire({
+        icon: "success",
+        title: "Incidencia registada",
+        text: "A incidencia foi registada com sucesso.",
+        confirmButtonColor: "#b8860b",
+        timer: 2000,
+        showConfirmButton: false
+      })
+    } catch (error) {
+      console.error("Error creating incidencia:", error)
+      Swal.fire({
+        icon: "error",
+        title: "Erro",
+        text: "Nao foi possivel registar a incidencia.",
+        confirmButtonColor: "#b8860b"
+      })
+    }
+  }
+
+  async function handleDeleteIncidencia(incidenciaId: string) {
+    const result = await Swal.fire({
+      title: "Eliminar Incidencia?",
+      text: "Esta acao nao pode ser revertida.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Sim, eliminar",
+      cancelButtonText: "Cancelar"
+    })
+
+    if (!result.isConfirmed) return
+
+    try {
+      const res = await fetch(`/api/incidencias/${incidenciaId}`, { method: "DELETE" })
+      if (!res.ok) throw new Error("Falha ao eliminar")
+
+      refetchVendas()
+      Swal.fire({
+        icon: "success",
+        title: "Eliminada",
+        text: "A incidencia foi eliminada.",
+        confirmButtonColor: "#b8860b",
+        timer: 1500,
+        showConfirmButton: false
+      })
+    } catch (error) {
+      console.error("Error deleting incidencia:", error)
+      Swal.fire({
+        icon: "error",
+        title: "Erro",
+        text: "Nao foi possivel eliminar a incidencia.",
+        confirmButtonColor: "#b8860b"
+      })
+    }
+  }
+
 
   // Refetch vendas from API (for complex updates like devolucoes)
   async function refetchVendas() {
@@ -823,6 +931,15 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                             </button>
                           )}
                           <button
+                            onClick={() => openIncidenciaForm(venda)}
+                            className="p-2 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-lg transition"
+                            title="Registar incidencia"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </button>
+                          <button
                             onClick={() => openEditSale(venda)}
                             className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition"
                             title="Editar"
@@ -852,6 +969,42 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                             onStatusChange={handleDevolucaoStatusChange}
                             onDelete={handleDevolucaoDelete}
                           />
+                        </td>
+                      </tr>
+                    )}
+                    {venda.incidencias && venda.incidencias.length > 0 && (
+                      <tr key={`${venda.id}-incidencias`}>
+                        <td colSpan={6} className="px-4 lg:px-6 py-4 bg-purple-50/50 dark:bg-purple-900/10">
+                          <div>
+                            <h4 className="text-sm font-semibold text-purple-700 dark:text-purple-300 mb-3 flex items-center gap-2">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Incidencias ({venda.incidencias.length})
+                            </h4>
+                            <div className="space-y-2">
+                              {venda.incidencias.map(inc => (
+                                <div key={inc.id} className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm">
+                                  <div className="flex-1">
+                                    <p className="font-medium text-gray-800 dark:text-gray-200">{inc.motivo}</p>
+                                    {inc.notas && <p className="text-sm text-gray-500">{inc.notas}</p>}
+                                    <p className="text-xs text-gray-400">{new Date(inc.dataRegisto).toLocaleDateString("pt-PT")}</p>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <span className="font-bold text-purple-600 dark:text-purple-400">-{formatCurrency(Number(inc.valor))} EUR</span>
+                                    <button
+                                      onClick={() => handleDeleteIncidencia(inc.id)}
+                                      className="p-1 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         </td>
                       </tr>
                     )}
@@ -1009,6 +1162,15 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                     Devolver
                   </button>
                 )}
+                <button
+                  onClick={() => openIncidenciaForm(venda)}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Inc.
+                </button>
                 {hasDevolucoes && (
                   <button
                     onClick={() => setExpandedDevolucoes(isExpanded ? null : venda.id)}
@@ -1039,6 +1201,40 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                     onStatusChange={handleDevolucaoStatusChange}
                     onDelete={handleDevolucaoDelete}
                   />
+                </div>
+              )}
+
+              {/* Incidencias Display */}
+              {venda.incidencias && venda.incidencias.length > 0 && (
+                <div className="p-4 bg-purple-50/50 dark:bg-purple-900/10 border-t border-purple-200 dark:border-purple-800">
+                  <h4 className="text-sm font-semibold text-purple-700 dark:text-purple-300 mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Incidencias ({venda.incidencias.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {venda.incidencias.map(inc => (
+                      <div key={inc.id} className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm">
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-800 dark:text-gray-200">{inc.motivo}</p>
+                          {inc.notas && <p className="text-sm text-gray-500">{inc.notas}</p>}
+                          <p className="text-xs text-gray-400">{new Date(inc.dataRegisto).toLocaleDateString("pt-PT")}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-purple-600 dark:text-purple-400">-{formatCurrency(Number(inc.valor))} EUR</span>
+                          <button
+                            onClick={() => handleDeleteIncidencia(inc.id)}
+                            className="p-1 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -1617,6 +1813,79 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
               onSuccess={handleDevolucaoSuccess}
               onCancel={closeDevolucaoForm}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Incidencia Form Modal */}
+      {showIncidenciaForm && selectedVendaForIncidencia && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-card rounded-xl shadow-xl max-w-md w-full">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-foreground">Nova Incidencia</h2>
+                <p className="text-sm text-muted-foreground">{selectedVendaForIncidencia.cliente.nome}</p>
+              </div>
+              <button
+                onClick={closeIncidenciaForm}
+                className="p-2 text-muted-foreground hover:bg-secondary rounded-lg transition"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <form onSubmit={handleIncidenciaSubmit} className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Valor (EUR) *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={incidenciaValor}
+                  onChange={(e) => setIncidenciaValor(e.target.value)}
+                  className="w-full px-3 py-2 border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Motivo *</label>
+                <input
+                  type="text"
+                  value={incidenciaMotivo}
+                  onChange={(e) => setIncidenciaMotivo(e.target.value)}
+                  className="w-full px-3 py-2 border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Ex: Produto danificado, Desconto comercial..."
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Notas (opcional)</label>
+                <textarea
+                  value={incidenciaNotas}
+                  onChange={(e) => setIncidenciaNotas(e.target.value)}
+                  className="w-full px-3 py-2 border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Detalhes adicionais..."
+                  rows={3}
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={closeIncidenciaForm}
+                  className="flex-1 px-4 py-2 border border-input rounded-lg hover:bg-secondary transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium"
+                >
+                  Registar Incidencia
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

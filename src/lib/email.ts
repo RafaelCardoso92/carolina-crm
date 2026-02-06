@@ -7,9 +7,9 @@ const FROM_EMAIL = process.env.FROM_EMAIL || "noreply@baboretes.com"
 export async function sendPasswordResetEmail(email: string, resetUrl: string) {
   try {
     const { data, error } = await resend.emails.send({
-      from: `Baboretes <${FROM_EMAIL}>`,
+      from: `Baborette <${FROM_EMAIL}>`,
       to: email,
-      subject: "Repor Password - Baboretes",
+      subject: "Repor Password - Baborette",
       html: `
         <!DOCTYPE html>
         <html>
@@ -20,7 +20,7 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string) {
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f9fafb; margin: 0; padding: 40px 20px;">
           <div style="max-width: 480px; margin: 0 auto; background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
             <h1 style="color: #111827; font-size: 24px; font-weight: bold; margin: 0 0 24px; text-align: center;">
-              Baboretes
+              Baborette
             </h1>
 
             <p style="color: #374151; font-size: 16px; line-height: 24px; margin: 0 0 16px;">
@@ -44,7 +44,7 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string) {
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
 
             <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 0;">
-              Baboretes &copy; ${new Date().getFullYear()}
+              Baborette &copy; ${new Date().getFullYear()}
             </p>
           </div>
         </body>

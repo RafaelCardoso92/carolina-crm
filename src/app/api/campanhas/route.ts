@@ -11,11 +11,13 @@ export async function GET(request: Request) {
     const mes = searchParams.get("mes") ? parseInt(searchParams.get("mes")!) : undefined
     const ano = searchParams.get("ano") ? parseInt(searchParams.get("ano")!) : undefined
     const ativo = searchParams.get("ativo")
+    const recorrente = searchParams.get("recorrente")
 
     const where: Record<string, unknown> = { ...userScopedWhere(session) }
     if (mes) where.mes = mes
     if (ano) where.ano = ano
     if (ativo !== null && ativo !== undefined) where.ativo = ativo === "true"
+    if (recorrente !== null && recorrente !== undefined) where.recorrente = recorrente === "true"
 
     const campanhas = await prisma.campanha.findMany({
       where,
@@ -76,7 +78,8 @@ export async function POST(request: Request) {
         descricao: data.descricao || null,
         mes: parseInt(data.mes),
         ano: parseInt(data.ano),
-        ativo: true,
+        ativo: data.ativo !== false,
+        recorrente: data.recorrente === true,
         produtos: produtosData.length > 0 ? {
           create: produtosData.map(p => ({
             produtoId: p.produtoId || null,

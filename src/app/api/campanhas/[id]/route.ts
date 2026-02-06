@@ -84,6 +84,7 @@ export async function PUT(
           mes: data.mes ? parseInt(data.mes) : undefined,
           ano: data.ano ? parseInt(data.ano) : undefined,
           ativo: data.ativo,
+          recorrente: data.recorrente,
           produtos: produtosData.length > 0 ? {
             create: produtosData.map(p => ({
               produtoId: p.produtoId || null,
@@ -105,6 +106,46 @@ export async function PUT(
   } catch (error) {
     if (error instanceof Response) return error
     console.error("Error updating campanha:", error)
+    return NextResponse.json({ error: "Erro ao atualizar campanha" }, { status: 500 })
+  }
+}
+
+// PATCH for quick toggle of ativo/recorrente
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await requirePermission(PERMISSIONS.CAMPANHAS_WRITE)
+    const { id } = await params
+    const data = await request.json()
+
+    // Verify ownership
+    const existing = await prisma.campanha.findFirst({
+      where: { id, ...userScopedWhere(session) }
+    })
+    if (!existing) {
+      return NextResponse.json({ error: "Campanha nao encontrada" }, { status: 404 })
+    }
+
+    // Only allow toggling ativo and recorrente
+    const updateData: { ativo?: boolean; recorrente?: boolean } = {}
+    if (typeof data.ativo === "boolean") updateData.ativo = data.ativo
+    if (typeof data.recorrente === "boolean") updateData.recorrente = data.recorrente
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: "Nada para atualizar" }, { status: 400 })
+    }
+
+    const campanha = await prisma.campanha.update({
+      where: { id },
+      data: updateData,
+    })
+
+    return NextResponse.json(campanha)
+  } catch (error) {
+    if (error instanceof Response) return error
+    console.error("Error patching campanha:", error)
     return NextResponse.json({ error: "Erro ao atualizar campanha" }, { status: 500 })
   }
 }

@@ -223,12 +223,11 @@ export default function AcordoParceria({ clienteId }: Props) {
 
       {acordo ? (
         <div>
-          {/* Status Badge */}
+          {/* Year Badge */}
           <div className="flex items-center gap-3 mb-4">
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${estadoColors[acordo.estado]}`}>
-              {estadoLabels[acordo.estado]}
+            <span className="px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary">
+              {acordo.ano}
             </span>
-            <span className="text-sm text-muted-foreground">{acordo.ano}</span>
           </div>
 
           {/* Annual Target */}
@@ -243,21 +242,18 @@ export default function AcordoParceria({ clienteId }: Props) {
           {/* Progress Bar */}
           <div className="mb-4">
             <div className="flex justify-between text-sm mb-1">
-              <span className="text-muted-foreground">Progresso YTD</span>
-              <span className="font-medium text-foreground">{acordo.progressPercent.toFixed(1)}%</span>
+              <span className="text-muted-foreground">Progresso Anual</span>
+              <span className="font-medium text-foreground">{((acordo.yearToDateActual / acordo.valorAnual) * 100).toFixed(1)}%</span>
             </div>
             <div className="w-full bg-muted rounded-full h-3">
               <div
-                className={`h-3 rounded-full transition-all ${
-                  acordo.estado === "ATRAS" ? "bg-red-500" :
-                  acordo.estado === "ADIANTADO" ? "bg-blue-500" : "bg-green-500"
-                }`}
-                style={{ width: `${Math.min(acordo.progressPercent, 100)}%` }}
+                className="h-3 rounded-full transition-all bg-primary"
+                style={{ width: `${Math.min((acordo.yearToDateActual / acordo.valorAnual) * 100, 100)}%` }}
               />
             </div>
             <div className="flex justify-between text-xs text-muted-foreground mt-1">
               <span>Realizado: {formatCurrency(acordo.yearToDateActual)} EUR</span>
-              <span>Esperado: {formatCurrency(acordo.yearToDateTarget)} EUR</span>
+              <span>Falta: {formatCurrency(Math.max(acordo.valorAnual - acordo.yearToDateActual, 0))} EUR</span>
             </div>
           </div>
 
@@ -277,12 +273,8 @@ export default function AcordoParceria({ clienteId }: Props) {
                     isPast ? "bg-secondary" : "bg-muted/50"
                   }`}
                 >
-                  <p className="text-xs font-medium text-muted-foreground">Q{q}</p>
-                  <p className={`text-sm font-bold ${
-                    isPast && percent < 90 ? "text-red-500" :
-                    isPast && percent >= 90 ? "text-green-500" :
-                    "text-foreground"
-                  }`}>
+                  <p className="text-xs font-medium text-muted-foreground">{q}º T</p>
+                  <p className="text-sm font-bold text-foreground">
                     {formatCurrency(actual)}
                   </p>
                   {(isPast || isCurrent) && (

@@ -70,6 +70,10 @@ function serializeVendas(vendas: Awaited<ReturnType<typeof fetchVendas>>) {
           preco: serializeDecimal(item.substituicao.preco),
         } : null,
       }))
+    })),
+    incidencias: v.incidencias?.map(inc => ({
+      ...inc,
+      valor: serializeDecimal(inc.valor),
     }))
   }))
 }
@@ -93,6 +97,7 @@ async function fetchVendas(mes: number, ano: number, userFilter: { userId?: stri
         },
         orderBy: { createdAt: "asc" }
       },
+      incidencias: true,
       devolucoes: {
         include: {
           venda: {

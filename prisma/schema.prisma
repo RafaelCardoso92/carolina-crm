@@ -116,6 +116,7 @@ model Venda {
   campanhas          CampanhaVenda[]
   cobranca           Cobranca?
   devolucoes         Devolucao[]
+  incidencias        Incidencia[]
   itensReconciliacao ItemReconciliacao[]
   itens              ItemVenda[]
   cliente            Cliente             @relation(fields: [clienteId], references: [id], onDelete: Cascade)
@@ -641,6 +642,7 @@ model Campanha {
   mes       Int
   ano       Int
   ativo     Boolean           @default(true)
+  recorrente Boolean           @default(false)
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
   user      User?             @relation(fields: [userId], references: [id])
@@ -650,6 +652,7 @@ model Campanha {
   @@index([userId])
   @@index([ativo])
   @@index([mes, ano])
+  @@index([recorrente])
 }
 
 model CampanhaProduto {
@@ -1081,4 +1084,18 @@ enum TipoDespesa {
   PORTAGENS
   RESTAURANTE
   OUTRO
+}
+
+model Incidencia {
+  id          String   @id @default(cuid())
+  vendaId     String
+  valor       Decimal  @db.Decimal(10, 2)
+  motivo      String
+  notas       String?
+  dataRegisto DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  venda       Venda    @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+
+  @@index([vendaId])
 }
