@@ -1,7 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import { useJsApiLoader } from "@react-google-maps/api"
+import { GOOGLE_MAPS_CONFIG } from "@/lib/google-maps"
 
 type ClienteData = {
   id?: string
@@ -10,6 +12,10 @@ type ClienteData = {
   telefone: string | null
   email: string | null
   morada: string | null
+  cidade: string | null
+  codigoPostal: string | null
+  latitude: number | null
+  longitude: number | null
   notas: string | null
 }
 
@@ -18,7 +24,105 @@ export default function ClienteForm({ cliente }: { cliente?: ClienteData }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
+  // Address state
+  const [morada, setMorada] = useState(cliente?.morada || "")
+  const [cidade, setCidade] = useState(cliente?.cidade || "")
+  const [codigoPostal, setCodigoPostal] = useState(cliente?.codigoPostal || "")
+  const [coordinates, setCoordinates] = useState<{ lat: number | null; lng: number | null }>({
+    lat: cliente?.latitude || null,
+    lng: cliente?.longitude || null,
+  })
+
+  // Places autocomplete
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null)
+  const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_CONFIG)
+
   const isEditing = !!cliente?.id
+
+  // Initialize Google Places Autocomplete
+  useEffect(() => {
+    if (!isLoaded || !searchInputRef.current) return
+
+    const autocomplete = new google.maps.places.Autocomplete(searchInputRef.current, {
+      componentRestrictions: { country: "pt" },
+      fields: ["address_components", "geometry", "name", "formatted_address"],
+      types: ["establishment", "geocode"],
+    })
+
+    autocomplete.addListener("place_changed", () => {
+      const place = autocomplete.getPlace()
+      if (!place.geometry?.location) return
+
+      // Extract address components
+      let streetNumber = ""
+      let street = ""
+      let city = ""
+      let postalCode = ""
+
+      place.address_components?.forEach((component) => {
+        const types = component.types
+        if (types.includes("street_number")) {
+          streetNumber = component.long_name
+        } else if (types.includes("route")) {
+          street = component.long_name
+        } else if (types.includes("locality") || types.includes("administrative_area_level_2")) {
+          city = component.long_name
+        } else if (types.includes("postal_code")) {
+          postalCode = component.long_name
+        }
+      })
+
+      // Build full address
+      const fullStreet = streetNumber ? `${street}, ${streetNumber}` : street
+
+      setMorada(fullStreet || place.formatted_address || "")
+      setCidade(city)
+      setCodigoPostal(postalCode)
+      setCoordinates({
+        lat: place.geometry.location.lat(),
+        lng: place.geometry.location.lng(),
+      })
+
+      // Clear search input after selection
+      if (searchInputRef.current) {
+        searchInputRef.current.value = ""
+      }
+    })
+
+    autocompleteRef.current = autocomplete
+
+    return () => {
+      google.maps.event.clearInstanceListeners(autocomplete)
+    }
+  }, [isLoaded])
+
+  // Manual geocode fallback
+  const handleManualGeocode = useCallback(async () => {
+    if (!morada && !cidade) {
+      setError("Preencha a morada ou cidade")
+      return
+    }
+
+    const fullAddress = [morada, cidade, codigoPostal, "Portugal"].filter(Boolean).join(", ")
+
+    try {
+      const res = await fetch("/api/clientes/geocode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: fullAddress }),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setCoordinates({ lat: data.latitude, lng: data.longitude })
+      } else {
+        setError("Não foi possível obter as coordenadas")
+      }
+    } catch {
+      setError("Erro ao obter coordenadas")
+    }
+  }, [morada, cidade, codigoPostal])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -31,7 +135,11 @@ export default function ClienteForm({ cliente }: { cliente?: ClienteData }) {
       codigo: formData.get("codigo") as string || null,
       telefone: formData.get("telefone") as string || null,
       email: formData.get("email") as string || null,
-      morada: formData.get("morada") as string || null,
+      morada,
+      cidade,
+      codigoPostal,
+      latitude: coordinates.lat,
+      longitude: coordinates.lng,
       notas: formData.get("notas") as string || null
     }
 
@@ -131,17 +239,107 @@ export default function ClienteForm({ cliente }: { cliente?: ClienteData }) {
           />
         </div>
 
-        <div className="md:col-span-2">
-          <label className="block text-sm font-bold text-foreground mb-2">
-            Morada
-          </label>
-          <input
-            name="morada"
-            type="text"
-            defaultValue={cliente?.morada || ""}
-            className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium bg-card"
-            placeholder="Morada completa do cliente"
-          />
+        {/* Location with Google Places Search */}
+        <div className="md:col-span-2 border-t pt-6 mt-2">
+          <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+            <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Localização
+          </h3>
+
+          {/* Google Places Search Box */}
+          <div className="mb-4">
+            <label className="block text-sm font-bold text-foreground mb-2">
+              <span className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                </svg>
+                Pesquisar local (Google Maps)
+              </span>
+            </label>
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Pesquise por nome do estabelecimento ou morada..."
+              className="w-full px-4 py-3 border-2 border-blue-200 bg-blue-50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-foreground font-medium placeholder:text-blue-400"
+            />
+            <p className="text-xs text-muted-foreground mt-1.5">
+              Comece a escrever para pesquisar. Selecione um resultado para preencher automaticamente a morada.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-bold text-foreground mb-2">Morada</label>
+              <input
+                type="text"
+                value={morada}
+                onChange={(e) => setMorada(e.target.value)}
+                className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium bg-card"
+                placeholder="Morada completa do cliente"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-foreground mb-2">Cidade</label>
+              <input
+                type="text"
+                value={cidade}
+                onChange={(e) => setCidade(e.target.value)}
+                className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium bg-card"
+                placeholder="Cidade"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-foreground mb-2">Código Postal</label>
+              <input
+                type="text"
+                value={codigoPostal}
+                onChange={(e) => setCodigoPostal(e.target.value)}
+                className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium bg-card"
+                placeholder="1234-567"
+              />
+            </div>
+
+            {/* Coordinates display and manual geocode */}
+            <div className="md:col-span-2">
+              {coordinates.lat && coordinates.lng ? (
+                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-sm text-green-700 font-medium">
+                    Coordenadas: {coordinates.lat.toFixed(5)}, {coordinates.lng.toFixed(5)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCoordinates({ lat: null, lng: null })}
+                    className="ml-auto text-sm text-green-600 hover:text-green-800 font-medium"
+                  >
+                    Limpar
+                  </button>
+                </div>
+              ) : (morada || cidade) ? (
+                <button
+                  type="button"
+                  onClick={handleManualGeocode}
+                  className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition flex items-center gap-2 text-sm"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  </svg>
+                  Obter coordenadas da morada
+                </button>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Use a pesquisa acima ou preencha a morada manualmente
+                </p>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="md:col-span-2">
