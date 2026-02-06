@@ -93,6 +93,7 @@ export default function DashboardView() {
 
   useEffect(() => {
     fetchData()
+    fetch("/api/auto-followup", { method: "POST" })
   }, [ano, mes, seller])
 
   async function fetchData() {
