@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { requirePermission } from "@/lib/api-auth"
-import { PERMISSIONS } from "@/lib/permissions"
+import { auth } from "@/lib/auth"
+import { PERMISSIONS, hasPermission } from "@/lib/permissions"
 import bcrypt from "bcryptjs"
 import { UserRole, UserStatus } from "@prisma/client"
 
@@ -10,7 +10,20 @@ type RouteParams = { params: Promise<{ id: string }> }
 // GET /api/admin/users/[id] - Get user details
 export async function GET(request: Request, { params }: RouteParams) {
   try {
-    const session = await requirePermission(PERMISSIONS.MANAGE_USERS)
+    const session = await auth()
+    
+    if (!session?.user) {
+      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+    }
+
+    const role = session.user.role as UserRole
+    const canManageAll = hasPermission(role, PERMISSIONS.MANAGE_USERS)
+    const canManageSellers = hasPermission(role, PERMISSIONS.MANAGE_SELLERS)
+
+    if (!canManageAll && !canManageSellers) {
+      return NextResponse.json({ error: "Sem permissao" }, { status: 403 })
+    }
+
     const { id } = await params
 
     const user = await prisma.user.findUnique({
@@ -37,19 +50,21 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     if (!user) {
       return NextResponse.json(
-        { error: "Usuário não encontrado" },
+        { error: "Usuario nao encontrado" },
         { status: 404 }
       )
     }
 
+    // ADMIN cannot view ADMIN or MASTERADMIN accounts
+    if (!canManageAll && user.role !== "SELLER") {
+      return NextResponse.json({ error: "Sem permissao" }, { status: 403 })
+    }
+
     return NextResponse.json(user)
   } catch (error) {
-    if (error instanceof NextResponse) {
-      return error
-    }
     console.error("Error fetching user:", error)
     return NextResponse.json(
-      { error: "Erro ao buscar usuário" },
+      { error: "Erro ao buscar usuario" },
       { status: 500 }
     )
   }
@@ -58,9 +73,21 @@ export async function GET(request: Request, { params }: RouteParams) {
 // PATCH /api/admin/users/[id] - Update user
 export async function PATCH(request: Request, { params }: RouteParams) {
   try {
-    const session = await requirePermission(PERMISSIONS.MANAGE_USERS)
-    const { id } = await params
+    const session = await auth()
+    
+    if (!session?.user) {
+      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+    }
 
+    const currentRole = session.user.role as UserRole
+    const canManageAll = hasPermission(currentRole, PERMISSIONS.MANAGE_USERS)
+    const canManageSellers = hasPermission(currentRole, PERMISSIONS.MANAGE_SELLERS)
+
+    if (!canManageAll && !canManageSellers) {
+      return NextResponse.json({ error: "Sem permissao" }, { status: 403 })
+    }
+
+    const { id } = await params
     const body = await request.json()
     const { name, email, password, role, status } = body
 
@@ -71,19 +98,35 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     if (!existingUser) {
       return NextResponse.json(
-        { error: "Usuário não encontrado" },
+        { error: "Usuario nao encontrado" },
         { status: 404 }
       )
     }
 
-    // If changing email, check it's not already in use
+    // ADMIN cannot edit ADMIN or MASTERADMIN accounts
+    if (!canManageAll && existingUser.role !== "SELLER") {
+      return NextResponse.json(
+        { error: "Sem permissao para editar este usuario" },
+        { status: 403 }
+      )
+    }
+
+    // ADMIN cannot promote users to ADMIN or MASTERADMIN
+    if (!canManageAll && role && role !== "SELLER") {
+      return NextResponse.json(
+        { error: "Apenas pode definir cargo de Vendedor" },
+        { status: 403 }
+      )
+    }
+
+    // If changing email, check its not already in use
     if (email && email !== existingUser.email) {
       const emailInUse = await prisma.user.findUnique({
         where: { email }
       })
       if (emailInUse) {
         return NextResponse.json(
-          { error: "Email já está em uso" },
+          { error: "Email ja esta em uso" },
           { status: 400 }
         )
       }
@@ -93,7 +136,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     const validRoles: UserRole[] = ["MASTERADMIN", "ADMIN", "SELLER"]
     if (role && !validRoles.includes(role)) {
       return NextResponse.json(
-        { error: "Cargo inválido" },
+        { error: "Cargo invalido" },
         { status: 400 }
       )
     }
@@ -102,7 +145,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     const validStatuses: UserStatus[] = ["ACTIVE", "INACTIVE", "PENDING"]
     if (status && !validStatuses.includes(status)) {
       return NextResponse.json(
-        { error: "Status inválido" },
+        { error: "Status invalido" },
         { status: 400 }
       )
     }
@@ -143,12 +186,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     return NextResponse.json(user)
   } catch (error) {
-    if (error instanceof NextResponse) {
-      return error
-    }
     console.error("Error updating user:", error)
     return NextResponse.json(
-      { error: "Erro ao atualizar usuário" },
+      { error: "Erro ao atualizar usuario" },
       { status: 500 }
     )
   }
@@ -157,14 +197,48 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 // DELETE /api/admin/users/[id] - Deactivate user (soft delete)
 export async function DELETE(request: Request, { params }: RouteParams) {
   try {
-    const session = await requirePermission(PERMISSIONS.MANAGE_USERS)
+    const session = await auth()
+    
+    if (!session?.user) {
+      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+    }
+
+    const currentRole = session.user.role as UserRole
+    const canManageAll = hasPermission(currentRole, PERMISSIONS.MANAGE_USERS)
+    const canManageSellers = hasPermission(currentRole, PERMISSIONS.MANAGE_SELLERS)
+
+    if (!canManageAll && !canManageSellers) {
+      return NextResponse.json({ error: "Sem permissao" }, { status: 403 })
+    }
+
     const { id } = await params
 
     // Prevent self-deletion
     if (id === session.user.id) {
       return NextResponse.json(
-        { error: "Não pode desativar a própria conta" },
+        { error: "Nao pode desativar a propria conta" },
         { status: 400 }
+      )
+    }
+
+    // Check user exists and get their role
+    const existingUser = await prisma.user.findUnique({
+      where: { id },
+      select: { role: true }
+    })
+
+    if (!existingUser) {
+      return NextResponse.json(
+        { error: "Usuario nao encontrado" },
+        { status: 404 }
+      )
+    }
+
+    // ADMIN cannot deactivate ADMIN or MASTERADMIN accounts
+    if (!canManageAll && existingUser.role !== "SELLER") {
+      return NextResponse.json(
+        { error: "Sem permissao para desativar este usuario" },
+        { status: 403 }
       )
     }
 
@@ -181,12 +255,9 @@ export async function DELETE(request: Request, { params }: RouteParams) {
 
     return NextResponse.json(user)
   } catch (error) {
-    if (error instanceof NextResponse) {
-      return error
-    }
     console.error("Error deactivating user:", error)
     return NextResponse.json(
-      { error: "Erro ao desativar usuário" },
+      { error: "Erro ao desativar usuario" },
       { status: 500 }
     )
   }

@@ -15,9 +15,10 @@ interface User {
 
 interface UserFormProps {
   user?: User
+  isMasterAdmin: boolean
 }
 
-export default function UserForm({ user }: UserFormProps) {
+export default function UserForm({ user, isMasterAdmin }: UserFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -39,7 +40,7 @@ export default function UserForm({ user }: UserFormProps) {
       const url = user ? `/api/admin/users/${user.id}` : "/api/admin/users"
       const method = user ? "PATCH" : "POST"
 
-      // Don't send empty password on update
+      // Dont send empty password on update
       const body: Record<string, string> = {
         name: formData.name,
         email: formData.email,
@@ -127,25 +128,40 @@ export default function UserForm({ user }: UserFormProps) {
         />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-foreground mb-2">
-          Cargo <span className="text-red-500">*</span>
-        </label>
-        <select
-          value={formData.role}
-          onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
-          className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-        >
-          <option value="SELLER">Vendedor (apenas produtos)</option>
-          <option value="ADMIN">Admin (acesso completo aos proprios dados)</option>
-          <option value="MASTERADMIN">Master Admin (acesso total + gestao de usuarios)</option>
-        </select>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {formData.role === "SELLER" && "Apenas pode ver a lista de produtos"}
-          {formData.role === "ADMIN" && "Pode gerir os seus proprios clientes, vendas, etc."}
-          {formData.role === "MASTERADMIN" && "Acesso total ao sistema incluindo gestao de usuarios"}
-        </p>
-      </div>
+      {isMasterAdmin ? (
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">
+            Cargo <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={formData.role}
+            onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
+            className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+          >
+            <option value="SELLER">Vendedor (conta standard)</option>
+            <option value="ADMIN">Admin (gere vendedores)</option>
+            <option value="MASTERADMIN">Master Admin (acesso total + gestao de usuarios)</option>
+          </select>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {formData.role === "SELLER" && "Acesso completo ao sistema, exceto gestao de utilizadores"}
+            {formData.role === "ADMIN" && "Tudo o que o vendedor pode fazer + gestao de vendedores"}
+            {formData.role === "MASTERADMIN" && "Acesso total ao sistema incluindo gestao de usuarios"}
+          </p>
+        </div>
+      ) : (
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">
+            Cargo
+          </label>
+          <div className="px-4 py-3 rounded-xl border border-border bg-muted text-muted-foreground">
+            Vendedor (conta standard)
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Acesso completo ao sistema, exceto gestao de utilizadores
+          </p>
+          <input type="hidden" name="role" value="SELLER" />
+        </div>
+      )}
 
       {user && (
         <div>
@@ -170,7 +186,7 @@ export default function UserForm({ user }: UserFormProps) {
           disabled={loading}
           className="flex-1 bg-primary text-primary-foreground px-6 py-3 rounded-xl font-medium hover:bg-primary-hover transition disabled:opacity-50"
         >
-          {loading ? "Salvando..." : user ? "Atualizar Usuario" : "Criar Usuario"}
+          {loading ? "Salvando..." : user ? "Atualizar" : "Criar Vendedor"}
         </button>
         <Link
           href="/admin/usuarios"

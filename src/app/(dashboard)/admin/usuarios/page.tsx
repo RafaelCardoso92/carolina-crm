@@ -3,11 +3,16 @@ import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import UsersList from "./UsersList"
+import { UserRole } from "@prisma/client"
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic"
 
-async function getUsers() {
+async function getUsers(canManageAll: boolean) {
+  // ADMIN sees only SELLER accounts, MASTERADMIN sees all
+  const whereClause = canManageAll ? {} : { role: "SELLER" as UserRole }
+  
   return prisma.user.findMany({
+    where: whereClause,
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -29,19 +34,24 @@ async function getUsers() {
 export default async function UsuariosPage() {
   const session = await auth()
 
-  // Only MASTERADMIN can access this page
-  if (!session?.user || session.user.role !== "MASTERADMIN") {
+  // ADMIN and MASTERADMIN can access this page
+  if (!session?.user || (session.user.role !== "MASTERADMIN" && session.user.role !== "ADMIN")) {
     redirect("/")
   }
 
-  const users = await getUsers()
+  const isMasterAdmin = session.user.role === "MASTERADMIN"
+  const users = await getUsers(isMasterAdmin)
 
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-medium tracking-wide text-foreground">Gestao de Usuarios</h1>
-          <p className="text-muted-foreground">{users.length} usuarios registados</p>
+          <h1 className="text-3xl font-medium tracking-wide text-foreground">
+            {isMasterAdmin ? "Gestao de Usuarios" : "Gestao de Vendedores"}
+          </h1>
+          <p className="text-muted-foreground">
+            {users.length} {isMasterAdmin ? "usuarios" : "vendedores"} registados
+          </p>
         </div>
         <Link
           href="/admin/usuarios/novo"
@@ -50,11 +60,15 @@ export default async function UsuariosPage() {
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          Novo Usuario
+          {isMasterAdmin ? "Novo Usuario" : "Novo Vendedor"}
         </Link>
       </div>
 
-      <UsersList users={users} currentUserId={session.user.id} />
+      <UsersList 
+        users={users} 
+        currentUserId={session.user.id} 
+        isMasterAdmin={isMasterAdmin}
+      />
     </div>
   )
 }

@@ -32,7 +32,7 @@ export default function SellerTabs({ onSellerChange }: SellerTabsProps) {
         const res = await fetch("/api/sellers")
         if (res.ok) {
           const data = await res.json()
-          setSellers(data.sellers || [])
+          setSellers(Array.isArray(data) ? data : (data.sellers || []))
         }
       } catch (error) {
         console.error("Error fetching sellers:", error)

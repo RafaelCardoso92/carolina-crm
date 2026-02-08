@@ -5,6 +5,7 @@ import { Session } from "next-auth"
 export const PERMISSIONS = {
   // User management
   MANAGE_USERS: "manage_users",
+  MANAGE_SELLERS: "manage_sellers",
   IMPERSONATE: "impersonate",
 
   // View all data (ADMIN and MASTERADMIN)

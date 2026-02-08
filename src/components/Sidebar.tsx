@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import { signOut, useSession } from "next-auth/react"
 import { useTheme } from "./ThemeProvider"
 import { UserRole } from "@prisma/client"
+import { useSellerFilter } from "@/contexts/SellerFilterContext"
 
 interface MenuItem {
   href: string
@@ -121,7 +122,7 @@ const menuGroups: MenuGroup[] = [
         href: "/admin/usuarios",
         label: "Usuarios",
         icon: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z",
-        roles: ["MASTERADMIN"]
+        roles: ["ADMIN", "MASTERADMIN"]
       },
       {
         href: "/definicoes",
@@ -136,6 +137,45 @@ const menuGroups: MenuGroup[] = [
     ]
   },
 ]
+
+
+// Seller Filter Dropdown Component
+function SellerFilterDropdown() {
+  const { sellers, selectedSellerId, setSelectedSellerId, isLoading, canFilter } = useSellerFilter()
+
+  if (!canFilter) return null
+
+  const selectedSeller = sellers.find(s => s.id === selectedSellerId)
+
+  return (
+    <div className="mb-3">
+      <label className="block px-1 mb-1.5 text-[9px] font-medium uppercase tracking-wider text-white/30">
+        Ver dados de
+      </label>
+      <select
+        value={selectedSellerId || ""}
+        onChange={(e) => setSelectedSellerId(e.target.value || null)}
+        disabled={isLoading}
+        className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/20 disabled:opacity-50"
+      >
+        <option value="" className="bg-sidebar text-white">Todos os vendedores</option>
+        {sellers.map((seller) => (
+          <option key={seller.id} value={seller.id} className="bg-sidebar text-white">
+            {seller.name || seller.email}
+          </option>
+        ))}
+      </select>
+      {selectedSellerId && (
+        <button
+          onClick={() => setSelectedSellerId(null)}
+          className="mt-1.5 w-full px-2 py-1 text-[10px] text-white/50 hover:text-white hover:bg-white/5 rounded transition"
+        >
+          Limpar filtro
+        </button>
+      )}
+    </div>
+  )
+}
 
 export default function Sidebar() {
   const pathname = usePathname()
@@ -202,7 +242,7 @@ export default function Sidebar() {
       <div className="flex-shrink-0 px-5 py-5 border-b border-white/10">
         <Link href="/" className="block">
           <span className="text-xl font-bold text-white tracking-tight block">Baborette</span>
-          <p className="text-[10px] text-white/50 font-medium mt-0.5">CRM Professional</p>
+          <p className="text-[10px] text-white/50 font-medium mt-0.5">CRM Professional v2.5</p>
         </Link>
       </div>
 
@@ -251,6 +291,9 @@ export default function Sidebar() {
 
       {/* Bottom Section */}
       <div className="flex-shrink-0 p-3 border-t border-white/10">
+        {/* Seller Filter - Only for ADMIN+ */}
+        <SellerFilterDropdown />
+        
         {/* User Card */}
         {session?.user && (
           <div className="flex items-center gap-3 px-3 py-2.5 mb-2 rounded-lg bg-white/5">

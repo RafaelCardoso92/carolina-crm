@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { SellerFilterProvider } from "@/contexts/SellerFilterContext";
 import Script from "next/script";
 
 const geistSans = Geist({
@@ -59,7 +60,9 @@ export default function RootLayout({
       >
         <SessionProvider>
           <ThemeProvider>
+            <SellerFilterProvider>
             {children}
+          </SellerFilterProvider>
           </ThemeProvider>
         </SessionProvider>
         <Script

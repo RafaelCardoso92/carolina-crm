@@ -21,6 +21,7 @@ interface User {
 interface UsersListProps {
   users: User[]
   currentUserId: string
+  isMasterAdmin: boolean
 }
 
 const roleLabels: Record<UserRole, string> = {
@@ -47,7 +48,7 @@ const statusColors: Record<UserStatus, string> = {
   PENDING: "bg-yellow-100 text-yellow-700"
 }
 
-export default function UsersList({ users, currentUserId }: UsersListProps) {
+export default function UsersList({ users, currentUserId, isMasterAdmin }: UsersListProps) {
   const router = useRouter()
   const { update: updateSession } = useSession()
   const [loading, setLoading] = useState<string | null>(null)
@@ -141,7 +142,9 @@ export default function UsersList({ users, currentUserId }: UsersListProps) {
           <thead>
             <tr className="border-b border-border bg-muted/50">
               <th className="text-left p-4 text-sm font-medium text-muted-foreground">Usuario</th>
-              <th className="text-left p-4 text-sm font-medium text-muted-foreground">Cargo</th>
+              {isMasterAdmin && (
+                <th className="text-left p-4 text-sm font-medium text-muted-foreground">Cargo</th>
+              )}
               <th className="text-left p-4 text-sm font-medium text-muted-foreground">Status</th>
               <th className="text-left p-4 text-sm font-medium text-muted-foreground">Ultimo Login</th>
               <th className="text-left p-4 text-sm font-medium text-muted-foreground">Clientes</th>
@@ -157,11 +160,13 @@ export default function UsersList({ users, currentUserId }: UsersListProps) {
                     <p className="text-sm text-muted-foreground">{user.email}</p>
                   </div>
                 </td>
-                <td className="p-4">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${roleColors[user.role]}`}>
-                    {roleLabels[user.role]}
-                  </span>
-                </td>
+                {isMasterAdmin && (
+                  <td className="p-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${roleColors[user.role]}`}>
+                      {roleLabels[user.role]}
+                    </span>
+                  </td>
+                )}
                 <td className="p-4">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[user.status]}`}>
                     {statusLabels[user.status]}
@@ -194,8 +199,8 @@ export default function UsersList({ users, currentUserId }: UsersListProps) {
                       </svg>
                     </button>
 
-                    {/* Impersonate button - only for non-self and non-MASTERADMIN */}
-                    {user.id !== currentUserId && user.role !== "MASTERADMIN" && user.status === "ACTIVE" && (
+                    {/* Impersonate button - only for MASTERADMIN, non-self and non-MASTERADMIN targets */}
+                    {isMasterAdmin && user.id !== currentUserId && user.role !== "MASTERADMIN" && user.status === "ACTIVE" && (
                       <button
                         onClick={() => handleImpersonate(user)}
                         disabled={loading === user.id}

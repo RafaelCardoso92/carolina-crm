@@ -13,6 +13,7 @@ import AcordoParceria from "@/components/AcordoParceria"
 import WhatsAppButton from "@/components/WhatsAppButton"
 import ClienteBaborella from "@/components/ClienteBaborella"
 import QuickReorder from "./QuickReorder"
+import ClienteActions from "./ClienteActions"
 
 async function getCliente(id: string) {
   return prisma.cliente.findUnique({
@@ -79,14 +80,11 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
             </div>
             {cliente.codigo && <p className="text-muted-foreground">Codigo: {cliente.codigo}</p>}
           </div>
-          <div className="flex gap-2">
-            <Link
-              href={`/clientes/${id}/editar`}
-              className="bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-hover transition"
-            >
-              Editar
-            </Link>
-          </div>
+          <ClienteActions 
+            clienteId={id} 
+            clienteNome={cliente.nome} 
+            currentSellerId={cliente.userId || ""} 
+          />
         </div>
       </div>
 

@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react"
 import Sidebar from "@/components/Sidebar"
 import ImpersonationBanner from "@/components/ImpersonationBanner"
+import BaborellaGlobal from "@/components/BaborellaGlobal"
 
 export default function DashboardLayout({
   children,
@@ -33,11 +34,14 @@ export default function DashboardLayout({
               Rafael Cardoso
             </a>
             <span className="mx-2">•</span>
-            <span className="font-medium">v2.3.0</span>
+            <span className="font-medium">v2.5.0</span>
             <span className="ml-1 px-1.5 py-0.5 text-xs font-bold bg-primary/10 text-primary rounded">β</span>
           </p>
         </footer>
       </div>
+      
+      {/* Global Baborella AI Assistant */}
+      <BaborellaGlobal />
     </div>
   )
 }

@@ -1099,3 +1099,67 @@ model Incidencia {
 
   @@index([vendaId])
 }
+
+// ===========================================
+// Baborella AI Agent Models
+// ===========================================
+
+enum ActionStatus {
+  PENDING
+  APPROVED
+  EXECUTING
+  COMPLETED
+  FAILED
+  REJECTED
+}
+
+enum ActionCategory {
+  VENDAS
+  ROTAS
+  MAPA
+  CLIENTES
+  PROSPECTOS
+  COBRANCAS
+  TAREFAS
+  GLOBAL
+}
+
+model BaborellaAction {
+  id              String         @id @default(cuid())
+  userId          String
+  sessionId       String         // Groups actions within a conversation
+  toolName        String         // e.g., "registrar_venda", "criar_rota"
+  category        ActionCategory
+  parameters      Json           // Tool parameters
+  description     String         // Human-readable description of what the action will do
+  status          ActionStatus   @default(PENDING)
+  requiresApproval Boolean       @default(true)
+  result          Json?          // Result after execution
+  error           String?        // Error message if failed
+  approvedAt      DateTime?
+  executedAt      DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([status])
+  @@index([userId, createdAt])
+}
+
+model BaborellaSession {
+  id          String   @id @default(cuid())
+  userId      String
+  context     String   // Current page/context (e.g., "vendas", "mapa", "clientes")
+  entityType  String?  // If focused on a specific entity
+  entityId    String?  // Entity ID if applicable
+  messages    Json     // Conversation history
+  metadata    Json?    // Additional context data
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  expiresAt   DateTime // Auto-cleanup old sessions
+
+  @@index([userId])
+  @@index([userId, context])
+  @@index([expiresAt])
+}
