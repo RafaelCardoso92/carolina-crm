@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import TransferClienteModal from "@/components/TransferClienteModal"
+import SendMessageModal from "@/components/SendMessageModal"
 
 interface ClienteActionsProps {
   clienteId: string
@@ -14,6 +15,7 @@ interface ClienteActionsProps {
 export default function ClienteActions({ clienteId, clienteNome, currentSellerId }: ClienteActionsProps) {
   const { data: session } = useSession()
   const [showTransferModal, setShowTransferModal] = useState(false)
+  const [showMessageModal, setShowMessageModal] = useState(false)
 
   const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "MASTERADMIN"
 
@@ -21,16 +23,28 @@ export default function ClienteActions({ clienteId, clienteNome, currentSellerId
     <>
       <div className="flex gap-2">
         {isAdmin && (
-          <button
-            onClick={() => setShowTransferModal(true)}
-            className="bg-amber-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-amber-600 transition flex items-center gap-2"
-            title="Transferir para outro vendedor"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-            </svg>
-            Transferir
-          </button>
+          <>
+            <button
+              onClick={() => setShowMessageModal(true)}
+              className="bg-blue-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-600 transition flex items-center gap-2"
+              title="Enviar mensagem ao vendedor"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              Mensagem
+            </button>
+            <button
+              onClick={() => setShowTransferModal(true)}
+              className="bg-amber-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-amber-600 transition flex items-center gap-2"
+              title="Transferir para outro vendedor"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+              Transferir
+            </button>
+          </>
         )}
         <Link
           href={`/clientes/${clienteId}/editar`}
@@ -47,6 +61,17 @@ export default function ClienteActions({ clienteId, clienteNome, currentSellerId
         isOpen={showTransferModal}
         onClose={() => setShowTransferModal(false)}
       />
+
+      {showMessageModal && (
+        <SendMessageModal
+          onClose={() => setShowMessageModal(false)}
+          onSent={() => setShowMessageModal(false)}
+          entityType="CLIENTE"
+          entityId={clienteId}
+          entityName={clienteNome}
+          recipientId={currentSellerId}
+        />
+      )}
     </>
   )
 }

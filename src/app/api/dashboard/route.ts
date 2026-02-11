@@ -129,7 +129,7 @@ export async function GET(request: Request) {
         include: {
           produtos: { include: { produto: true } },
           vendas: {
-            where: { mes, ano },
+            // Removed month filter - count all linked sales
             select: { id: true, objetivoVarioValor: true, total: true, cliente: { select: { nome: true } } }
           }
         },

@@ -79,6 +79,7 @@ type ObjetivoVario = {
   totalVendas: number
   totalVendido: number
   totalValorVendido: number
+  totalObjetivoValor: number
   produtos: Array<{
     id: string
     nome: string
@@ -2130,24 +2131,41 @@ function ObjetivosVariosTable({
                 </div>
               )}
 
-              {/* Objective stats */}
+              {/* Objective stats with progress */}
               <div className="mt-3 pt-3 border-t border-border">
+                {/* Progress bar */}
+                {o.totalValor > 0 && (
+                  <div className="mb-3">
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-muted-foreground">Progresso do Objetivo</span>
+                      <span className={(o.totalObjetivoValor || 0) >= o.totalValor ? "font-bold text-success" : "font-bold text-purple-600"}>
+                        {(((o.totalObjetivoValor || 0) / o.totalValor) * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div 
+                        className={(o.totalObjetivoValor || 0) >= o.totalValor ? "h-2 rounded-full transition-all bg-success" : "h-2 rounded-full transition-all bg-purple-500"}
+                        style={{ width: Math.min(100, ((o.totalObjetivoValor || 0) / o.totalValor) * 100) + "%" }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-xs mt-1">
+                      <span className="text-purple-600 font-medium">{formatCurrency(o.totalObjetivoValor || 0)} EUR</span>
+                      <span className="text-muted-foreground">de {formatCurrency(o.totalValor)} EUR</span>
+                    </div>
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground">Produtos: </span>
                     <span className="font-bold text-foreground">{o.totalProdutos}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Total s/IVA: </span>
-                    <span className="font-bold text-primary">{formatCurrency(o.totalValor)} €</span>
+                    <span className="text-muted-foreground">Vendas: </span>
+                    <span className="font-bold text-success">{o.totalVendido}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Vendido: </span>
-                    <span className="font-bold text-success">{o.totalVendido} unid.</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Valor vendido: </span>
-                    <span className="font-bold text-success">{formatCurrency(o.totalValorVendido)} €</span>
+                    <span className="text-muted-foreground">Total vendas: </span>
+                    <span className="font-bold text-success">{formatCurrency(o.totalValorVendido)} EUR</span>
                   </div>
                 </div>
                 {o.vendas && o.vendas.length > 0 && (

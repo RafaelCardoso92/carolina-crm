@@ -1,0 +1,449 @@
+import { NextRequest, NextResponse } from "next/server"
+import { prisma } from "@/lib/prisma"
+import { writeFile, mkdir } from "fs/promises"
+import { join } from "path"
+import { randomUUID } from "crypto"
+import { exec } from "child_process"
+import { promisify } from "util"
+import type {
+  ComissoesReconciliacaoResponse,
+  ComissoesReconciliacaoListResponse,
+  ParsedComissoesPdf,
+  PdfComissaoLine
+} from "@/types/reconciliacao-comissoes"
+
+const execAsync = promisify(exec)
+
+const UPLOADS_DIR = process.env.UPLOADS_DIR || "/app/uploads"
+
+// Parse Portuguese date format (02/01/2026 -> Date)
+function parsePortugueseDate(str: string): Date | null {
+  if (!str) return null
+  const match = str.match(/(\d{2})\/(\d{2})\/(\d{4})/)
+  if (!match) return null
+  const [, day, month, year] = match
+  return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+}
+
+// Parse Portuguese number format (1 234,56 -> 1234.56)
+function parsePortugueseNumber(str: string): number {
+  if (!str) return 0
+  // Remove spaces (thousands separator), replace comma with dot (decimal)
+  const cleaned = str.replace(/\s/g, "").replace(",", ".")
+  const num = parseFloat(cleaned)
+  return isNaN(num) ? 0 : num
+}
+
+// Parse Comissões PDF text content
+function parseComissoesPdfText(text: string): ParsedComissoesPdf {
+  const lines = text.split("\n").map(l => l.trim()).filter(Boolean)
+  
+  let dataInicio: Date | null = null
+  let dataFim: Date | null = null
+  let vendedor = ""
+  let totalLiquido = 0
+  let totalComissao = 0
+  const linhas: PdfComissaoLine[] = []
+  
+  // Parse date range from header "de 01/01/2026 a 31/01/2026"
+  const dateRangeMatch = text.match(/de\s+(\d{2}\/\d{2}\/\d{4})\s+a\s+(\d{2}\/\d{2}\/\d{4})/i)
+  if (dateRangeMatch) {
+    dataInicio = parsePortugueseDate(dateRangeMatch[1])
+    dataFim = parsePortugueseDate(dateRangeMatch[2])
+  }
+  
+  // Parse vendedor from "104 - Carolina Cardoso"
+  const vendedorMatch = text.match(/104\s*-\s*([^\n]+)/i)
+  if (vendedorMatch) {
+    vendedor = vendedorMatch[1].trim()
+  }
+  
+  // Parse total from "Total do Vendedor" or "Total geral de comissões" line
+  const totalMatch = text.match(/Total\s+(?:do\s+Vendedor|geral\s+de\s+comiss[oõ]es)\s+([\d\s]+[,\.]\d{2})\s+([\d\s]+[,\.]\d{2})/i)
+  if (totalMatch) {
+    totalLiquido = parsePortugueseNumber(totalMatch[1])
+    totalComissao = parsePortugueseNumber(totalMatch[2])
+  }
+  
+  // Parse individual lines
+  // Format: DD/MM/YYYY ENTIDADE Liquidação de FA SERIE NUMERO PRESTACAO VALOR_LIQ VALOR_COMISSAO
+  // Example: 02/01/2026 14190 Liquidação de FA 25OV 1908 2 519,41 24,89
+  const linePattern = /^(\d{2}\/\d{2}\/\d{4})\s+(\d{5})\s+Liquidação\s+de\s+(\w+)\s+(\w+)\s+(\d+)\s+(\d+)\s+([\d\s]+,\d{2})\s+([\d\s]+,\d{2})$/
+
+  for (const line of lines) {
+    const match = line.match(linePattern)
+    if (match) {
+      const [, dataStr, entidade, tipoDoc, serie, numero, prestacao, valorLiq, valorComissao] = match
+      linhas.push({
+        data: parsePortugueseDate(dataStr),
+        entidade,
+        tipoDoc,
+        serie,
+        numero,
+        prestacao: parseInt(prestacao),
+        valorLiquido: parsePortugueseNumber(valorLiq),
+        valorComissao: parsePortugueseNumber(valorComissao)
+      })
+    }
+  }
+  
+  // If we couldn't parse totals from the text, calculate from lines
+  if (totalLiquido === 0 && linhas.length > 0) {
+    totalLiquido = linhas.reduce((sum, l) => sum + l.valorLiquido, 0)
+    totalComissao = linhas.reduce((sum, l) => sum + l.valorComissao, 0)
+  }
+  
+  return {
+    dataInicio,
+    dataFim,
+    vendedor,
+    totalLiquido,
+    totalComissao,
+    linhas
+  }
+}
+
+// GET - List reconciliations
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const ano = searchParams.get("ano") ? parseInt(searchParams.get("ano")!) : undefined
+    
+    const where = ano ? { ano } : {}
+    
+    const reconciliacoes = await prisma.reconciliacaoComissoes.findMany({
+      where,
+      include: {
+        itens: {
+          include: {
+            cliente: {
+              select: { id: true, nome: true, codigo: true }
+            },
+            cobranca: {
+              select: { id: true, fatura: true, valor: true, comissao: true }
+            },
+            parcela: {
+              select: { id: true, numero: true, valor: true, dataPago: true }
+            }
+          }
+        }
+      },
+      orderBy: [{ ano: "desc" }, { mes: "desc" }]
+    })
+    
+    return NextResponse.json({
+      success: true,
+      reconciliacoes
+    })
+  } catch (error) {
+    console.error("Error fetching reconciliacoes comissoes:", error)
+    return NextResponse.json<ComissoesReconciliacaoListResponse>(
+      { success: false, error: "Erro ao carregar reconciliações de comissões" },
+      { status: 500 }
+    )
+  }
+}
+
+// POST - Upload PDF and create reconciliation
+export async function POST(request: NextRequest) {
+  try {
+    const formData = await request.formData()
+    const file = formData.get("file") as File | null
+    const mes = parseInt(formData.get("mes") as string)
+    const ano = parseInt(formData.get("ano") as string)
+    
+    // Validate inputs
+    if (!file) {
+      return NextResponse.json<ComissoesReconciliacaoResponse>(
+        { success: false, error: "Ficheiro PDF não fornecido" },
+        { status: 400 }
+      )
+    }
+    
+    if (!mes || !ano || mes < 1 || mes > 12) {
+      return NextResponse.json<ComissoesReconciliacaoResponse>(
+        { success: false, error: "Mês e ano são obrigatórios" },
+        { status: 400 }
+      )
+    }
+    
+    if (file.type !== "application/pdf") {
+      return NextResponse.json<ComissoesReconciliacaoResponse>(
+        { success: false, error: "Apenas ficheiros PDF são permitidos" },
+        { status: 400 }
+      )
+    }
+    
+    // Check if reconciliation already exists for this month
+    const existing = await prisma.reconciliacaoComissoes.findUnique({
+      where: { mes_ano: { mes, ano } }
+    })
+    
+    if (existing) {
+      // Delete existing to replace
+      await prisma.reconciliacaoComissoes.delete({
+        where: { id: existing.id }
+      })
+    }
+    
+    // Save PDF file
+    const dirPath = join(UPLOADS_DIR, "reconciliacoes-comissoes", `${ano}`)
+    await mkdir(dirPath, { recursive: true })
+    
+    const filename = `comissoes_${mes}_${ano}_${randomUUID()}.pdf`
+    const relativePath = join("reconciliacoes-comissoes", `${ano}`, filename)
+    const fullPath = join(UPLOADS_DIR, relativePath)
+    
+    const bytes = await file.arrayBuffer()
+    const buffer = Buffer.from(bytes)
+    await writeFile(fullPath, buffer)
+    
+    // Extract text from PDF using pdftotext command
+    const { stdout: text } = await execAsync(`pdftotext -layout "${fullPath}" -`)
+    
+    const parsed = parseComissoesPdfText(text)
+    
+    // Get system data - parcelas paid in this month
+    const startOfMonth = new Date(ano, mes - 1, 1)
+    const endOfMonth = new Date(ano, mes, 0, 23, 59, 59)
+    
+    const parcelasPagas = await prisma.parcela.findMany({
+      where: {
+        pago: true,
+        dataPago: {
+          gte: startOfMonth,
+          lte: endOfMonth
+        }
+      },
+      include: {
+        cobranca: {
+          include: {
+            cliente: true
+          }
+        }
+      }
+    })
+    
+    // Build lookup map: clienteCodigo -> fatura -> parcelaNumero -> parcelaData
+    type ParcelaSistema = {
+      parcela: typeof parcelasPagas[0]
+      cobranca: typeof parcelasPagas[0]["cobranca"]
+      cliente: typeof parcelasPagas[0]["cobranca"]["cliente"]
+      comissaoParcela: number
+    }
+    const sistemaMap: Map<string, ParcelaSistema> = new Map()
+    let totalSistema = 0
+    let totalComissaoSistema = 0
+    
+    for (const parcela of parcelasPagas) {
+      const cliente = parcela.cobranca.cliente
+      const cobranca = parcela.cobranca
+      
+      if (!cliente.codigo || !cobranca.fatura) continue
+      
+      // Calculate commission for this parcela proportionally
+      const cobrancaValor = Number(cobranca.valor)
+      const cobrancaComissao = Number(cobranca.comissao || 0)
+      const parcelaValor = Number(parcela.valor)
+      
+      // Commission per parcela = (parcela value / total cobranca value) * total commission
+      const comissaoParcela = cobrancaValor > 0 
+        ? (parcelaValor / cobrancaValor) * cobrancaComissao 
+        : 0
+      
+      const key = `${cliente.codigo}|${cobranca.fatura}|${parcela.numero}`
+      sistemaMap.set(key, {
+        parcela,
+        cobranca,
+        cliente,
+        comissaoParcela: Math.round(comissaoParcela * 100) / 100
+      })
+      
+      totalSistema += parcelaValor
+      totalComissaoSistema += comissaoParcela
+    }
+    
+    // Create reconciliation items
+    const itensToCreate: any[] = []
+    let itensCorretos = 0
+    let itensComProblema = 0
+    const processedKeys = new Set<string>()
+    
+    for (const linhaPdf of parsed.linhas) {
+      const key = `${linhaPdf.entidade}|${linhaPdf.numero}|${linhaPdf.prestacao}`
+      processedKeys.add(key)
+      
+      // Find client by code
+      const cliente = await prisma.cliente.findUnique({
+        where: { codigo: linhaPdf.entidade }
+      })
+      
+      // Find in system map
+      const sistemaDado = sistemaMap.get(key)
+      
+      let corresponde = false
+      let tipoDiscrepancia: 'VALOR_DIFERENTE' | 'COMISSAO_DIFERENTE' | 'CLIENTE_NAO_EXISTE' | 'COBRANCA_NAO_EXISTE' | 'PARCELA_NAO_EXISTE' | 'PAGAMENTO_EXTRA_SISTEMA' | 'PAGAMENTO_EXTRA_PDF' | null = null
+      let diferencaValor: number | null = null
+      let diferencaComissao: number | null = null
+      let valorSistema: number | null = null
+      let comissaoSistema: number | null = null
+      
+      if (!cliente) {
+        tipoDiscrepancia = "CLIENTE_NAO_EXISTE"
+        itensComProblema++
+      } else if (!sistemaDado) {
+        // Check if cobranca exists
+        const cobranca = await prisma.cobranca.findFirst({
+          where: {
+            cliente: { codigo: linhaPdf.entidade },
+            fatura: linhaPdf.numero
+          },
+          include: { parcelas: true }
+        })
+        
+        if (!cobranca) {
+          tipoDiscrepancia = "COBRANCA_NAO_EXISTE"
+        } else {
+          const parcela = cobranca.parcelas.find(p => p.numero === linhaPdf.prestacao)
+          if (!parcela) {
+            tipoDiscrepancia = "PARCELA_NAO_EXISTE"
+          } else {
+            // Parcela exists but wasn't paid in this month according to system
+            tipoDiscrepancia = "PAGAMENTO_EXTRA_PDF"
+          }
+        }
+        itensComProblema++
+      } else {
+        // Compare values
+        valorSistema = Number(sistemaDado.parcela.valor)
+        comissaoSistema = sistemaDado.comissaoParcela
+        
+        diferencaValor = linhaPdf.valorLiquido - valorSistema
+        diferencaComissao = linhaPdf.valorComissao - comissaoSistema
+        
+        // Allow 1 cent tolerance for rounding
+        const valorCorresponde = Math.abs(diferencaValor) <= 0.01
+        const comissaoCorresponde = Math.abs(diferencaComissao) <= 0.10 // Allow 10 cents for commission due to rounding
+        
+        if (valorCorresponde && comissaoCorresponde) {
+          corresponde = true
+          diferencaValor = 0
+          diferencaComissao = 0
+          itensCorretos++
+        } else if (!valorCorresponde) {
+          tipoDiscrepancia = "VALOR_DIFERENTE"
+          itensComProblema++
+        } else {
+          tipoDiscrepancia = "COMISSAO_DIFERENTE"
+          itensComProblema++
+        }
+      }
+      
+      itensToCreate.push({
+        dataPagamentoPdf: linhaPdf.data,
+        codigoClientePdf: linhaPdf.entidade,
+        nomeClientePdf: cliente?.nome || null,
+        tipoDocPdf: linhaPdf.tipoDoc,
+        seriePdf: linhaPdf.serie,
+        numeroPdf: linhaPdf.numero,
+        parcelaPdf: linhaPdf.prestacao,
+        valorLiquidoPdf: linhaPdf.valorLiquido,
+        valorComissaoPdf: linhaPdf.valorComissao,
+        clienteId: cliente?.id || null,
+        cobrancaId: sistemaDado?.cobranca.id || null,
+        parcelaId: sistemaDado?.parcela.id || null,
+        valorSistema,
+        comissaoSistema,
+        corresponde,
+        tipoDiscrepancia,
+        diferencaValor,
+        diferencaComissao
+      })
+    }
+    
+    // Add payments in system but not in PDF
+    for (const [key, sistemaDado] of sistemaMap) {
+      if (!processedKeys.has(key)) {
+        itensToCreate.push({
+          dataPagamentoPdf: sistemaDado.parcela.dataPago,
+          codigoClientePdf: sistemaDado.cliente.codigo || "",
+          nomeClientePdf: sistemaDado.cliente.nome,
+          tipoDocPdf: "FA",
+          seriePdf: null,
+          numeroPdf: sistemaDado.cobranca.fatura || "",
+          parcelaPdf: sistemaDado.parcela.numero,
+          valorLiquidoPdf: 0,
+          valorComissaoPdf: 0,
+          clienteId: sistemaDado.cliente.id,
+          cobrancaId: sistemaDado.cobranca.id,
+          parcelaId: sistemaDado.parcela.id,
+          valorSistema: Number(sistemaDado.parcela.valor),
+          comissaoSistema: sistemaDado.comissaoParcela,
+          corresponde: false,
+          tipoDiscrepancia: "PAGAMENTO_EXTRA_SISTEMA",
+          diferencaValor: -Number(sistemaDado.parcela.valor),
+          diferencaComissao: -sistemaDado.comissaoParcela
+        })
+        itensComProblema++
+      }
+    }
+    
+    // Calculate differences
+    const diferenca = parsed.totalLiquido - totalSistema
+    const diferencaComissao = parsed.totalComissao - totalComissaoSistema
+    
+    // Determine initial state
+    const estado = itensComProblema > 0 ? "COM_PROBLEMAS" : "APROVADA"
+    
+    // Create reconciliation with items
+    const reconciliacao = await prisma.reconciliacaoComissoes.create({
+      data: {
+        mes,
+        ano,
+        nomeArquivo: file.name,
+        caminhoArquivo: relativePath,
+        dataInicio: parsed.dataInicio,
+        dataFim: parsed.dataFim,
+        totalLiquidoPdf: parsed.totalLiquido,
+        totalComissaoPdf: parsed.totalComissao,
+        totalSistema: Math.round(totalSistema * 100) / 100,
+        totalComissaoSistema: Math.round(totalComissaoSistema * 100) / 100,
+        diferenca: Math.round(diferenca * 100) / 100,
+        diferencaComissao: Math.round(diferencaComissao * 100) / 100,
+        totalItens: itensToCreate.length,
+        itensCorretos,
+        itensComProblema,
+        estado,
+        itens: {
+          create: itensToCreate
+        }
+      },
+      include: {
+        itens: {
+          include: {
+            cliente: {
+              select: { id: true, nome: true, codigo: true }
+            },
+            cobranca: {
+              select: { id: true, fatura: true, valor: true, comissao: true }
+            },
+            parcela: {
+              select: { id: true, numero: true, valor: true, dataPago: true }
+            }
+          }
+        }
+      }
+    })
+    
+    return NextResponse.json({
+      success: true,
+      reconciliacao
+    })
+  } catch (error) {
+    console.error("Error creating reconciliacao comissoes:", error)
+    return NextResponse.json<ComissoesReconciliacaoResponse>(
+      { success: false, error: "Erro ao processar reconciliação de comissões" },
+      { status: 500 }
+    )
+  }
+}

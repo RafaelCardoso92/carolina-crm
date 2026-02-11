@@ -51,6 +51,8 @@ model User {
 
   @@index([role])
   @@index([status])
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
 }
 
 model ImpersonationLog {
@@ -98,6 +100,7 @@ model Cliente {
   @@index([ativo])
   @@index([ativo, ultimoContacto])
   @@index([nome])
+  itensReconciliacaoComissao ItemReconciliacaoComissao[]
 }
 
 model Venda {
@@ -153,6 +156,7 @@ model Cobranca {
   @@index([pago])
   @@index([clienteId, pago])
   @@index([pago, createdAt])
+  itensReconciliacaoComissao ItemReconciliacaoComissao[]
 }
 
 model Parcela {
@@ -173,6 +177,7 @@ model Parcela {
   @@index([dataVencimento])
   @@index([pago])
   @@index([pago, dataVencimento])
+  itensReconciliacaoComissao ItemReconciliacaoComissao[]
 }
 
 model ObjetivoMensal {
@@ -324,6 +329,8 @@ model Devolucao {
   totalDevolvido   Decimal           @db.Decimal(10, 2)
   totalSubstituido Decimal           @default(0) @db.Decimal(10, 2)
   estado           EstadoDevolucao   @default(PENDENTE)
+  notas                String?
+  dataUpload           DateTime                    @default(now())
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   venda            Venda             @relation(fields: [vendaId], references: [id], onDelete: Cascade)
@@ -385,8 +392,8 @@ model ReconciliacaoMensal {
   itensCorretos     Int                 @default(0)
   itensComProblema  Int                 @default(0)
   estado            EstadoReconciliacao @default(PENDENTE)
-  notas             String?
-  dataUpload        DateTime            @default(now())
+  notas                String?
+  dataUpload           DateTime                    @default(now())
   dataRevisao       DateTime?
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
@@ -456,6 +463,8 @@ model Tarefa {
   tipo           String?
   prioridade     PrioridadeTarefa @default(MEDIA)
   estado         EstadoTarefa     @default(PENDENTE)
+  notas                String?
+  dataUpload           DateTime                    @default(now())
   dataVencimento DateTime?
   dataLembrete   DateTime?
   dataConclusao  DateTime?
@@ -1162,4 +1171,97 @@ model BaborellaSession {
   @@index([userId])
   @@index([userId, context])
   @@index([expiresAt])
+}
+
+// Commission Reconciliation Models
+enum TipoDiscrepanciaComissao {
+  VALOR_DIFERENTE
+  COMISSAO_DIFERENTE
+  CLIENTE_NAO_EXISTE
+  COBRANCA_NAO_EXISTE
+  PARCELA_NAO_EXISTE
+  PAGAMENTO_EXTRA_SISTEMA
+  PAGAMENTO_EXTRA_PDF
+}
+
+model ReconciliacaoComissoes {
+  id                   String                      @id @default(cuid())
+  mes                  Int
+  ano                  Int
+  nomeArquivo          String
+  caminhoArquivo       String
+  dataInicio           DateTime?
+  dataFim              DateTime?
+  totalLiquidoPdf      Decimal                     @db.Decimal(10, 2)
+  totalComissaoPdf     Decimal                     @db.Decimal(10, 2)
+  totalSistema         Decimal                     @db.Decimal(10, 2)
+  totalComissaoSistema Decimal                     @db.Decimal(10, 2)
+  diferenca            Decimal                     @db.Decimal(10, 2)
+  diferencaComissao    Decimal                     @db.Decimal(10, 2)
+  totalItens           Int                         @default(0)
+  itensCorretos        Int                         @default(0)
+  itensComProblema     Int                         @default(0)
+  estado               EstadoReconciliacao         @default(PENDENTE)
+  notas                String?
+  dataUpload           DateTime                    @default(now())
+  status               String                      @default("PENDENTE")
+  createdAt            DateTime                    @default(now())
+  updatedAt            DateTime                    @updatedAt
+  itens                ItemReconciliacaoComissao[]
+
+  @@unique([mes, ano])
+}
+
+model ItemReconciliacaoComissao {
+  id                    String                   @id @default(cuid())
+  reconciliacaoId       String
+  reconciliacao         ReconciliacaoComissoes   @relation(fields: [reconciliacaoId], references: [id], onDelete: Cascade)
+  dataPagamentoPdf      DateTime?
+  codigoClientePdf      String
+  numeroPdf             String
+  parcelaPdf            Int
+  valorLiquidoPdf       Decimal                  @db.Decimal(10, 2)
+  valorComissaoPdf      Decimal                  @db.Decimal(10, 2)
+  nomeClientePdf        String?
+  tipoDocPdf            String?
+  seriePdf              String?
+  diferencaValor        Decimal?                 @db.Decimal(10, 2)
+  diferencaComissao     Decimal?                 @db.Decimal(10, 2)
+  clienteId             String?
+  cliente               Cliente?                 @relation(fields: [clienteId], references: [id])
+  cobrancaId            String?
+  cobranca              Cobranca?                @relation(fields: [cobrancaId], references: [id])
+  parcelaId             String?
+  parcela               Parcela?                 @relation(fields: [parcelaId], references: [id])
+  valorSistema          Decimal?                 @db.Decimal(10, 2)
+  comissaoSistema       Decimal?                 @db.Decimal(10, 2)
+  corresponde         Boolean                  @default(false)
+  tipoDiscrepancia      TipoDiscrepanciaComissao?
+  notas                 String?
+  resolvido             Boolean                  @default(false)
+  notaResolucao         String?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+}
+
+// Messaging Model
+model Message {
+  id          String    @id @default(cuid())
+  senderId    String
+  sender      User      @relation("SentMessages", fields: [senderId], references: [id])
+  recipientId String
+  recipient   User      @relation("ReceivedMessages", fields: [recipientId], references: [id])
+  subject     String?
+  content     String    @db.Text
+  read        Boolean   @default(false)
+  entityType  String    @default("GERAL")
+  entityId    String?
+  entityName  String?
+  priority    String    @default("NORMAL")
+  flagged     Boolean   @default(false)
+  parentId    String?
+  parent      Message?  @relation("MessageReplies", fields: [parentId], references: [id])
+  replies     Message[] @relation("MessageReplies")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }

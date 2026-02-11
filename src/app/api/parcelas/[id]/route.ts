@@ -37,12 +37,14 @@ export async function PATCH(
     const { id } = await params
     const data = await request.json()
 
-    // Update the parcela
+    // Update the parcela - use provided dataPago if given, otherwise default to current date
     const parcela = await prisma.parcela.update({
       where: { id },
       data: {
         pago: data.pago,
-        dataPago: data.pago ? new Date() : null,
+        dataPago: data.pago 
+          ? (data.dataPago ? new Date(data.dataPago) : new Date()) 
+          : null,
         notas: data.notas !== undefined ? data.notas : undefined
       },
       include: {
@@ -60,11 +62,21 @@ export async function PATCH(
 
     // If all parcelas are paid, mark the cobranca as paid
     if (unpaidCount === 0) {
+      // Use the most recent payment date from parcelas
+      const latestPaidParcela = await prisma.parcela.findFirst({
+        where: {
+          cobrancaId: parcela.cobrancaId,
+          pago: true,
+          dataPago: { not: null }
+        },
+        orderBy: { dataPago: 'desc' }
+      })
+      
       await prisma.cobranca.update({
         where: { id: parcela.cobrancaId },
         data: {
           pago: true,
-          dataPago: new Date()
+          dataPago: latestPaidParcela?.dataPago || new Date()
         }
       })
     } else {

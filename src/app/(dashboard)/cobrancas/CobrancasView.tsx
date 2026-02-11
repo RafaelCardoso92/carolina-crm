@@ -293,7 +293,61 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
     }
   }
 
-  async function handleToggleParcelaPaid(parcelaId: string, pago: boolean) {
+  async function handleToggleParcelaPaid(parcelaId: string, pago: boolean, cobrancaId: string) {
+    // Find the parcela to check if it's late
+    const cobranca = cobrancas.find(c => c.id === cobrancaId)
+    const parcela = cobranca?.parcelas.find(p => p.id === parcelaId)
+    const isLate = parcela ? isParcelaAtrasada(parcela) : false
+    
+    // If marking as paid AND the parcela is late, show date picker
+    if (!pago && isLate) {
+      const today = new Date().toISOString().split("T")[0]
+      const result = await Swal.fire({
+        title: "Marcar parcela como paga",
+        html: `
+          <p class="mb-4">Esta parcela está em atraso. Por favor, selecione a data em que foi paga:</p>
+          <input type="date" id="dataPago" class="swal2-input" value="${today}" max="${today}">
+          <p class="text-sm text-gray-500 mt-2">A data de pagamento afeta o cálculo de comissões do mês.</p>
+        `,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonColor: "#b8860b",
+        cancelButtonColor: "#666666",
+        confirmButtonText: "Confirmar pagamento",
+        cancelButtonText: "Cancelar",
+        preConfirm: () => {
+          const dateInput = document.getElementById("dataPago") as HTMLInputElement
+          if (!dateInput.value) {
+            Swal.showValidationMessage("Por favor selecione uma data")
+            return false
+          }
+          return dateInput.value
+        }
+      })
+
+      if (!result.isConfirmed || !result.value) return
+
+      try {
+        const res = await fetch(`/api/parcelas/${parcelaId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pago: true, dataPago: result.value })
+        })
+        if (res.ok) {
+          router.refresh()
+        }
+      } catch {
+        Swal.fire({
+          icon: "error",
+          title: "Erro",
+          text: "Erro ao atualizar parcela",
+          confirmButtonColor: "#b8860b"
+        })
+      }
+      return
+    }
+
+    // Standard confirmation for non-late payments or marking as unpaid
     const action = pago ? "marcar como pendente" : "marcar como pago"
     const result = await Swal.fire({
       title: pago ? "Marcar como pendente?" : "Marcar como pago?",
@@ -1245,7 +1299,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                           </td>
                           <td className="px-4 py-3 text-center">
                             <button
-                              onClick={() => handleToggleParcelaPaid(parcela.id, parcela.pago)}
+                              onClick={() => handleToggleParcelaPaid(parcela.id, parcela.pago, cobranca.id)}
                               className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
                                 parcela.pago
                                   ? "bg-green-100 text-green-700 hover:bg-green-200"
