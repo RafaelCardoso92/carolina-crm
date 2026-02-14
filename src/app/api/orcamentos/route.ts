@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { requirePermission, userScopedWhere, getEffectiveUserId } from "@/lib/api-auth"
 import { PERMISSIONS } from "@/lib/permissions"

@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
 import type { CreateDevolucaoRequest, DevolucaoListResponse, DevolucaoResponse } from "@/types/devolucao"
 
 // GET - List returns (optionally filtered by vendaId)
 export async function GET(request: NextRequest) {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json<DevolucaoListResponse>(
+      { success: false, error: "Nao autorizado" },
+      { status: 401 }
+    )
+  }
+
   try {
     const { searchParams } = new URL(request.url)
     const vendaId = searchParams.get("vendaId")
@@ -48,6 +57,14 @@ export async function GET(request: NextRequest) {
 
 // POST - Create new return
 export async function POST(request: NextRequest) {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json<DevolucaoResponse>(
+      { success: false, error: "Nao autorizado" },
+      { status: 401 }
+    )
+  }
+
   try {
     const body: CreateDevolucaoRequest = await request.json()
     const { vendaId, motivo, itens } = body

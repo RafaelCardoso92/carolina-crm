@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { writeFile, mkdir } from "fs/promises"
 import { join } from "path"
@@ -143,6 +144,10 @@ function parsePortugueseNumber(str: string): number {
 // GET - List reconciliations
 export async function GET(request: NextRequest) {
   try {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json<ReconciliacaoListResponse>({ success: false, error: "Nao autorizado" }, { status: 401 })
+  }
     const { searchParams } = new URL(request.url)
     const ano = searchParams.get("ano") ? parseInt(searchParams.get("ano")!) : undefined
 
@@ -182,6 +187,10 @@ export async function GET(request: NextRequest) {
 // POST - Upload PDF and create reconciliation
 export async function POST(request: NextRequest) {
   try {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json<ReconciliacaoResponse>({ success: false, error: "Nao autorizado" }, { status: 401 })
+  }
     const formData = await request.formData()
     const file = formData.get("file") as File | null
     const mes = parseInt(formData.get("mes") as string)

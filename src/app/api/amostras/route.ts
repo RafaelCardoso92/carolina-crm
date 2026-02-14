@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
 
 // GET - List samples
 export async function GET(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const clienteId = searchParams.get("clienteId")
     const prospectoId = searchParams.get("prospectoId")
@@ -12,6 +18,11 @@ export async function GET(request: NextRequest) {
     const where: Record<string, unknown> = {}
     if (clienteId) where.clienteId = clienteId
     if (prospectoId) where.prospectoId = prospectoId
+
+    // Filter by user unless admin
+    if (session.user.role === "SELLER") {
+      where.userId = session.user.id
+    }
 
     const amostras = await prisma.amostra.findMany({
       where,
@@ -34,6 +45,11 @@ export async function GET(request: NextRequest) {
 // POST - Create sample
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const body = await request.json()
     const { clienteId, prospectoId, produtoId, tipo, descricao, quantidade, valorEstimado, dataEntrega, notas } = body
 
@@ -43,6 +59,7 @@ export async function POST(request: NextRequest) {
 
     const amostra = await prisma.amostra.create({
       data: {
+        userId: session.user.id,
         clienteId: clienteId || null,
         prospectoId: prospectoId || null,
         produtoId: produtoId || null,

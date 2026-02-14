@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
 
 function getCurrentQuarter(): number {
   const month = new Date().getMonth() + 1
@@ -8,6 +9,11 @@ function getCurrentQuarter(): number {
 
 // GET - List all agreements with progress
 export async function GET(request: NextRequest) {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+  }
+
   try {
     const { searchParams } = new URL(request.url)
     const clienteId = searchParams.get("clienteId")
@@ -94,6 +100,11 @@ export async function GET(request: NextRequest) {
 
 // POST - Create new agreement
 export async function POST(request: NextRequest) {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+  }
+
   try {
     const body = await request.json()
     const { clienteId, valorAnual, ano, notas } = body

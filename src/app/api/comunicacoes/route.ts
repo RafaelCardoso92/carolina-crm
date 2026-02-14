@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
+import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
 // GET - List communications
 export async function GET(request: NextRequest) {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+  }
+
   try {
     const { searchParams } = new URL(request.url)
     const clienteId = searchParams.get("clienteId")
@@ -33,6 +39,11 @@ export async function GET(request: NextRequest) {
 
 // POST - Create communication
 export async function POST(request: NextRequest) {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+  }
+
   try {
     const body = await request.json()
     const { clienteId, prospectoId, tipo, assunto, notas, dataContacto, duracao } = body

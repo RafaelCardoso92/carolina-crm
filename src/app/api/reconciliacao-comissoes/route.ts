@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { writeFile, mkdir } from "fs/promises"
 import { join } from "path"
@@ -85,6 +86,11 @@ function parseComissoesPdfText(text: string): ParsedComissoesPdf {
 }
 
 export async function GET(request: NextRequest) {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json<ComissoesReconciliacaoListResponse>({ success: false, error: "Nao autorizado" }, { status: 401 })
+  }
+
   try {
     const { searchParams } = new URL(request.url)
     const ano = searchParams.get("ano") ? parseInt(searchParams.get("ano")!) : undefined
@@ -114,6 +120,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+  }
+
   try {
     const formData = await request.formData()
     const file = formData.get("file") as File | null
