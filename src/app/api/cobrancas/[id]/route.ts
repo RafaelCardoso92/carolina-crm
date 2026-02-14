@@ -224,8 +224,10 @@ export async function PATCH(
     const cobranca = await prisma.cobranca.update({
       where: { id },
       data: {
-        pago: data.pago,
-        dataPago: data.dataPago ? new Date(data.dataPago) : null
+        pago: data.pago !== undefined ? data.pago : undefined,
+        dataPago: data.dataPago !== undefined ? (data.dataPago ? new Date(data.dataPago) : null) : undefined,
+        valorPago: data.valorPago !== undefined ? data.valorPago : undefined,
+        estado: data.estado !== undefined ? data.estado : undefined
       },
       include: {
         cliente: true,

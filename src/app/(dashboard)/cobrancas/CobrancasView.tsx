@@ -14,9 +14,9 @@ type Parcela = {
   dataVencimento: Date | string
   dataPago: Date | string | null
   pago: boolean
+  valorPago: unknown | null
   notas: string | null
 }
-
 type Cobranca = {
   id: string
   clienteId: string
@@ -30,6 +30,10 @@ type Cobranca = {
   notas: string | null
   numeroParcelas: number
   dataInicioVencimento: Date | null
+  prazoVencimentoDias: number | null
+  dataVencimento: Date | string | null
+  valorPago: unknown | null
+  estado: "PENDENTE" | "PAGO" | "PARCIAL" | "ATRASADO"
   cliente: {
     id: string
     nome: string
@@ -37,7 +41,6 @@ type Cobranca = {
   }
   parcelas: Parcela[]
 }
-
 type Cliente = {
   id: string
   nome: string
@@ -58,6 +61,24 @@ type Props = {
 type SortField = "cliente" | "valor" | "dataEmissao" | "fatura"
 type SortOrder = "asc" | "desc"
 
+
+function isCobrancaAtrasada(cobranca: Cobranca): boolean {
+  if (cobranca.pago || cobranca.estado === "PAGO" || cobranca.estado === "PARCIAL") return false
+  if (cobranca.parcelas.length > 0) return false
+  if (!cobranca.dataVencimento) return false
+  const vencimento = cobranca.dataVencimento instanceof Date
+    ? cobranca.dataVencimento
+    : new Date(cobranca.dataVencimento)
+  return new Date() > vencimento
+}
+
+function getCobrancaEstado(cobranca: Cobranca): "PENDENTE" | "PAGO" | "PARCIAL" | "ATRASADO" {
+  if (cobranca.pago) return "PAGO"
+  if (cobranca.valorPago && Number(cobranca.valorPago) > 0 && Number(cobranca.valorPago) < Number(cobranca.valor)) return "PARCIAL"
+  if (cobranca.parcelas.length === 0 && isCobrancaAtrasada(cobranca)) return "ATRASADO"
+  if (cobranca.parcelas.some(p => isParcelaAtrasada(p))) return "ATRASADO"
+  return "PENDENTE"
+}
 function isParcelaAtrasada(parcela: Parcela): boolean {
   if (parcela.pago) return false
   const vencimento = parcela.dataVencimento instanceof Date
@@ -111,6 +132,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
   const [numeroParcelas, setNumeroParcelas] = useState(2)
   const [dataInicioVencimento, setDataInicioVencimento] = useState("")
   const [valorTotal, setValorTotal] = useState("")
+  const [prazoVencimento, setPrazoVencimento] = useState<4 | 30>(30)
 
   // Modal state
   const [showModal, setShowModal] = useState(false)
@@ -261,6 +283,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
     setNumeroParcelas(2)
     setDataInicioVencimento("")
     setValorTotal("")
+    setPrazoVencimento(30)
   }
 
   function closeModal() {
@@ -310,6 +333,15 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       data.numeroParcelas = numeroParcelas
       data.dataInicioVencimento = dataInicioVencimento
       data.updateParcelas = true
+    } else {
+      // For non-installment payments, set the deadline
+      data.prazoVencimentoDias = prazoVencimento
+      // Calculate dataVencimento based on dataEmissao + prazo
+      if (data.dataEmissao) {
+        const emissao = new Date(data.dataEmissao as string)
+        emissao.setDate(emissao.getDate() + prazoVencimento)
+        data.dataVencimento = emissao.toISOString()
+      }
     }
 
     try {
@@ -346,40 +378,88 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
     }
   }
 
-  async function handleTogglePaid(id: string, pago: boolean) {
-    const action = pago ? "marcar como pendente" : "marcar como pago"
+  async function handleTogglePaid(id: string, pago: boolean, valorTotal?: number) {
+    // If marking as unpaid
+    if (pago) {
+      const result = await Swal.fire({
+        title: "Marcar como pendente?",
+        text: "Tem a certeza que quer marcar esta cobranca como pendente?",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonColor: "#b8860b",
+        cancelButtonColor: "#666666",
+        confirmButtonText: "Sim, confirmar",
+        cancelButtonText: "Cancelar"
+      })
+      if (!result.isConfirmed) return
+      try {
+        const res = await fetch(`/api/cobrancas/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pago: false, dataPago: null, valorPago: null, estado: "PENDENTE" })
+        })
+        if (res.ok) router.refresh()
+      } catch {
+        Swal.fire({ icon: "error", title: "Erro", text: "Erro ao atualizar cobranca", confirmButtonColor: "#b8860b" })
+      }
+      return
+    }
+
+    // Marking as paid - ask for actual value paid
+    const valorCobranca = valorTotal || 0
+    const today = new Date().toISOString().split("T")[0]
     const result = await Swal.fire({
-      title: pago ? "Marcar como pendente?" : "Marcar como pago?",
-      text: `Tem a certeza que quer ${action} esta cobranca?`,
+      title: "Marcar como pago",
+      html: `
+        <div class="text-left">
+          <p class="mb-4">Valor da cobranca: <strong>${formatCurrency(valorCobranca)} u20ac</strong></p>
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-2">Valor efetivamente pago:</label>
+            <input type="number" step="0.01" id="valorPago" class="swal2-input" value="${valorCobranca.toFixed(2)}" style="width: 100%;">
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-2">Data de pagamento:</label>
+            <input type="date" id="dataPago" class="swal2-input" value="${today}" max="${today}" style="width: 100%;">
+          </div>
+          <p class="text-sm text-gray-500">Se o valor pago for inferior ao total, sera marcado como pagamento parcial.</p>
+        </div>
+      `,
       icon: "question",
       showCancelButton: true,
       confirmButtonColor: "#b8860b",
       cancelButtonColor: "#666666",
-      confirmButtonText: "Sim, confirmar",
-      cancelButtonText: "Cancelar"
+      confirmButtonText: "Confirmar pagamento",
+      cancelButtonText: "Cancelar",
+      preConfirm: () => {
+        const valorInput = document.getElementById("valorPago") as HTMLInputElement
+        const dateInput = document.getElementById("dataPago") as HTMLInputElement
+        if (!valorInput.value || parseFloat(valorInput.value) <= 0) {
+          Swal.showValidationMessage("Por favor insira um valor valido")
+          return false
+        }
+        if (!dateInput.value) {
+          Swal.showValidationMessage("Por favor selecione uma data")
+          return false
+        }
+        return { valorPago: parseFloat(valorInput.value), dataPago: dateInput.value }
+      }
     })
 
-    if (!result.isConfirmed) return
+    if (!result.isConfirmed || !result.value) return
+
+    const { valorPago, dataPago } = result.value
+    const isParcial = valorPago < valorCobranca
+    const estado = isParcial ? "PARCIAL" : "PAGO"
 
     try {
       const res = await fetch(`/api/cobrancas/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          pago: !pago,
-          dataPago: !pago ? new Date().toISOString() : null
-        })
+        body: JSON.stringify({ pago: !isParcial, valorPago, dataPago, estado })
       })
-      if (res.ok) {
-        router.refresh()
-      }
+      if (res.ok) router.refresh()
     } catch {
-      Swal.fire({
-        icon: "error",
-        title: "Erro",
-        text: "Erro ao atualizar cobranca",
-        confirmButtonColor: "#b8860b"
-      })
+      Swal.fire({ icon: "error", title: "Erro", text: "Erro ao atualizar cobranca", confirmButtonColor: "#b8860b" })
     }
   }
 
@@ -623,17 +703,32 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
           <td className="px-4 py-4 text-center">
             {cobranca.parcelas.length === 0 ? (
               <button
-                onClick={() => handleTogglePaid(cobranca.id, cobranca.pago)}
+                onClick={() => handleTogglePaid(cobranca.id, cobranca.pago || cobranca.estado === "PAGO" || cobranca.estado === "PARCIAL", Number(cobranca.valor))}
                 className={`px-4 py-2 rounded-xl text-sm font-bold transition flex items-center gap-2 mx-auto ${
-                  cobranca.pago
+                  cobranca.pago || cobranca.estado === "PAGO"
                     ? "bg-green-100 text-green-700 hover:bg-green-200"
-                    : "bg-orange-100 text-orange-700 hover:bg-orange-200"
+                    : cobranca.estado === "PARCIAL"
+                      ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
+                      : isCobrancaAtrasada(cobranca)
+                        ? "bg-red-100 text-red-700 hover:bg-red-200"
+                        : "bg-orange-100 text-orange-700 hover:bg-orange-200"
                 }`}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={cobranca.pago ? "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" : "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"} />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={
+                    cobranca.pago || cobranca.estado === "PAGO"
+                      ? "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      : cobranca.estado === "PARCIAL"
+                        ? "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        : isCobrancaAtrasada(cobranca)
+                          ? "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                          : "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  } />
                 </svg>
-                {cobranca.pago ? "Pago" : "Pendente"}
+                {cobranca.pago || cobranca.estado === "PAGO" ? "Pago" : cobranca.estado === "PARCIAL" ? "Parcial" : isCobrancaAtrasada(cobranca) ? "Atrasado" : "Pendente"}
+                {cobranca.estado === "PARCIAL" && cobranca.valorPago != null && Number(cobranca.valorPago) > 0 && (
+                  <span className="text-xs">({formatCurrency(Number(cobranca.valorPago))}€)</span>
+                )}
               </button>
             ) : (
               <button
@@ -1133,6 +1228,41 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                   </div>
                 </button>
               </div>
+
+              {!tipoParcelado && (
+                <div className="bg-secondary/50 rounded-xl p-4 space-y-4">
+                  <div>
+                    <label className="block text-sm font-bold text-foreground mb-2">Prazo de Vencimento</label>
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setPrazoVencimento(4)}
+                        className={`flex-1 py-2 px-4 rounded-lg font-medium transition border-2 ${
+                          prazoVencimento === 4
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-card text-foreground border-border hover:bg-secondary"
+                        }`}
+                      >
+                        4 dias
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPrazoVencimento(30)}
+                        className={`flex-1 py-2 px-4 rounded-lg font-medium transition border-2 ${
+                          prazoVencimento === 30
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-card text-foreground border-border hover:bg-secondary"
+                        }`}
+                      >
+                        30 dias
+                      </button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      O pagamento sera considerado em atraso apos {prazoVencimento} dias da data de emissao.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {tipoParcelado && (
                 <div className="bg-secondary/50 rounded-xl p-4 space-y-4">

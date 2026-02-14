@@ -148,6 +148,10 @@ model Cobranca {
   dataInicioVencimento DateTime?
   numeroParcelas       Int       @default(1)
   vendaId              String?   @unique
+  prazoVencimentoDias  Int?
+  dataVencimento       DateTime?
+  valorPago            Decimal?  @db.Decimal(10, 2)
+  estado               EstadoCobranca @default(PENDENTE)
   cliente              Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   venda                Venda?    @relation(fields: [vendaId], references: [id], onDelete: Cascade)
   parcelas             Parcela[]
@@ -167,6 +171,7 @@ model Parcela {
   dataVencimento DateTime
   dataPago       DateTime?
   pago           Boolean   @default(false)
+  valorPago      Decimal?  @db.Decimal(10, 2)
   notas          String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -1264,4 +1269,11 @@ model Message {
   replies     Message[] @relation("MessageReplies")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+enum EstadoCobranca {
+  PENDENTE
+  PAGO
+  PARCIAL
+  ATRASADO
 }

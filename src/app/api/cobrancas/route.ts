@@ -83,7 +83,10 @@ export async function POST(request: Request) {
           dataEmissao: data.dataEmissao ? new Date(data.dataEmissao) : null,
           numeroParcelas,
           dataInicioVencimento,
-          notas: data.notas || null
+          notas: data.notas || null,
+          prazoVencimentoDias: data.prazoVencimentoDias || null,
+          dataVencimento: data.dataVencimento ? new Date(data.dataVencimento) : null,
+          estado: "PENDENTE"
         }
       })
 

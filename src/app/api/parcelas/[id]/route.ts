@@ -1,11 +1,17 @@
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
+import { auth } from "@/lib/auth"
 
 // GET single parcela
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+  }
+
   try {
     const { id } = await params
     const parcela = await prisma.parcela.findUnique({
@@ -18,7 +24,7 @@ export async function GET(
     })
 
     if (!parcela) {
-      return NextResponse.json({ error: "Parcela não encontrada" }, { status: 404 })
+      return NextResponse.json({ error: "Parcela nao encontrada" }, { status: 404 })
     }
 
     return NextResponse.json(parcela)
@@ -33,6 +39,11 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+  }
+
   try {
     const { id } = await params
     const data = await request.json()
@@ -45,6 +56,7 @@ export async function PATCH(
         dataPago: data.pago 
           ? (data.dataPago ? new Date(data.dataPago) : new Date()) 
           : null,
+        valorPago: data.valorPago !== undefined ? data.valorPago : undefined,
         notas: data.notas !== undefined ? data.notas : undefined
       },
       include: {
@@ -76,7 +88,8 @@ export async function PATCH(
         where: { id: parcela.cobrancaId },
         data: {
           pago: true,
-          dataPago: latestPaidParcela?.dataPago || new Date()
+          dataPago: latestPaidParcela?.dataPago || new Date(),
+          estado: "PAGO"
         }
       })
     } else {
@@ -85,7 +98,8 @@ export async function PATCH(
         where: { id: parcela.cobrancaId },
         data: {
           pago: false,
-          dataPago: null
+          dataPago: null,
+          estado: "PENDENTE"
         }
       })
     }
