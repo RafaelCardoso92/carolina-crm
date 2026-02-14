@@ -50,7 +50,7 @@ export default async function UsuariosPage() {
             {isMasterAdmin ? "Gestao de Usuarios" : "Gestao de Vendedores"}
           </h1>
           <p className="text-muted-foreground">
-            {users.length} {isMasterAdmin ? "usuarios" : "vendedores"} registados
+            {users.filter(u => u.id !== session.user.id).length} {isMasterAdmin ? "usuarios" : "vendedores"} registados
           </p>
         </div>
         <Link

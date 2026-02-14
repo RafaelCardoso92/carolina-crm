@@ -152,7 +152,7 @@ export default function UsersList({ users, currentUserId, isMasterAdmin }: Users
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => (
+            {users.filter(user => user.id !== currentUserId).map((user) => (
               <tr key={user.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition">
                 <td className="p-4">
                   <div>
