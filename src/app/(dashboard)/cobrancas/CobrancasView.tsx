@@ -71,6 +71,22 @@ function formatDate(dateVal: Date | string): string {
   return date.toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric" })
 }
 
+function getMonthKey(date: Date | string | null): string {
+  if (!date) return "sem-data"
+  const d = date instanceof Date ? date : new Date(date)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+}
+
+function getMonthLabel(monthKey: string): string {
+  if (monthKey === "sem-data") return "Sem Data"
+  const [year, month] = monthKey.split("-")
+  const monthNames = [
+    "Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+  ]
+  return `${monthNames[parseInt(month) - 1]} ${year}`
+}
+
 export default function CobrancasView({ cobrancas, clientes, totalPendente, totalPago, pagoEsteMes, pagoMesPassado, valorEmAtraso, ano }: Props) {
   const router = useRouter()
   const [showForm, setShowForm] = useState(false)
@@ -84,6 +100,11 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
   const [selectedCliente, setSelectedCliente] = useState<string>("")
   const [sortField, setSortField] = useState<SortField>("cliente")
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc")
+
+  // Month grouping state
+  const [groupByMonth, setGroupByMonth] = useState(true)
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set())
+  const [selectedMonth, setSelectedMonth] = useState<string>("")
 
   // Form state for installments
   const [tipoParcelado, setTipoParcelado] = useState(false)
@@ -100,6 +121,29 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
     return clientes.filter(c => clienteIds.has(c.id)).sort((a, b) => a.nome.localeCompare(b.nome))
   }, [cobrancas, clientes])
 
+  // Get unique months from cobrancas for filter dropdown
+  const availableMonths = useMemo(() => {
+    const months = new Set<string>()
+    cobrancas.forEach(c => {
+      const key = getMonthKey(c.dataEmissao)
+      months.add(key)
+    })
+    return Array.from(months).sort().reverse()
+  }, [cobrancas])
+
+  // Initialize expanded months with current month
+  useEffect(() => {
+    if (expandedMonths.size === 0 && availableMonths.length > 0) {
+      const now = new Date()
+      const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+      if (availableMonths.includes(currentMonthKey)) {
+        setExpandedMonths(new Set([currentMonthKey]))
+      } else if (availableMonths.length > 0) {
+        setExpandedMonths(new Set([availableMonths[0]]))
+      }
+    }
+  }, [availableMonths])
+
   // Filter and sort cobrancas
   const filtered = useMemo(() => {
     let result = cobrancas
@@ -108,6 +152,11 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
     if (filter === "pending") result = result.filter(c => !c.pago)
     else if (filter === "paid") result = result.filter(c => c.pago)
     else if (filter === "overdue") result = result.filter(c => c.parcelas.some(p => isParcelaAtrasada(p)))
+
+    // Month filter
+    if (selectedMonth) {
+      result = result.filter(c => getMonthKey(c.dataEmissao) === selectedMonth)
+    }
 
     // Client filter
     if (selectedCliente) {
@@ -148,7 +197,27 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
     })
 
     return result
-  }, [cobrancas, filter, selectedCliente, searchQuery, sortField, sortOrder])
+  }, [cobrancas, filter, selectedCliente, selectedMonth, searchQuery, sortField, sortOrder])
+
+  // Group cobrancas by month
+  const groupedByMonth = useMemo(() => {
+    const groups: Record<string, Cobranca[]> = {}
+    filtered.forEach(c => {
+      const key = getMonthKey(c.dataEmissao)
+      if (!groups[key]) groups[key] = []
+      groups[key].push(c)
+    })
+    // Sort months descending (most recent first)
+    const sortedKeys = Object.keys(groups).sort().reverse()
+    return sortedKeys.map(key => ({
+      monthKey: key,
+      monthLabel: getMonthLabel(key),
+      cobrancas: groups[key],
+      total: groups[key].reduce((sum, c) => sum + Number(c.valor), 0),
+      totalPendente: groups[key].filter(c => !c.pago).reduce((sum, c) => sum + Number(c.valor), 0),
+      totalPago: groups[key].filter(c => c.pago).reduce((sum, c) => sum + Number(c.valor), 0)
+    }))
+  }, [filtered])
 
   // Count overdue parcelas
   const totalAtrasadas = cobrancas.reduce((acc, c) => {
@@ -165,6 +234,26 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       }
       return next
     })
+  }
+
+  function toggleMonthExpanded(monthKey: string) {
+    setExpandedMonths(prev => {
+      const next = new Set(prev)
+      if (next.has(monthKey)) {
+        next.delete(monthKey)
+      } else {
+        next.add(monthKey)
+      }
+      return next
+    })
+  }
+
+  function expandAllMonths() {
+    setExpandedMonths(new Set(groupedByMonth.map(g => g.monthKey)))
+  }
+
+  function collapseAllMonths() {
+    setExpandedMonths(new Set())
   }
 
   function resetForm() {
@@ -193,6 +282,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
   function clearFilters() {
     setSearchQuery("")
     setSelectedCliente("")
+    setSelectedMonth("")
     setSortField("cliente")
     setSortOrder("asc")
     setFilter("pending")
@@ -294,7 +384,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
   }
 
   async function handleToggleParcelaPaid(parcelaId: string, pago: boolean, cobrancaId: string) {
-    // Find the parcela to check if it's late
+    // Find the parcela to check if it is late
     const cobranca = cobrancas.find(c => c.id === cobrancaId)
     const parcela = cobranca?.parcelas.find(p => p.id === parcelaId)
     const isLate = parcela ? isParcelaAtrasada(parcela) : false
@@ -305,9 +395,9 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       const result = await Swal.fire({
         title: "Marcar parcela como paga",
         html: `
-          <p class="mb-4">Esta parcela está em atraso. Por favor, selecione a data em que foi paga:</p>
+          <p class="mb-4">Esta parcela esta em atraso. Por favor, selecione a data em que foi paga:</p>
           <input type="date" id="dataPago" class="swal2-input" value="${today}" max="${today}">
-          <p class="text-sm text-gray-500 mt-2">A data de pagamento afeta o cálculo de comissões do mês.</p>
+          <p class="text-sm text-gray-500 mt-2">A data de pagamento afeta o calculo de comissoes do mes.</p>
         `,
         icon: "question",
         showCancelButton: true,
@@ -463,6 +553,204 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
     return <span className="text-primary ml-1">{sortOrder === "asc" ? "↑" : "↓"}</span>
   }
 
+  // Render cobranca row (reusable for both grouped and ungrouped views)
+  const renderCobrancaRow = (cobranca: Cobranca) => {
+    const hasOverdue = cobranca.parcelas.some(p => isParcelaAtrasada(p))
+    const isExpanded = expandedRows.has(cobranca.id)
+
+    return (
+      <>
+        <tr
+          key={cobranca.id}
+          className={`hover:bg-table-row-hover transition ${
+            cobranca.pago
+              ? "bg-green-500/10"
+              : hasOverdue
+                ? "bg-red-500/5"
+                : ""
+          }`}
+        >
+          <td className="px-2 py-4">
+            {cobranca.parcelas.length > 0 && (
+              <button
+                onClick={() => toggleRowExpanded(cobranca.id)}
+                className="p-1 hover:bg-secondary rounded transition"
+              >
+                <svg
+                  className={`w-5 h-5 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            )}
+          </td>
+          <td className="px-4 py-4">
+            <Link href={`/clientes/${cobranca.cliente.id}`} className="font-semibold text-foreground hover:text-primary transition">
+              {cobranca.cliente.nome}
+            </Link>
+            {cobranca.cliente.codigo && (
+              <span className="text-muted-foreground text-sm ml-2">({cobranca.cliente.codigo})</span>
+            )}
+          </td>
+          <td className="px-4 py-4 text-foreground font-medium">{cobranca.fatura || "-"}</td>
+          <td className="px-4 py-4 text-right font-bold text-foreground">
+            {formatCurrency(Number(cobranca.valor))} €
+          </td>
+          <td className="px-4 py-4 text-right text-muted-foreground font-medium">
+            {cobranca.valorSemIva ? formatCurrency(Number(cobranca.valorSemIva)) : "-"} €
+          </td>
+          <td className="px-4 py-4 text-right text-primary font-semibold">
+            {cobranca.comissao ? formatCurrency(Number(cobranca.comissao)) : "-"} €
+          </td>
+          <td className="px-4 py-4 text-center">
+            {cobranca.parcelas.length > 0 ? (
+              <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                hasOverdue
+                  ? "bg-red-100 text-red-700"
+                  : cobranca.pago
+                    ? "bg-green-100 text-green-700"
+                    : "bg-blue-100 text-blue-700"
+              }`}>
+                {getParcelasStatus(cobranca)}
+              </span>
+            ) : (
+              <span className="text-muted-foreground">-</span>
+            )}
+          </td>
+          <td className="px-4 py-4 text-center">
+            {cobranca.parcelas.length === 0 ? (
+              <button
+                onClick={() => handleTogglePaid(cobranca.id, cobranca.pago)}
+                className={`px-4 py-2 rounded-xl text-sm font-bold transition flex items-center gap-2 mx-auto ${
+                  cobranca.pago
+                    ? "bg-green-100 text-green-700 hover:bg-green-200"
+                    : "bg-orange-100 text-orange-700 hover:bg-orange-200"
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={cobranca.pago ? "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" : "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"} />
+                </svg>
+                {cobranca.pago ? "Pago" : "Pendente"}
+              </button>
+            ) : (
+              <button
+                onClick={() => toggleRowExpanded(cobranca.id)}
+                className={`px-4 py-2 rounded-xl text-sm font-bold inline-flex items-center gap-2 cursor-pointer hover:opacity-80 transition ${
+                cobranca.pago
+                  ? "bg-green-100 text-green-700"
+                  : hasOverdue
+                    ? "bg-red-100 text-red-700"
+                    : "bg-orange-100 text-orange-700"
+              }`}
+                title={cobranca.pago ? "" : "Clique para ver parcelas"}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={
+                    cobranca.pago
+                      ? "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      : hasOverdue
+                        ? "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                        : "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  } />
+                </svg>
+                {cobranca.pago ? "Pago" : hasOverdue ? "Atrasado" : "Pendente"}
+              </button>
+            )}
+          </td>
+          <td className="px-4 py-4">
+            <div className="flex justify-center gap-1">
+              <button
+                onClick={() => startEdit(cobranca)}
+                className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition"
+                title="Editar"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+              <button
+                onClick={() => handleDelete(cobranca.id)}
+                className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition"
+                title="Eliminar"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          </td>
+        </tr>
+
+        {/* Expanded Parcelas Rows */}
+        {isExpanded && cobranca.parcelas.map((parcela) => {
+          const isAtrasada = isParcelaAtrasada(parcela)
+          return (
+            <tr
+              key={parcela.id}
+              className={`${
+                isAtrasada
+                  ? "bg-red-50 dark:bg-red-900/10"
+                  : parcela.pago
+                    ? "bg-green-50 dark:bg-green-900/10"
+                    : "bg-secondary/30"
+              }`}
+            >
+              <td className="px-2 py-3"></td>
+              <td className="px-4 py-3" colSpan={2}>
+                <div className="flex items-center gap-3 pl-4">
+                  <div className={`w-2 h-2 rounded-full ${
+                    parcela.pago
+                      ? "bg-green-500"
+                      : isAtrasada
+                        ? "bg-red-500"
+                        : "bg-orange-500"
+                  }`}></div>
+                  <span className="font-medium text-foreground">Parcela {parcela.numero}</span>
+                  {isAtrasada && (
+                    <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold">
+                      ATRASADA
+                    </span>
+                  )}
+                </div>
+              </td>
+              <td className="px-4 py-3 text-right font-semibold text-foreground">
+                {formatCurrency(Number(parcela.valor))} €
+              </td>
+              <td className="px-4 py-3 text-right text-muted-foreground" colSpan={2}>
+                Vencimento: {formatDate(parcela.dataVencimento)}
+              </td>
+              <td className="px-4 py-3 text-center">
+                {parcela.pago && parcela.dataPago && (
+                  <span className="text-sm text-muted-foreground">
+                    Pago em {formatDate(parcela.dataPago)}
+                  </span>
+                )}
+              </td>
+              <td className="px-4 py-3 text-center">
+                <button
+                  onClick={() => handleToggleParcelaPaid(parcela.id, parcela.pago, cobranca.id)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
+                    parcela.pago
+                      ? "bg-green-100 text-green-700 hover:bg-green-200"
+                      : isAtrasada
+                        ? "bg-red-100 text-red-700 hover:bg-red-200"
+                        : "bg-orange-100 text-orange-700 hover:bg-orange-200"
+                  }`}
+                >
+                  {parcela.pago ? "Pago" : "Marcar Pago"}
+                </button>
+              </td>
+              <td className="px-4 py-3"></td>
+            </tr>
+          )
+        })}
+      </>
+    )
+  }
+
   return (
     <div>
       {/* Year Selector */}
@@ -516,9 +804,9 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
           </div>
           <p className="text-xl md:text-3xl font-bold text-green-600">{formatCurrency(totalPago)} €</p>
           <div className="text-xs text-muted-foreground mt-1 hidden md:flex md:gap-2">
-            <span>Este mês: {formatCurrency(pagoEsteMes)}€</span>
+            <span>Este mes: {formatCurrency(pagoEsteMes)}€</span>
             <span>•</span>
-            <span>Mês passado: {formatCurrency(pagoMesPassado)}€</span>
+            <span>Mes passado: {formatCurrency(pagoMesPassado)}€</span>
           </div>
         </div>
         {totalAtrasadas > 0 && (
@@ -532,7 +820,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
               <h3 className="text-xs md:text-sm font-bold text-red-600 uppercase tracking-wide">Em Atraso</h3>
             </div>
             <p className="text-xl md:text-3xl font-bold text-red-600">{formatCurrency(valorEmAtraso)} €</p>
-            <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden md:block">{totalAtrasadas} parcela{totalAtrasadas !== 1 ? 's' : ''} atrasada{totalAtrasadas !== 1 ? 's' : ''}</p>
+            <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden md:block">{totalAtrasadas} parcela{totalAtrasadas !== 1 ? "s" : ""} atrasada{totalAtrasadas !== 1 ? "s" : ""}</p>
           </div>
         )}
       </div>
@@ -606,6 +894,18 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
 
           <div className="h-6 w-px bg-border hidden sm:block" />
 
+          {/* Month Filter */}
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="px-3 py-1.5 border border-border rounded-lg bg-card text-sm focus:ring-2 focus:ring-primary outline-none"
+          >
+            <option value="">Todos os meses</option>
+            {availableMonths.map((m) => (
+              <option key={m} value={m}>{getMonthLabel(m)}</option>
+            ))}
+          </select>
+
           {/* Client Filter */}
           <select
             value={selectedCliente}
@@ -638,7 +938,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
           </select>
 
           {/* Clear Filters */}
-          {(searchQuery || selectedCliente || filter !== "pending" || sortField !== "cliente") && (
+          {(searchQuery || selectedCliente || selectedMonth || filter !== "pending" || sortField !== "cliente") && (
             <button
               onClick={clearFilters}
               className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
@@ -654,6 +954,57 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
           <span className="text-sm text-muted-foreground ml-auto">
             {filtered.length} {filtered.length === 1 ? "resultado" : "resultados"}
           </span>
+        </div>
+
+        {/* View Toggle and Month Controls */}
+        <div className="flex flex-wrap gap-2 items-center pt-2 border-t border-border">
+          <span className="text-sm font-medium text-muted-foreground">Vista:</span>
+          <button
+            onClick={() => setGroupByMonth(true)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1.5 ${
+              groupByMonth ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-muted"
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Por Mes
+          </button>
+          <button
+            onClick={() => setGroupByMonth(false)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1.5 ${
+              !groupByMonth ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-muted"
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+            </svg>
+            Lista
+          </button>
+
+          {groupByMonth && (
+            <>
+              <div className="h-6 w-px bg-border hidden sm:block" />
+              <button
+                onClick={expandAllMonths}
+                className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+                Expandir todos
+              </button>
+              <button
+                onClick={collapseAllMonths}
+                className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
+                Recolher todos
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -1089,258 +1440,166 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
         </div>
       )}
 
-      {/* Cobrancas Table */}
-      <div className="bg-card rounded-xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-secondary border-b-2 border-border">
-              <tr>
-                <th className="px-2 py-4 text-left text-sm font-bold text-foreground w-8"></th>
-                <th 
-                  className="px-4 py-4 text-left text-sm font-bold text-foreground cursor-pointer hover:text-primary"
-                  onClick={() => handleSort("cliente")}
+      {/* Cobrancas Display */}
+      {groupByMonth ? (
+        /* Grouped by Month View */
+        <div className="space-y-4">
+          {groupedByMonth.map((group) => {
+            const isMonthExpanded = expandedMonths.has(group.monthKey)
+            return (
+              <div key={group.monthKey} className="bg-card rounded-xl shadow-sm overflow-hidden border border-border">
+                {/* Month Header */}
+                <button
+                  onClick={() => toggleMonthExpanded(group.monthKey)}
+                  className="w-full px-4 py-4 flex items-center justify-between bg-secondary hover:bg-muted transition"
                 >
-                  Cliente <SortIcon field="cliente" />
-                </th>
-                <th 
-                  className="px-4 py-4 text-left text-sm font-bold text-foreground cursor-pointer hover:text-primary"
-                  onClick={() => handleSort("fatura")}
-                >
-                  Fatura <SortIcon field="fatura" />
-                </th>
-                <th 
-                  className="px-4 py-4 text-right text-sm font-bold text-foreground cursor-pointer hover:text-primary"
-                  onClick={() => handleSort("valor")}
-                >
-                  Valor c/IVA <SortIcon field="valor" />
-                </th>
-                <th className="px-4 py-4 text-right text-sm font-bold text-foreground">Sem IVA</th>
-                <th className="px-4 py-4 text-right text-sm font-bold text-primary">Comissao</th>
-                <th className="px-4 py-4 text-center text-sm font-bold text-foreground">Parcelas</th>
-                <th className="px-4 py-4 text-center text-sm font-bold text-foreground">Estado</th>
-                <th className="px-4 py-4 text-center text-sm font-bold text-foreground">Acoes</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filtered.map((cobranca) => {
-                const hasOverdue = cobranca.parcelas.some(p => isParcelaAtrasada(p))
-                const isExpanded = expandedRows.has(cobranca.id)
-
-                return (
-                  <>
-                    <tr
-                      key={cobranca.id}
-                      className={`hover:bg-table-row-hover transition ${
-                        cobranca.pago
-                          ? "bg-green-500/10"
-                          : hasOverdue
-                            ? "bg-red-500/5"
-                            : ""
-                      }`}
+                  <div className="flex items-center gap-3">
+                    <svg
+                      className={`w-5 h-5 text-muted-foreground transition-transform ${isMonthExpanded ? "rotate-90" : ""}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
                     >
-                      <td className="px-2 py-4">
-                        {cobranca.parcelas.length > 0 && (
-                          <button
-                            onClick={() => toggleRowExpanded(cobranca.id)}
-                            className="p-1 hover:bg-secondary rounded transition"
-                          >
-                            <svg
-                              className={`w-5 h-5 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`}
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
-                          </button>
-                        )}
-                      </td>
-                      <td className="px-4 py-4">
-                        <Link href={`/clientes/${cobranca.cliente.id}`} className="font-semibold text-foreground hover:text-primary transition">
-                          {cobranca.cliente.nome}
-                        </Link>
-                        {cobranca.cliente.codigo && (
-                          <span className="text-muted-foreground text-sm ml-2">({cobranca.cliente.codigo})</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-4 text-foreground font-medium">{cobranca.fatura || "-"}</td>
-                      <td className="px-4 py-4 text-right font-bold text-foreground">
-                        {formatCurrency(Number(cobranca.valor))} €
-                      </td>
-                      <td className="px-4 py-4 text-right text-muted-foreground font-medium">
-                        {cobranca.valorSemIva ? formatCurrency(Number(cobranca.valorSemIva)) : "-"} €
-                      </td>
-                      <td className="px-4 py-4 text-right text-primary font-semibold">
-                        {cobranca.comissao ? formatCurrency(Number(cobranca.comissao)) : "-"} €
-                      </td>
-                      <td className="px-4 py-4 text-center">
-                        {cobranca.parcelas.length > 0 ? (
-                          <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                            hasOverdue
-                              ? "bg-red-100 text-red-700"
-                              : cobranca.pago
-                                ? "bg-green-100 text-green-700"
-                                : "bg-blue-100 text-blue-700"
-                          }`}>
-                            {getParcelasStatus(cobranca)}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-4 text-center">
-                        {cobranca.parcelas.length === 0 ? (
-                          <button
-                            onClick={() => handleTogglePaid(cobranca.id, cobranca.pago)}
-                            className={`px-4 py-2 rounded-xl text-sm font-bold transition flex items-center gap-2 mx-auto ${
-                              cobranca.pago
-                                ? "bg-green-100 text-green-700 hover:bg-green-200"
-                                : "bg-orange-100 text-orange-700 hover:bg-orange-200"
-                            }`}
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={cobranca.pago ? "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" : "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"} />
-                            </svg>
-                            {cobranca.pago ? "Pago" : "Pendente"}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => toggleRowExpanded(cobranca.id)}
-                            className={`px-4 py-2 rounded-xl text-sm font-bold inline-flex items-center gap-2 cursor-pointer hover:opacity-80 transition ${
-                            cobranca.pago
-                              ? "bg-green-100 text-green-700"
-                              : hasOverdue
-                                ? "bg-red-100 text-red-700"
-                                : "bg-orange-100 text-orange-700"
-                          }`}
-                            title={cobranca.pago ? "" : "Clique para ver parcelas"}
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={
-                                cobranca.pago
-                                  ? "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                  : hasOverdue
-                                    ? "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                                    : "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                              } />
-                            </svg>
-                            {cobranca.pago ? "Pago" : hasOverdue ? "Atrasado - Ver Parcelas" : "Pendente - Ver Parcelas"}
-                          </button>
-                        )}
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex justify-center gap-1">
-                          <button
-                            onClick={() => startEdit(cobranca)}
-                            className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition"
-                            title="Editar"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={() => handleDelete(cobranca.id)}
-                            className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition"
-                            title="Eliminar"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span className="text-lg font-bold text-foreground">{group.monthLabel}</span>
+                    </div>
+                    <span className="text-sm text-muted-foreground">({group.cobrancas.length} cobranca{group.cobrancas.length !== 1 ? "s" : ""})</span>
+                  </div>
+                  <div className="flex items-center gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="text-orange-600 font-semibold">Pendente: {formatCurrency(group.totalPendente)}€</span>
+                      <span className="text-muted-foreground">|</span>
+                      <span className="text-green-600 font-semibold">Pago: {formatCurrency(group.totalPago)}€</span>
+                    </div>
+                    <span className="font-bold text-foreground">Total: {formatCurrency(group.total)}€</span>
+                  </div>
+                </button>
 
-                    {/* Expanded Parcelas Rows */}
-                    {isExpanded && cobranca.parcelas.map((parcela) => {
-                      const isAtrasada = isParcelaAtrasada(parcela)
-                      return (
-                        <tr
-                          key={parcela.id}
-                          className={`${
-                            isAtrasada
-                              ? "bg-red-50 dark:bg-red-900/10"
-                              : parcela.pago
-                                ? "bg-green-50 dark:bg-green-900/10"
-                                : "bg-secondary/30"
-                          }`}
-                        >
-                          <td className="px-2 py-3"></td>
-                          <td className="px-4 py-3" colSpan={2}>
-                            <div className="flex items-center gap-3 pl-4">
-                              <div className={`w-2 h-2 rounded-full ${
-                                parcela.pago
-                                  ? "bg-green-500"
-                                  : isAtrasada
-                                    ? "bg-red-500"
-                                    : "bg-orange-500"
-                              }`}></div>
-                              <span className="font-medium text-foreground">Parcela {parcela.numero}</span>
-                              {isAtrasada && (
-                                <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold">
-                                  ATRASADA
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-right font-semibold text-foreground">
-                            {formatCurrency(Number(parcela.valor))} €
-                          </td>
-                          <td className="px-4 py-3 text-right text-muted-foreground" colSpan={2}>
-                            Vencimento: {formatDate(parcela.dataVencimento)}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            {parcela.pago && parcela.dataPago && (
-                              <span className="text-sm text-muted-foreground">
-                                Pago em {formatDate(parcela.dataPago)}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <button
-                              onClick={() => handleToggleParcelaPaid(parcela.id, parcela.pago, cobranca.id)}
-                              className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
-                                parcela.pago
-                                  ? "bg-green-100 text-green-700 hover:bg-green-200"
-                                  : isAtrasada
-                                    ? "bg-red-100 text-red-700 hover:bg-red-200"
-                                    : "bg-orange-100 text-orange-700 hover:bg-orange-200"
-                              }`}
-                            >
-                              {parcela.pago ? "Pago" : "Marcar Pago"}
-                            </button>
-                          </td>
-                          <td className="px-4 py-3"></td>
+                {/* Month Content */}
+                {isMonthExpanded && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-secondary/50 border-b border-border">
+                        <tr>
+                          <th className="px-2 py-3 text-left text-sm font-bold text-foreground w-8"></th>
+                          <th 
+                            className="px-4 py-3 text-left text-sm font-bold text-foreground cursor-pointer hover:text-primary"
+                            onClick={() => handleSort("cliente")}
+                          >
+                            Cliente <SortIcon field="cliente" />
+                          </th>
+                          <th 
+                            className="px-4 py-3 text-left text-sm font-bold text-foreground cursor-pointer hover:text-primary"
+                            onClick={() => handleSort("fatura")}
+                          >
+                            Fatura <SortIcon field="fatura" />
+                          </th>
+                          <th 
+                            className="px-4 py-3 text-right text-sm font-bold text-foreground cursor-pointer hover:text-primary"
+                            onClick={() => handleSort("valor")}
+                          >
+                            Valor c/IVA <SortIcon field="valor" />
+                          </th>
+                          <th className="px-4 py-3 text-right text-sm font-bold text-foreground">Sem IVA</th>
+                          <th className="px-4 py-3 text-right text-sm font-bold text-primary">Comissao</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold text-foreground">Parcelas</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold text-foreground">Estado</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold text-foreground">Acoes</th>
                         </tr>
-                      )
-                    })}
-                  </>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {group.cobrancas.map((cobranca) => renderCobrancaRow(cobranca))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )
+          })}
 
-        {filtered.length === 0 && (
-          <div className="text-center py-16">
-            <svg className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <p className="text-muted-foreground text-lg font-medium">
-              {searchQuery || selectedCliente ? "Nenhuma cobranca encontrada com esses filtros" : "Nenhuma cobranca encontrada"}
-            </p>
-            {(searchQuery || selectedCliente) && (
-              <button
-                onClick={clearFilters}
-                className="mt-2 text-primary hover:underline text-sm"
-              >
-                Limpar filtros
-              </button>
-            )}
+          {groupedByMonth.length === 0 && (
+            <div className="bg-card rounded-xl shadow-sm p-16 text-center border border-border">
+              <svg className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <p className="text-muted-foreground text-lg font-medium">
+                {searchQuery || selectedCliente || selectedMonth ? "Nenhuma cobranca encontrada com esses filtros" : "Nenhuma cobranca encontrada"}
+              </p>
+              {(searchQuery || selectedCliente || selectedMonth) && (
+                <button
+                  onClick={clearFilters}
+                  className="mt-2 text-primary hover:underline text-sm"
+                >
+                  Limpar filtros
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Flat List View */
+        <div className="bg-card rounded-xl shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-secondary border-b-2 border-border">
+                <tr>
+                  <th className="px-2 py-4 text-left text-sm font-bold text-foreground w-8"></th>
+                  <th 
+                    className="px-4 py-4 text-left text-sm font-bold text-foreground cursor-pointer hover:text-primary"
+                    onClick={() => handleSort("cliente")}
+                  >
+                    Cliente <SortIcon field="cliente" />
+                  </th>
+                  <th 
+                    className="px-4 py-4 text-left text-sm font-bold text-foreground cursor-pointer hover:text-primary"
+                    onClick={() => handleSort("fatura")}
+                  >
+                    Fatura <SortIcon field="fatura" />
+                  </th>
+                  <th 
+                    className="px-4 py-4 text-right text-sm font-bold text-foreground cursor-pointer hover:text-primary"
+                    onClick={() => handleSort("valor")}
+                  >
+                    Valor c/IVA <SortIcon field="valor" />
+                  </th>
+                  <th className="px-4 py-4 text-right text-sm font-bold text-foreground">Sem IVA</th>
+                  <th className="px-4 py-4 text-right text-sm font-bold text-primary">Comissao</th>
+                  <th className="px-4 py-4 text-center text-sm font-bold text-foreground">Parcelas</th>
+                  <th className="px-4 py-4 text-center text-sm font-bold text-foreground">Estado</th>
+                  <th className="px-4 py-4 text-center text-sm font-bold text-foreground">Acoes</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filtered.map((cobranca) => renderCobrancaRow(cobranca))}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
+
+          {filtered.length === 0 && (
+            <div className="text-center py-16">
+              <svg className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <p className="text-muted-foreground text-lg font-medium">
+                {searchQuery || selectedCliente || selectedMonth ? "Nenhuma cobranca encontrada com esses filtros" : "Nenhuma cobranca encontrada"}
+              </p>
+              {(searchQuery || selectedCliente || selectedMonth) && (
+                <button
+                  onClick={clearFilters}
+                  className="mt-2 text-primary hover:underline text-sm"
+                >
+                  Limpar filtros
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
