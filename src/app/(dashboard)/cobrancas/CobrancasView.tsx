@@ -420,10 +420,175 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       return
     }
 
-    // Handle partial payment - add more payment
+    // Handle partial payment - show action menu first
     const valorCobranca = valorTotal || 0
     const valorRestante = valorCobranca - currentValorPago
     const today = new Date().toISOString().split("T")[0]
+
+    // If partial payment, show action selection menu
+    if (isPartialPayment) {
+      const actionResult = await Swal.fire({
+        title: "",
+        html: `
+          <div style="text-align: center; padding: 0;">
+            <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+              <svg width="32" height="32" fill="none" stroke="white" viewBox="0 0 24 24" style="stroke-width: 2.5;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <h2 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin: 0 0 8px 0;">Pagamento Parcial</h2>
+            <p style="font-size: 0.875rem; color: #6b7280; margin: 0 0 16px 0;">Ja pago: <strong>${formatCurrency(currentValorPago)} €</strong> de ${formatCurrency(valorCobranca)} €</p>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <button type="button" id="action-add" style="width: 100%; padding: 14px 20px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: transform 0.1s;">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                Adicionar Pagamento
+              </button>
+              <button type="button" id="action-edit" style="width: 100%; padding: 14px 20px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: transform 0.1s;">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                Editar Valor Pago
+              </button>
+              <button type="button" id="action-remove" style="width: 100%; padding: 14px 20px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; border: none; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: transform 0.1s;">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                Remover Pagamento
+              </button>
+            </div>
+          </div>
+        `,
+        showConfirmButton: false,
+        showCancelButton: true,
+        cancelButtonText: "Cancelar",
+        cancelButtonColor: "#6b7280",
+        width: '380px',
+        padding: '24px',
+        didOpen: () => {
+          const addBtn = document.getElementById('action-add')
+          const editBtn = document.getElementById('action-edit')
+          const removeBtn = document.getElementById('action-remove')
+
+          addBtn?.addEventListener('click', () => Swal.close({ isConfirmed: true, value: 'add' } as any))
+          editBtn?.addEventListener('click', () => Swal.close({ isConfirmed: true, value: 'edit' } as any))
+          removeBtn?.addEventListener('click', () => Swal.close({ isConfirmed: true, value: 'remove' } as any))
+        }
+      })
+
+      if (!actionResult.isConfirmed) return
+
+      const action = (actionResult as any).value
+
+      // Handle remove action
+      if (action === 'remove') {
+        const confirmRemove = await Swal.fire({
+          title: "",
+          html: `
+            <div style="text-align: center; padding: 0;">
+              <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                <svg width="32" height="32" fill="none" stroke="white" viewBox="0 0 24 24" style="stroke-width: 2.5;">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+              </div>
+              <h2 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin: 0 0 8px 0;">Remover Pagamento?</h2>
+              <p style="font-size: 0.875rem; color: #6b7280; margin: 0;">Isto ira remover os ${formatCurrency(currentValorPago)} € ja pagos e marcar como pendente.</p>
+            </div>
+          `,
+          showCancelButton: true,
+          confirmButtonColor: "#ef4444",
+          cancelButtonColor: "#6b7280",
+          confirmButtonText: "Sim, remover",
+          cancelButtonText: "Cancelar",
+          width: '380px',
+          padding: '24px'
+        })
+        if (!confirmRemove.isConfirmed) return
+        try {
+          const res = await fetch(`/api/cobrancas/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pago: false, dataPago: null, valorPago: null, estado: "PENDENTE" })
+          })
+          if (res.ok) router.refresh()
+        } catch {
+          Swal.fire({ icon: "error", title: "Erro", text: "Erro ao remover pagamento", confirmButtonColor: "#b8860b" })
+        }
+        return
+      }
+
+      // Handle edit action
+      if (action === 'edit') {
+        const editResult = await Swal.fire({
+          title: "",
+          html: `
+            <div style="text-align: left; padding: 0;">
+              <div style="text-align: center; margin-bottom: 20px;">
+                <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+                  <svg width="32" height="32" fill="none" stroke="white" viewBox="0 0 24 24" style="stroke-width: 2.5;">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                  </svg>
+                </div>
+                <h2 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin: 0;">Editar Valor Pago</h2>
+              </div>
+
+              <div style="background: #f3f4f6; border-radius: 10px; padding: 12px; margin-bottom: 16px; text-align: center;">
+                <p style="font-size: 0.75rem; color: #6b7280; margin: 0;">Valor total da cobranca: <strong>${formatCurrency(valorCobranca)} €</strong></p>
+              </div>
+
+              <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 8px;">
+                  Novo valor pago
+                </label>
+                <div style="position: relative;">
+                  <input type="number" step="0.01" id="valorPago" value="${currentValorPago.toFixed(2)}" min="0" max="${valorCobranca.toFixed(2)}"
+                    style="width: 100%; padding: 14px 40px 14px 16px; font-size: 1.125rem; font-weight: 600; border: 2px solid #e5e7eb; border-radius: 12px; outline: none; transition: border-color 0.2s; box-sizing: border-box;"
+                    onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e5e7eb'">
+                  <span style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 1.125rem; font-weight: 600; color: #6b7280;">€</span>
+                </div>
+              </div>
+            </div>
+          `,
+          showCancelButton: true,
+          confirmButtonColor: "#3b82f6",
+          cancelButtonColor: "#6b7280",
+          confirmButtonText: '<span style="display: flex; align-items: center; gap: 8px; padding: 4px 8px;"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Guardar</span>',
+          cancelButtonText: "Cancelar",
+          width: '380px',
+          padding: '24px',
+          preConfirm: () => {
+            const valorInput = document.getElementById("valorPago") as HTMLInputElement
+            const newValue = parseFloat(valorInput.value)
+            if (!valorInput.value || newValue < 0) {
+              Swal.showValidationMessage("Por favor insira um valor valido")
+              return false
+            }
+            if (newValue > valorCobranca) {
+              Swal.showValidationMessage("O valor nao pode ser superior ao total")
+              return false
+            }
+            return { valorPago: newValue }
+          }
+        })
+        if (!editResult.isConfirmed || !editResult.value) return
+        const newValorPago = editResult.value.valorPago
+        const isParcial = newValorPago > 0 && newValorPago < valorCobranca
+        const isPago = newValorPago >= valorCobranca
+        try {
+          const res = await fetch(`/api/cobrancas/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              pago: isPago,
+              valorPago: newValorPago > 0 ? newValorPago : null,
+              estado: isPago ? "PAGO" : isParcial ? "PARCIAL" : "PENDENTE"
+            })
+          })
+          if (res.ok) router.refresh()
+        } catch {
+          Swal.fire({ icon: "error", title: "Erro", text: "Erro ao editar pagamento", confirmButtonColor: "#b8860b" })
+        }
+        return
+      }
+
+      // If action is 'add', continue to add payment flow below
+    }
 
     const result = await Swal.fire({
       title: "",
@@ -580,6 +745,172 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
     // Marking as paid (or adding to partial payment)
     const today = new Date().toISOString().split("T")[0]
     const emFalta = valorParcela - currentValorPago
+
+    // If partial payment, show action selection menu first
+    if (isPartialPayment) {
+      const actionResult = await Swal.fire({
+        title: "",
+        html: `
+          <div style="text-align: center; padding: 0;">
+            <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+              <svg width="32" height="32" fill="none" stroke="white" viewBox="0 0 24 24" style="stroke-width: 2.5;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <h2 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin: 0 0 4px 0;">Parcela ${numeroParcela} - Pagamento Parcial</h2>
+            <p style="font-size: 0.875rem; color: #6b7280; margin: 0 0 16px 0;">Ja pago: <strong>${formatCurrency(currentValorPago)} €</strong> de ${formatCurrency(valorParcela)} €</p>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <button type="button" id="action-add" style="width: 100%; padding: 14px 20px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: transform 0.1s;">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                Adicionar Pagamento
+              </button>
+              <button type="button" id="action-edit" style="width: 100%; padding: 14px 20px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: transform 0.1s;">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                Editar Valor Pago
+              </button>
+              <button type="button" id="action-remove" style="width: 100%; padding: 14px 20px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; border: none; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: transform 0.1s;">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                Remover Pagamento
+              </button>
+            </div>
+          </div>
+        `,
+        showConfirmButton: false,
+        showCancelButton: true,
+        cancelButtonText: "Cancelar",
+        cancelButtonColor: "#6b7280",
+        width: '380px',
+        padding: '24px',
+        didOpen: () => {
+          const addBtn = document.getElementById('action-add')
+          const editBtn = document.getElementById('action-edit')
+          const removeBtn = document.getElementById('action-remove')
+
+          addBtn?.addEventListener('click', () => Swal.close({ isConfirmed: true, value: 'add' } as any))
+          editBtn?.addEventListener('click', () => Swal.close({ isConfirmed: true, value: 'edit' } as any))
+          removeBtn?.addEventListener('click', () => Swal.close({ isConfirmed: true, value: 'remove' } as any))
+        }
+      })
+
+      if (!actionResult.isConfirmed) return
+
+      const action = (actionResult as any).value
+
+      // Handle remove action
+      if (action === 'remove') {
+        const confirmRemove = await Swal.fire({
+          title: "",
+          html: `
+            <div style="text-align: center; padding: 0;">
+              <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                <svg width="32" height="32" fill="none" stroke="white" viewBox="0 0 24 24" style="stroke-width: 2.5;">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+              </div>
+              <h2 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin: 0 0 8px 0;">Remover Pagamento?</h2>
+              <p style="font-size: 0.875rem; color: #6b7280; margin: 0;">Isto ira remover os ${formatCurrency(currentValorPago)} € ja pagos da parcela ${numeroParcela}.</p>
+            </div>
+          `,
+          showCancelButton: true,
+          confirmButtonColor: "#ef4444",
+          cancelButtonColor: "#6b7280",
+          confirmButtonText: "Sim, remover",
+          cancelButtonText: "Cancelar",
+          width: '380px',
+          padding: '24px'
+        })
+        if (!confirmRemove.isConfirmed) return
+        try {
+          const res = await fetch(`/api/parcelas/${parcelaId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pago: false, dataPago: null, valorPago: null })
+          })
+          if (res.ok) router.refresh()
+        } catch {
+          Swal.fire({ icon: "error", title: "Erro", text: "Erro ao remover pagamento", confirmButtonColor: "#b8860b" })
+        }
+        return
+      }
+
+      // Handle edit action
+      if (action === 'edit') {
+        const editResult = await Swal.fire({
+          title: "",
+          html: `
+            <div style="text-align: left; padding: 0;">
+              <div style="text-align: center; margin-bottom: 20px;">
+                <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+                  <svg width="32" height="32" fill="none" stroke="white" viewBox="0 0 24 24" style="stroke-width: 2.5;">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                  </svg>
+                </div>
+                <h2 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin: 0;">Editar Valor Pago</h2>
+                <p style="font-size: 0.875rem; color: #6b7280; margin: 4px 0 0 0;">Parcela ${numeroParcela}</p>
+              </div>
+
+              <div style="background: #f3f4f6; border-radius: 10px; padding: 12px; margin-bottom: 16px; text-align: center;">
+                <p style="font-size: 0.75rem; color: #6b7280; margin: 0;">Valor total da parcela: <strong>${formatCurrency(valorParcela)} €</strong></p>
+              </div>
+
+              <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 8px;">
+                  Novo valor pago
+                </label>
+                <div style="position: relative;">
+                  <input type="number" step="0.01" id="valorPago" value="${currentValorPago.toFixed(2)}" min="0" max="${valorParcela.toFixed(2)}"
+                    style="width: 100%; padding: 14px 40px 14px 16px; font-size: 1.125rem; font-weight: 600; border: 2px solid #e5e7eb; border-radius: 12px; outline: none; transition: border-color 0.2s; box-sizing: border-box;"
+                    onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e5e7eb'">
+                  <span style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 1.125rem; font-weight: 600; color: #6b7280;">€</span>
+                </div>
+              </div>
+            </div>
+          `,
+          showCancelButton: true,
+          confirmButtonColor: "#3b82f6",
+          cancelButtonColor: "#6b7280",
+          confirmButtonText: '<span style="display: flex; align-items: center; gap: 8px; padding: 4px 8px;"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Guardar</span>',
+          cancelButtonText: "Cancelar",
+          width: '380px',
+          padding: '24px',
+          preConfirm: () => {
+            const valorInput = document.getElementById("valorPago") as HTMLInputElement
+            const newValue = parseFloat(valorInput.value)
+            if (!valorInput.value || newValue < 0) {
+              Swal.showValidationMessage("Por favor insira um valor valido")
+              return false
+            }
+            if (newValue > valorParcela) {
+              Swal.showValidationMessage("O valor nao pode ser superior ao total")
+              return false
+            }
+            return { valorPago: newValue }
+          }
+        })
+        if (!editResult.isConfirmed || !editResult.value) return
+        const newValorPago = editResult.value.valorPago
+        const isParcial = newValorPago > 0 && newValorPago < valorParcela
+        const isPago = newValorPago >= valorParcela
+        try {
+          const res = await fetch(`/api/parcelas/${parcelaId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              pago: isPago,
+              valorPago: newValorPago > 0 ? newValorPago : null
+            })
+          })
+          if (res.ok) router.refresh()
+        } catch {
+          Swal.fire({ icon: "error", title: "Erro", text: "Erro ao editar pagamento", confirmButtonColor: "#b8860b" })
+        }
+        return
+      }
+
+      // If action is 'add', continue to add payment flow below
+    }
+
     const defaultValue = isPartialPayment ? emFalta : valorParcela
 
     const result = await Swal.fire({
@@ -587,7 +918,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       html: `
         <div style="text-align: left; padding: 0;">
           <div style="text-align: center; margin-bottom: 20px;">
-            <div style="width: 64px; height: 64px; background: linear-gradient(135deg, ${isPartialPayment ? '#8b5cf6' : '#10b981'} 0%, ${isPartialPayment ? '#7c3aed' : '#059669'} 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+            <div style="width: 64px; height: 64px; background: linear-gradient(135deg, ${isPartialPayment ? '#10b981' : '#10b981'} 0%, ${isPartialPayment ? '#059669' : '#059669'} 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
               <svg width="32" height="32" fill="none" stroke="white" viewBox="0 0 24 24" style="stroke-width: 2.5;">
                 ${isPartialPayment
                   ? '<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>'
