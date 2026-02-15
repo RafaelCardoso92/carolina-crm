@@ -70,6 +70,15 @@ export async function POST(request: Request) {
       }, { status: 400 })
     }
 
+    // Calculate dataVencimento for single payment cobrancas
+    let calculatedDataVencimento: Date | null = null
+    if (numeroParcelas === 1 && data.prazoVencimentoDias && data.dataEmissao) {
+      calculatedDataVencimento = new Date(data.dataEmissao)
+      calculatedDataVencimento.setDate(calculatedDataVencimento.getDate() + data.prazoVencimentoDias)
+    } else if (data.dataVencimento) {
+      calculatedDataVencimento = new Date(data.dataVencimento)
+    }
+
     // Create cobranca with parcelas in a transaction
     const cobranca = await prisma.$transaction(async (tx) => {
       // Create the main cobranca
@@ -85,7 +94,7 @@ export async function POST(request: Request) {
           dataInicioVencimento,
           notas: data.notas || null,
           prazoVencimentoDias: data.prazoVencimentoDias || null,
-          dataVencimento: data.dataVencimento ? new Date(data.dataVencimento) : null,
+          dataVencimento: calculatedDataVencimento,
           estado: "PENDENTE"
         }
       })

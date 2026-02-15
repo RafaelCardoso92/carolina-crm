@@ -170,6 +170,16 @@ export async function PUT(
       }
     }
 
+    // Calculate dataVencimento for single payment cobrancas
+    let calculatedDataVencimento: Date | null = null
+    const numeroParcelas = data.numeroParcelas || 1
+    if (numeroParcelas === 1 && data.prazoVencimentoDias && data.dataEmissao) {
+      calculatedDataVencimento = new Date(data.dataEmissao)
+      calculatedDataVencimento.setDate(calculatedDataVencimento.getDate() + data.prazoVencimentoDias)
+    } else if (data.dataVencimento) {
+      calculatedDataVencimento = new Date(data.dataVencimento)
+    }
+
     const cobranca = await prisma.cobranca.update({
       where: { id },
       data: {
@@ -180,8 +190,10 @@ export async function PUT(
         comissao: data.comissao || null,
         dataEmissao: data.dataEmissao ? new Date(data.dataEmissao) : null,
         notas: data.notas || null,
-        numeroParcelas: data.numeroParcelas || 1,
-        dataInicioVencimento: data.dataInicioVencimento ? new Date(data.dataInicioVencimento) : null
+        numeroParcelas: numeroParcelas,
+        dataInicioVencimento: data.dataInicioVencimento ? new Date(data.dataInicioVencimento) : null,
+        prazoVencimentoDias: data.prazoVencimentoDias || null,
+        dataVencimento: calculatedDataVencimento
       },
       include: {
         cliente: true,
