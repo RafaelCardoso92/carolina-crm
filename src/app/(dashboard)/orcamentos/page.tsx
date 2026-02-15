@@ -104,7 +104,7 @@ export default function OrcamentosPage() {
         Swal.fire({
           icon: "error",
           title: "Erro",
-          text: "Erro ao eliminar orcamento",
+          text: "Erro ao eliminar orçamento",
           confirmButtonColor: "#b8860b"
         })
       }
@@ -113,7 +113,7 @@ export default function OrcamentosPage() {
       Swal.fire({
         icon: "error",
         title: "Erro",
-        text: "Erro ao eliminar orcamento",
+        text: "Erro ao eliminar orçamento",
         confirmButtonColor: "#b8860b"
       })
     }

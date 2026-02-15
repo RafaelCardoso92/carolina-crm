@@ -13,7 +13,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     const session = await auth()
     
     if (!session?.user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     const role = session.user.role as UserRole
@@ -50,7 +50,7 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     if (!user) {
       return NextResponse.json(
-        { error: "Usuario nao encontrado" },
+        { error: "Utilizador não encontrado" },
         { status: 404 }
       )
     }
@@ -76,7 +76,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     const session = await auth()
     
     if (!session?.user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     const currentRole = session.user.role as UserRole
@@ -98,7 +98,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     if (!existingUser) {
       return NextResponse.json(
-        { error: "Usuario nao encontrado" },
+        { error: "Utilizador não encontrado" },
         { status: 404 }
       )
     }
@@ -200,7 +200,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     const session = await auth()
     
     if (!session?.user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     const currentRole = session.user.role as UserRole
@@ -229,7 +229,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
 
     if (!existingUser) {
       return NextResponse.json(
-        { error: "Usuario nao encontrado" },
+        { error: "Utilizador não encontrado" },
         { status: 404 }
       )
     }

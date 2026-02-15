@@ -197,7 +197,7 @@ export const concluirTarefa: BaborellaTool = {
       if (!existing) {
         return {
           success: false,
-          message: "Tarefa nao encontrada",
+          message: "Tarefa não encontrada",
           error: "TASK_NOT_FOUND",
         };
       }

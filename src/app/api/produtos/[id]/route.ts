@@ -18,7 +18,7 @@ export async function GET(
 
     if (!produto) {
       return NextResponse.json(
-        { error: "Produto nao encontrado" },
+        { error: "Produto não encontrado" },
         { status: 404 }
       )
     }
@@ -105,7 +105,7 @@ export async function DELETE(
 
     if (!produto) {
       return NextResponse.json(
-        { error: "Produto nao encontrado" },
+        { error: "Produto não encontrado" },
         { status: 404 }
       )
     }

@@ -28,7 +28,7 @@ export async function GET(
     })
 
     if (!objetivo) {
-      return NextResponse.json({ error: "Objetivo nao encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Objetivo não encontrado" }, { status: 404 })
     }
 
     return NextResponse.json({
@@ -57,7 +57,7 @@ export async function PUT(
       where: { id, ...userScopedWhere(session) }
     })
     if (!existing) {
-      return NextResponse.json({ error: "Objetivo nao encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Objetivo não encontrado" }, { status: 404 })
     }
 
     const produtosData: ProdutoInput[] = data.produtos || []
@@ -114,7 +114,7 @@ export async function DELETE(
       where: { id, ...userScopedWhere(session) }
     })
     if (!existing) {
-      return NextResponse.json({ error: "Objetivo nao encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Objetivo não encontrado" }, { status: 404 })
     }
 
     await prisma.objetivoVario.delete({

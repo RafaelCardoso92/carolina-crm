@@ -103,7 +103,7 @@ export default function TarefaForm({ tarefa, onSuccess, onCancel }: Props) {
     if (!formData.titulo.trim()) {
       Swal.fire({
         icon: "warning",
-        title: "Titulo obrigatorio",
+        title: "Título obrigatório",
         text: "Por favor insira um titulo para a tarefa."
       })
       return

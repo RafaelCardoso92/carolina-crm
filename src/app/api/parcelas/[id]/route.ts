@@ -9,7 +9,7 @@ export async function GET(
 ) {
   const session = await auth()
   if (!session?.user) {
-    return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
   }
 
   try {
@@ -24,7 +24,7 @@ export async function GET(
     })
 
     if (!parcela) {
-      return NextResponse.json({ error: "Parcela nao encontrada" }, { status: 404 })
+      return NextResponse.json({ error: "Parcela não encontrada" }, { status: 404 })
     }
 
     return NextResponse.json(parcela)
@@ -41,7 +41,7 @@ export async function PATCH(
 ) {
   const session = await auth()
   if (!session?.user) {
-    return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
   }
 
   try {

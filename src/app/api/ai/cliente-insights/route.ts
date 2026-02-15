@@ -173,7 +173,7 @@ export async function POST(request: NextRequest) {
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json<ClienteInsightsResponse>(
-        { success: false, error: "Nao autorizado" },
+        { success: false, error: "Não autorizado" },
         { status: 401 }
       )
     }
@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
 
     if (!cliente) {
       return NextResponse.json<ClienteInsightsResponse>(
-        { success: false, error: "Cliente nao encontrado" },
+        { success: false, error: "Cliente não encontrado" },
         { status: 404 }
       )
     }
@@ -258,11 +258,11 @@ export async function POST(request: NextRequest) {
 
     // Build prompt
     const prompt = PROMPT_TEMPLATE
-      .replace("{nome}", cliente.nome || "Nao especificado")
-      .replace("{codigo}", cliente.codigo || "Nao especificado")
-      .replace("{email}", cliente.email || "Nao disponivel")
-      .replace("{telefone}", cliente.telefone || "Nao disponivel")
-      .replace("{morada}", cliente.morada || "Nao especificada")
+      .replace("{nome}", cliente.nome || "Não especificado")
+      .replace("{codigo}", cliente.codigo || "Não especificado")
+      .replace("{email}", cliente.email || "Não disponível")
+      .replace("{telefone}", cliente.telefone || "Não disponível")
+      .replace("{morada}", cliente.morada || "Não especificada")
       .replace("{notas}", cliente.notas || "Sem notas")
       .replace("{historicoCompras}", historicoCompras.slice(0, 30).join("\n") || "Sem historico")
       .replace("{produtosNaoComprados}", produtosNaoComprados.slice(0, 10).join("\n") || "Nenhum identificado")

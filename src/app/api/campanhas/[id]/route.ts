@@ -35,7 +35,7 @@ export async function GET(
     })
 
     if (!campanha) {
-      return NextResponse.json({ error: "Campanha nao encontrada" }, { status: 404 })
+      return NextResponse.json({ error: "Campanha não encontrada" }, { status: 404 })
     }
 
     return NextResponse.json({
@@ -65,7 +65,7 @@ export async function PUT(
       where: { id, ...userScopedWhere(session) }
     })
     if (!existing) {
-      return NextResponse.json({ error: "Campanha nao encontrada" }, { status: 404 })
+      return NextResponse.json({ error: "Campanha não encontrada" }, { status: 404 })
     }
 
     const produtosData: ProdutoInput[] = data.produtos || []
@@ -125,7 +125,7 @@ export async function PATCH(
       where: { id, ...userScopedWhere(session) }
     })
     if (!existing) {
-      return NextResponse.json({ error: "Campanha nao encontrada" }, { status: 404 })
+      return NextResponse.json({ error: "Campanha não encontrada" }, { status: 404 })
     }
 
     // Only allow toggling ativo and recorrente
@@ -163,7 +163,7 @@ export async function DELETE(
       where: { id, ...userScopedWhere(session) }
     })
     if (!existing) {
-      return NextResponse.json({ error: "Campanha nao encontrada" }, { status: 404 })
+      return NextResponse.json({ error: "Campanha não encontrada" }, { status: 404 })
     }
 
     await prisma.campanha.delete({

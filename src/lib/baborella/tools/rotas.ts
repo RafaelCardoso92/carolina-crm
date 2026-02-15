@@ -101,7 +101,7 @@ export const detalhesRota: BaborellaTool = {
       if (!rota) {
         return {
           success: false,
-          message: "Rota nao encontrada",
+          message: "Rota não encontrada",
           error: "ROUTE_NOT_FOUND",
         };
       }
@@ -160,7 +160,7 @@ export const concluirRota: BaborellaTool = {
       if (!existing) {
         return {
           success: false,
-          message: "Rota nao encontrada",
+          message: "Rota não encontrada",
           error: "ROUTE_NOT_FOUND",
         };
       }

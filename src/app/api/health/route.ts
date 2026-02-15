@@ -96,7 +96,7 @@ export async function GET(request: Request) {
         })
 
         if (!cliente) {
-          return NextResponse.json({ error: "Cliente nao encontrado" }, { status: 404 })
+          return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 })
         }
 
         const totalVendas = cliente.vendas.reduce((sum, v) => sum + Number(v.total), 0)

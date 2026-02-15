@@ -10,7 +10,7 @@ export async function GET(request: Request, { params }: RouteParams) {
   try {
     const session = await auth()
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     const { id } = await params
@@ -30,7 +30,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     })
 
     if (!message) {
-      return NextResponse.json({ error: "Mensagem nao encontrada" }, { status: 404 })
+      return NextResponse.json({ error: "Mensagem não encontrada" }, { status: 404 })
     }
 
     // Check user has access to this message
@@ -50,7 +50,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   try {
     const session = await auth()
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     const { id } = await params
@@ -63,7 +63,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     })
 
     if (!message) {
-      return NextResponse.json({ error: "Mensagem nao encontrada" }, { status: 404 })
+      return NextResponse.json({ error: "Mensagem não encontrada" }, { status: 404 })
     }
 
     // Only recipient can mark as read

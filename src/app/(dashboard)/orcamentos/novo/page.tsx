@@ -303,11 +303,11 @@ export default function NovoOrcamentoPage() {
         router.push("/orcamentos")
       } else {
         const data = await res.json()
-        alert(data.error || "Erro ao criar orcamento")
+        alert(data.error || "Erro ao criar orçamento")
       }
     } catch (error) {
       console.error("Error creating orcamento:", error)
-      alert("Erro ao criar orcamento")
+      alert("Erro ao criar orçamento")
     } finally {
       setSaving(false)
     }

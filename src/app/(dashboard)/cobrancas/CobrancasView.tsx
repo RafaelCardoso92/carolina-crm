@@ -415,7 +415,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
         })
         if (res.ok) router.refresh()
       } catch {
-        Swal.fire({ icon: "error", title: "Erro", text: "Erro ao atualizar cobranca", confirmButtonColor: "#b8860b" })
+        Swal.fire({ icon: "error", title: "Erro", text: "Erro ao atualizar cobrança", confirmButtonColor: "#b8860b" })
       }
       return
     }
@@ -556,7 +556,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
             const valorInput = document.getElementById("valorPago") as HTMLInputElement
             const newValue = parseFloat(valorInput.value)
             if (!valorInput.value || newValue < 0) {
-              Swal.showValidationMessage("Por favor insira um valor valido")
+              Swal.showValidationMessage("Por favor insira um valor válido")
               return false
             }
             if (newValue > valorCobranca) {
@@ -665,7 +665,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
         const valorInput = document.getElementById("valorPago") as HTMLInputElement
         const dateInput = document.getElementById("dataPago") as HTMLInputElement
         if (!valorInput.value || parseFloat(valorInput.value) <= 0) {
-          Swal.showValidationMessage("Por favor insira um valor valido")
+          Swal.showValidationMessage("Por favor insira um valor válido")
           return false
         }
         if (!dateInput.value) {
@@ -692,7 +692,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       })
       if (res.ok) router.refresh()
     } catch {
-      Swal.fire({ icon: "error", title: "Erro", text: "Erro ao atualizar cobranca", confirmButtonColor: "#b8860b" })
+      Swal.fire({ icon: "error", title: "Erro", text: "Erro ao atualizar cobrança", confirmButtonColor: "#b8860b" })
     }
   }
 
@@ -878,7 +878,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
             const valorInput = document.getElementById("valorPago") as HTMLInputElement
             const newValue = parseFloat(valorInput.value)
             if (!valorInput.value || newValue < 0) {
-              Swal.showValidationMessage("Por favor insira um valor valido")
+              Swal.showValidationMessage("Por favor insira um valor válido")
               return false
             }
             if (newValue > valorParcela) {
@@ -992,7 +992,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
         const valorInput = document.getElementById("valorPago") as HTMLInputElement
         const dateInput = document.getElementById("dataPago") as HTMLInputElement
         if (!valorInput.value || parseFloat(valorInput.value) <= 0) {
-          Swal.showValidationMessage("Por favor insira um valor valido")
+          Swal.showValidationMessage("Por favor insira um valor válido")
           return false
         }
         if (!dateInput.value) {
@@ -1044,7 +1044,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
         Swal.fire({
           icon: "error",
           title: "Erro",
-          text: "Erro ao eliminar cobranca",
+          text: "Erro ao eliminar cobrança",
           confirmButtonColor: "#b8860b"
         })
       }
@@ -1052,7 +1052,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       Swal.fire({
         icon: "error",
         title: "Erro",
-        text: "Erro ao eliminar cobranca",
+        text: "Erro ao eliminar cobrança",
         confirmButtonColor: "#b8860b"
       })
     }

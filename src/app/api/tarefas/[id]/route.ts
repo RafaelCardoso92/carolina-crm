@@ -23,7 +23,7 @@ export async function GET(
 
     if (!tarefa) {
       return NextResponse.json(
-        { error: "Tarefa nao encontrada" },
+        { error: "Tarefa não encontrada" },
         { status: 404 }
       )
     }

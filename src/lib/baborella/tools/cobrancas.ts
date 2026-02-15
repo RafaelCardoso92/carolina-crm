@@ -106,7 +106,7 @@ export const registarPagamento: BaborellaTool = {
       if (!existing) {
         return {
           success: false,
-          message: "Cobranca nao encontrada",
+          message: "Cobrança não encontrada",
           error: "COLLECTION_NOT_FOUND",
         };
       }

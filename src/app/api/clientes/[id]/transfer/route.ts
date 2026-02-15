@@ -12,7 +12,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     const session = await auth()
     
     if (!session?.user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     const role = session.user.role as UserRole
@@ -39,7 +39,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     })
 
     if (!cliente) {
-      return NextResponse.json({ error: "Cliente nao encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 })
     }
 
     // Check new seller exists and is active

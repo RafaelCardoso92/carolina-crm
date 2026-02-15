@@ -38,7 +38,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     })
 
     if (!cliente) {
-      return NextResponse.json({ error: "Cliente nao encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 })
     }
 
     return NextResponse.json(cliente)
@@ -70,7 +70,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     })
 
     if (!existing) {
-      return NextResponse.json({ error: "Cliente nao encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 })
     }
 
     // Check if codigo already exists for another client
@@ -123,7 +123,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     })
 
     if (!existing) {
-      return NextResponse.json({ error: "Cliente nao encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 })
     }
 
     const cliente = await prisma.cliente.update({
@@ -155,7 +155,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     })
 
     if (!existing) {
-      return NextResponse.json({ error: "Cliente nao encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 })
     }
 
     await prisma.cliente.delete({

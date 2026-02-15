@@ -124,7 +124,7 @@ export const detalhesProspecto: BaborellaTool = {
       if (!prospecto) {
         return {
           success: false,
-          message: "Prospecto nao encontrado",
+          message: "Prospecto não encontrado",
           error: "PROSPECT_NOT_FOUND",
         };
       }
@@ -184,7 +184,7 @@ export const atualizarEstadoProspecto: BaborellaTool = {
       if (!existing) {
         return {
           success: false,
-          message: "Prospecto nao encontrado",
+          message: "Prospecto não encontrado",
           error: "PROSPECT_NOT_FOUND",
         };
       }
@@ -238,7 +238,7 @@ export const converterProspecto: BaborellaTool = {
       if (!prospecto) {
         return {
           success: false,
-          message: "Prospecto nao encontrado",
+          message: "Prospecto não encontrado",
           error: "PROSPECT_NOT_FOUND",
         };
       }

@@ -27,7 +27,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     })
 
     if (!orcamento) {
-      return NextResponse.json({ error: "Orcamento nao encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Orçamento não encontrado" }, { status: 404 })
     }
 
     return NextResponse.json(orcamento)
@@ -54,7 +54,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     })
 
     if (!existing) {
-      return NextResponse.json({ error: "Orcamento nao encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Orçamento não encontrado" }, { status: 404 })
     }
 
     const { estado, titulo, introducao, condicoes, validadeDias } = body
@@ -104,7 +104,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     })
 
     if (!existing) {
-      return NextResponse.json({ error: "Orcamento nao encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Orçamento não encontrado" }, { status: 404 })
     }
 
     await prisma.orcamento.delete({ where: { id } })
@@ -113,6 +113,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   } catch (error) {
     if (error instanceof NextResponse) return error
     console.error("Error deleting orcamento:", error)
-    return NextResponse.json({ error: "Erro ao eliminar orcamento" }, { status: 500 })
+    return NextResponse.json({ error: "Erro ao eliminar orçamento" }, { status: 500 })
   }
 }

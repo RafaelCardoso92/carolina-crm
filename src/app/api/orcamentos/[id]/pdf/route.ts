@@ -37,7 +37,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     })
 
     if (!orcamento) {
-      return NextResponse.json({ error: "Orcamento nao encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Orçamento não encontrado" }, { status: 404 })
     }
 
     // Create PDF

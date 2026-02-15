@@ -340,7 +340,7 @@ export default function ProspectosList() {
                           </svg>
                           <div className="flex-1">
                             <p className={`text-sm font-medium ${isOverdue ? 'text-white' : 'text-foreground'}`}>
-                              {prospecto.proximaAccao || "Acao pendente"}
+                              {prospecto.proximaAccao || "Ação pendente"}
                             </p>
                             {prospecto.dataProximaAccao && (
                               <p className={`text-xs mt-0.5 ${isOverdue ? 'text-red-100 font-semibold' : 'text-muted-foreground'}`}>

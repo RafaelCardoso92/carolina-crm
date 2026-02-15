@@ -43,7 +43,7 @@ export async function GET(
     const { owned, venda: vendaCheck } = await checkVendaOwnership(id, effectiveUserId, canViewAll)
 
     if (!vendaCheck) {
-      return NextResponse.json({ error: "Venda nao encontrada" }, { status: 404 })
+      return NextResponse.json({ error: "Venda não encontrada" }, { status: 404 })
     }
 
     if (!owned) {
@@ -95,7 +95,7 @@ export async function PUT(
     const { owned, venda: vendaCheck } = await checkVendaOwnership(id, effectiveUserId, canViewAll)
 
     if (!vendaCheck) {
-      return NextResponse.json({ error: "Venda nao encontrada" }, { status: 404 })
+      return NextResponse.json({ error: "Venda não encontrada" }, { status: 404 })
     }
 
     if (!owned) {
@@ -114,7 +114,7 @@ export async function PUT(
       })
 
       if (!newCliente) {
-        return NextResponse.json({ error: "Cliente nao encontrado" }, { status: 404 })
+        return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 })
       }
 
       if (!canViewAll && newCliente.userId !== effectiveUserId) {
@@ -291,7 +291,7 @@ export async function DELETE(
     const { owned, venda: vendaCheck } = await checkVendaOwnership(id, effectiveUserId, canViewAll)
 
     if (!vendaCheck) {
-      return NextResponse.json({ error: "Venda nao encontrada" }, { status: 404 })
+      return NextResponse.json({ error: "Venda não encontrada" }, { status: 404 })
     }
 
     if (!owned) {

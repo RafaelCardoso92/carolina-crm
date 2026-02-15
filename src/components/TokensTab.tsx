@@ -129,7 +129,7 @@ export default function TokensTab({ isAdmin }: TokensTabProps) {
     if (isNaN(amount) || amount < MIN_PURCHASE) {
       Swal.fire({
         icon: "error",
-        title: "Valor invalido",
+        title: "Valor inválido",
         text: `O valor minimo e €${MIN_PURCHASE}`,
         confirmButtonColor: "#b8860b"
       })
@@ -139,7 +139,7 @@ export default function TokensTab({ isAdmin }: TokensTabProps) {
     if (amount > 1000) {
       Swal.fire({
         icon: "error",
-        title: "Valor invalido",
+        title: "Valor inválido",
         text: "O valor maximo por compra e €1000",
         confirmButtonColor: "#b8860b"
       })
@@ -190,7 +190,7 @@ export default function TokensTab({ isAdmin }: TokensTabProps) {
     if (isNaN(tokens) || tokens <= 0) {
       Swal.fire({
         icon: "error",
-        title: "Valor invalido",
+        title: "Valor inválido",
         text: "Insira um numero valido de tokens",
         confirmButtonColor: "#b8860b"
       })

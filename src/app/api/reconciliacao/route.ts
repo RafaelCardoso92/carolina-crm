@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
   try {
   const session = await auth()
   if (!session?.user) {
-    return NextResponse.json<ReconciliacaoListResponse>({ success: false, error: "Nao autorizado" }, { status: 401 })
+    return NextResponse.json<ReconciliacaoListResponse>({ success: false, error: "Não autorizado" }, { status: 401 })
   }
     const { searchParams } = new URL(request.url)
     const ano = searchParams.get("ano") ? parseInt(searchParams.get("ano")!) : undefined
@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
   try {
   const session = await auth()
   if (!session?.user) {
-    return NextResponse.json<ReconciliacaoResponse>({ success: false, error: "Nao autorizado" }, { status: 401 })
+    return NextResponse.json<ReconciliacaoResponse>({ success: false, error: "Não autorizado" }, { status: 401 })
   }
     const formData = await request.formData()
     const file = formData.get("file") as File | null

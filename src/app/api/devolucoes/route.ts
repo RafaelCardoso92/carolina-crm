@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   const session = await auth()
   if (!session?.user) {
     return NextResponse.json<DevolucaoListResponse>(
-      { success: false, error: "Nao autorizado" },
+      { success: false, error: "Não autorizado" },
       { status: 401 }
     )
   }
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
   const session = await auth()
   if (!session?.user) {
     return NextResponse.json<DevolucaoResponse>(
-      { success: false, error: "Nao autorizado" },
+      { success: false, error: "Não autorizado" },
       { status: 401 }
     )
   }

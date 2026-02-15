@@ -128,7 +128,7 @@ export const detalhesCliente: BaborellaTool = {
       if (!cliente) {
         return {
           success: false,
-          message: "Cliente nao encontrado",
+          message: "Cliente não encontrado",
           error: "CLIENT_NOT_FOUND",
         };
       }
@@ -304,7 +304,7 @@ export const atualizarCliente: BaborellaTool = {
       if (!existing) {
         return {
           success: false,
-          message: "Cliente nao encontrado",
+          message: "Cliente não encontrado",
           error: "CLIENT_NOT_FOUND",
         };
       }

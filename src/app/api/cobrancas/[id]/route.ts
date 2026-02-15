@@ -37,7 +37,7 @@ export async function GET(
     const { owned, cobranca: cobrancaCheck } = await checkCobrancaOwnership(id, effectiveUserId, canViewAll)
 
     if (!cobrancaCheck) {
-      return NextResponse.json({ error: "Cobranca nao encontrada" }, { status: 404 })
+      return NextResponse.json({ error: "Cobrança não encontrada" }, { status: 404 })
     }
 
     if (!owned) {
@@ -77,7 +77,7 @@ export async function PUT(
     const { owned, cobranca: cobrancaCheck } = await checkCobrancaOwnership(id, effectiveUserId, canViewAll)
 
     if (!cobrancaCheck) {
-      return NextResponse.json({ error: "Cobranca nao encontrada" }, { status: 404 })
+      return NextResponse.json({ error: "Cobrança não encontrada" }, { status: 404 })
     }
 
     if (!owned) {
@@ -96,7 +96,7 @@ export async function PUT(
       })
 
       if (!newCliente) {
-        return NextResponse.json({ error: "Cliente nao encontrado" }, { status: 404 })
+        return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 })
       }
 
       if (!canViewAll && newCliente.userId !== effectiveUserId) {
@@ -195,7 +195,7 @@ export async function PUT(
   } catch (error) {
     if (error instanceof Response) return error
     console.error("Error updating cobranca:", error)
-    return NextResponse.json({ error: "Erro ao atualizar cobranca" }, { status: 500 })
+    return NextResponse.json({ error: "Erro ao atualizar cobrança" }, { status: 500 })
   }
 }
 
@@ -214,7 +214,7 @@ export async function PATCH(
     const { owned, cobranca: cobrancaCheck } = await checkCobrancaOwnership(id, effectiveUserId, canViewAll)
 
     if (!cobrancaCheck) {
-      return NextResponse.json({ error: "Cobranca nao encontrada" }, { status: 404 })
+      return NextResponse.json({ error: "Cobrança não encontrada" }, { status: 404 })
     }
 
     if (!owned) {
@@ -241,7 +241,7 @@ export async function PATCH(
   } catch (error) {
     if (error instanceof Response) return error
     console.error("Error patching cobranca:", error)
-    return NextResponse.json({ error: "Erro ao atualizar cobranca" }, { status: 500 })
+    return NextResponse.json({ error: "Erro ao atualizar cobrança" }, { status: 500 })
   }
 }
 
@@ -258,7 +258,7 @@ export async function DELETE(
     const { owned, cobranca: cobrancaCheck } = await checkCobrancaOwnership(id, effectiveUserId, canViewAll)
 
     if (!cobrancaCheck) {
-      return NextResponse.json({ error: "Cobranca nao encontrada" }, { status: 404 })
+      return NextResponse.json({ error: "Cobrança não encontrada" }, { status: 404 })
     }
 
     if (!owned) {
@@ -273,6 +273,6 @@ export async function DELETE(
   } catch (error) {
     if (error instanceof Response) return error
     console.error("Error deleting cobranca:", error)
-    return NextResponse.json({ error: "Erro ao eliminar cobranca" }, { status: 500 })
+    return NextResponse.json({ error: "Erro ao eliminar cobrança" }, { status: 500 })
   }
 }

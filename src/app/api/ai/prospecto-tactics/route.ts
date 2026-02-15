@@ -211,7 +211,7 @@ export async function POST(request: NextRequest) {
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json<ProspectoTacticsResponse>(
-        { success: false, error: "Nao autorizado" },
+        { success: false, error: "Não autorizado" },
         { status: 401 }
       )
     }
@@ -234,7 +234,7 @@ export async function POST(request: NextRequest) {
 
     if (!prospecto) {
       return NextResponse.json<ProspectoTacticsResponse>(
-        { success: false, error: "Prospecto nao encontrado" },
+        { success: false, error: "Prospecto não encontrado" },
         { status: 404 }
       )
     }
@@ -247,20 +247,20 @@ export async function POST(request: NextRequest) {
 
     // Build prompt with prospecto data
     const prompt = PROMPT_TEMPLATE
-      .replace("{nomeEmpresa}", prospecto.nomeEmpresa || "Nao especificado")
-      .replace("{tipoNegocio}", prospecto.tipoNegocio || "Nao especificado")
+      .replace("{nomeEmpresa}", prospecto.nomeEmpresa || "Não especificado")
+      .replace("{tipoNegocio}", prospecto.tipoNegocio || "Não especificado")
       .replace("{estado}", prospecto.estado || "NOVO")
-      .replace("{nomeContacto}", prospecto.nomeContacto || "Nao especificado")
-      .replace("{cargoContacto}", prospecto.cargoContacto || "Nao especificado")
-      .replace("{telefone}", prospecto.telefone || "Nao disponivel")
-      .replace("{email}", prospecto.email || "Nao disponivel")
-      .replace("{cidade}", prospecto.cidade || "Nao especificada")
-      .replace("{fonte}", prospecto.fonte || "Nao especificada")
+      .replace("{nomeContacto}", prospecto.nomeContacto || "Não especificado")
+      .replace("{cargoContacto}", prospecto.cargoContacto || "Não especificado")
+      .replace("{telefone}", prospecto.telefone || "Não disponível")
+      .replace("{email}", prospecto.email || "Não disponível")
+      .replace("{cidade}", prospecto.cidade || "Não especificada")
+      .replace("{fonte}", prospecto.fonte || "Não especificada")
       .replace("{proximaAccao}", prospecto.proximaAccao || "Nenhuma definida")
       .replace("{notas}", prospecto.notas || "Sem notas")
-      .replace("{website}", prospecto.website || "Nao disponivel")
-      .replace("{facebook}", prospecto.facebook || "Nao disponivel")
-      .replace("{instagram}", prospecto.instagram || "Nao disponivel")
+      .replace("{website}", prospecto.website || "Não disponível")
+      .replace("{facebook}", prospecto.facebook || "Não disponível")
+      .replace("{instagram}", prospecto.instagram || "Não disponível")
 
     // Get AI response with userId for token tracking
     const aiResponse = await generateAIResponse(prompt, userId, "prospecto_tactics")

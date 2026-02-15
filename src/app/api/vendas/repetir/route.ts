@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (!vendaOriginal) {
-      return NextResponse.json({ error: "Venda nao encontrada" }, { status: 404 })
+      return NextResponse.json({ error: "Venda não encontrada" }, { status: 404 })
     }
 
     const now = new Date()

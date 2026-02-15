@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma"
 export async function GET(request: Request) {
   const session = await auth()
   if (!session?.user) {
-    return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
   }
   try {
     const { searchParams } = new URL(request.url)

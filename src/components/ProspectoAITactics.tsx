@@ -95,7 +95,7 @@ export default function ProspectoAITactics({ prospectoId }: Props) {
       setGeneratedAt(data.generatedAt || null)
       setTacticId(data.tacticId || null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao gerar tacticas")
+      setError(err instanceof Error ? err.message : "Erro ao gerar táticas")
     } finally {
       setLoading(false)
     }

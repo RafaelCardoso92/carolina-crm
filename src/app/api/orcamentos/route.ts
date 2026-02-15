@@ -109,6 +109,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof NextResponse) return error
     console.error("Error creating orcamento:", error)
-    return NextResponse.json({ error: "Erro ao criar orcamento" }, { status: 500 })
+    return NextResponse.json({ error: "Erro ao criar orçamento" }, { status: 500 })
   }
 }
