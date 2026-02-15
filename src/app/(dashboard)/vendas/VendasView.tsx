@@ -203,8 +203,8 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
 
   // Calculate manual values total
   const manualTotal = useMemo(() => {
-    return (parseFloat(valor1) || 0) + (parseFloat(valor2) || 0)
-  }, [valor1, valor2])
+    return parseFloat(valor1) || 0
+  }, [valor1])
 
   // Get last prices from previous sales (fallback when product has no price)
   const lastPrices = useMemo(() => {
@@ -378,7 +378,7 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
       objetivoVarioValor: selectedObjetivoVarioId && objetivoVarioValor ? parseFloat(objetivoVarioValor) : null,
       campanhas: selectedCampanhas.length > 0 ? selectedCampanhas : null,
       valor1: !useItems && valor1 ? parseFloat(valor1) : null,
-      valor2: !useItems && valor2 ? parseFloat(valor2) : null,
+      valor2: null,
       notas: notas || null,
       itens,
       mes,
@@ -883,9 +883,7 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                           </div>
                         ) : (
                           <div className="text-sm text-muted-foreground">
-                            {venda.valor1 ? <div>V1: {formatCurrency(Number(venda.valor1))} EUR</div> : null}
-                            {venda.valor2 ? <div>V2: {formatCurrency(Number(venda.valor2))} EUR</div> : null}
-                            {!venda.valor1 && !venda.valor2 ? <span>-</span> : null}
+                            {venda.valor1 ? <div>{formatCurrency(Number(venda.valor1))} EUR</div> : <span>-</span>}
                           </div>
                         )}
                       </td>
@@ -1423,7 +1421,7 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                               onClick={() => {
                                 setFormItems([...formItems, { produtoId: p.id, quantidade: "1", precoUnit: p.preco || "" }])
                               }}
-                              className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-white dark:bg-card border border-amber-300 dark:border-amber-600 rounded-xl text-left hover:bg-amber-100 dark:hover:bg-amber-900/50 hover:border-amber-400 transition group"
+                              className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-600 rounded-xl text-left hover:bg-amber-100 dark:hover:bg-amber-900/50 hover:border-amber-400 transition group"
                               title={p.nome}
                             >
                               <span className="text-sm font-medium text-amber-900 dark:text-amber-50 truncate">{p.nome}</span>
@@ -1446,20 +1444,6 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                           step="0.01"
                           value={valor1}
                           onChange={(e) => setValor1(e.target.value)}
-                          className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium pr-12"
-                          placeholder="0.00"
-                        />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">EUR</span>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">Valor 2 (sem IVA)</label>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={valor2}
-                          onChange={(e) => setValor2(e.target.value)}
                           className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium pr-12"
                           placeholder="0.00"
                         />

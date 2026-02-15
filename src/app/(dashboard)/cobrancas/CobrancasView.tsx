@@ -113,7 +113,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [filter, setFilter] = useState<"all" | "pending" | "paid" | "overdue">("pending")
+  const [filter, setFilter] = useState<"all" | "pending" | "paid" | "overdue">("all")
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
 
   // Search and filter state
@@ -236,8 +236,50 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       monthLabel: getMonthLabel(key),
       cobrancas: groups[key],
       total: groups[key].reduce((sum, c) => sum + Number(c.valor), 0),
-      totalPendente: groups[key].filter(c => !c.pago).reduce((sum, c) => sum + Number(c.valor), 0),
-      totalPago: groups[key].filter(c => c.pago).reduce((sum, c) => sum + Number(c.valor), 0)
+      totalPendente: groups[key].reduce((sum, c) => {
+        // Fully paid - nothing pending
+        if (c.pago || c.estado === "PAGO") {
+          return sum
+        }
+        // Cobranca with parcelas - sum unpaid parcelas
+        if (c.parcelas && c.parcelas.length > 0) {
+          const unpaidParcelas = c.parcelas.filter(p => !p.pago).reduce((pSum, p) => pSum + Number(p.valor), 0)
+          return sum + unpaidParcelas
+        }
+        // Partial payment - remaining amount
+        if (c.estado === "PARCIAL" && c.valorPago) {
+          return sum + (Number(c.valor) - Number(c.valorPago))
+        }
+        // Fully pending
+        return sum + Number(c.valor)
+      }, 0),
+      totalPago: groups[key].reduce((sum, c) => {
+        // Fully paid cobranca
+        if (c.pago || c.estado === "PAGO") {
+          return sum + Number(c.valor)
+        }
+        // Cobranca with parcelas - sum paid parcelas
+        if (c.parcelas && c.parcelas.length > 0) {
+          const paidParcelas = c.parcelas.filter(p => p.pago).reduce((pSum, p) => pSum + Number(p.valor), 0)
+          return sum + paidParcelas
+        }
+        // Partial payment on cobranca without parcelas
+        if (c.estado === "PARCIAL" && c.valorPago) {
+          return sum + Number(c.valorPago)
+        }
+        return sum
+      }, 0),
+      totalComissao: groups[key].reduce((sum, c) => sum + (c.comissao ? Number(c.comissao) : Number(c.valorSemIva || 0) * 0.035), 0),
+      comissaoGanha: groups[key].reduce((sum, c) => {
+        const comissaoTotal = c.comissao ? Number(c.comissao) : Number(c.valorSemIva || 0) * 0.035
+        if (c.estado === "PAGO" || c.pago) {
+          return sum + comissaoTotal
+        } else if (c.estado === "PARCIAL" && c.valorPago) {
+          const percentPago = Number(c.valorPago) / Number(c.valor)
+          return sum + (comissaoTotal * percentPago)
+        }
+        return sum
+      }, 0)
     }))
   }, [filtered])
 
@@ -245,6 +287,29 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
   const totalAtrasadas = cobrancas.reduce((acc, c) => {
     return acc + c.parcelas.filter(p => isParcelaAtrasada(p)).length
   }, 0)
+
+  // Calculate earned commissions for current month (only from paid or partially paid cobrancas)
+  const comissoesGanhasMesAtual = useMemo(() => {
+    const currentMonthKey = getMonthKey(new Date())
+    return cobrancas.reduce((total, c) => {
+      // Only include if paid this month (check dataPago)
+      if (!c.dataPago) return total
+      const paymentMonthKey = getMonthKey(c.dataPago)
+      if (paymentMonthKey !== currentMonthKey) return total
+
+      const comissaoTotal = c.comissao ? Number(c.comissao) : Number(c.valorSemIva || 0) * 0.035
+
+      if (c.estado === "PAGO" || c.pago) {
+        // Fully paid - full commission
+        return total + comissaoTotal
+      } else if (c.estado === "PARCIAL" && c.valorPago) {
+        // Partially paid - proportional commission
+        const percentPago = Number(c.valorPago) / Number(c.valor)
+        return total + (comissaoTotal * percentPago)
+      }
+      return total
+    }, 0)
+  }, [cobrancas])
 
   function toggleRowExpanded(id: string) {
     setExpandedRows(prev => {
@@ -415,7 +480,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
         })
         if (res.ok) router.refresh()
       } catch {
-        Swal.fire({ icon: "error", title: "Erro", text: "Erro ao atualizar cobrança", confirmButtonColor: "#b8860b" })
+        Swal.fire({ icon: "error", title: "Erro", text: "Erro ao atualizar cobranca", confirmButtonColor: "#b8860b" })
       }
       return
     }
@@ -556,7 +621,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
             const valorInput = document.getElementById("valorPago") as HTMLInputElement
             const newValue = parseFloat(valorInput.value)
             if (!valorInput.value || newValue < 0) {
-              Swal.showValidationMessage("Por favor insira um valor válido")
+              Swal.showValidationMessage("Por favor insira um valor valido")
               return false
             }
             if (newValue > valorCobranca) {
@@ -665,7 +730,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
         const valorInput = document.getElementById("valorPago") as HTMLInputElement
         const dateInput = document.getElementById("dataPago") as HTMLInputElement
         if (!valorInput.value || parseFloat(valorInput.value) <= 0) {
-          Swal.showValidationMessage("Por favor insira um valor válido")
+          Swal.showValidationMessage("Por favor insira um valor valido")
           return false
         }
         if (!dateInput.value) {
@@ -692,7 +757,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       })
       if (res.ok) router.refresh()
     } catch {
-      Swal.fire({ icon: "error", title: "Erro", text: "Erro ao atualizar cobrança", confirmButtonColor: "#b8860b" })
+      Swal.fire({ icon: "error", title: "Erro", text: "Erro ao atualizar cobranca", confirmButtonColor: "#b8860b" })
     }
   }
 
@@ -878,7 +943,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
             const valorInput = document.getElementById("valorPago") as HTMLInputElement
             const newValue = parseFloat(valorInput.value)
             if (!valorInput.value || newValue < 0) {
-              Swal.showValidationMessage("Por favor insira um valor válido")
+              Swal.showValidationMessage("Por favor insira um valor valido")
               return false
             }
             if (newValue > valorParcela) {
@@ -992,7 +1057,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
         const valorInput = document.getElementById("valorPago") as HTMLInputElement
         const dateInput = document.getElementById("dataPago") as HTMLInputElement
         if (!valorInput.value || parseFloat(valorInput.value) <= 0) {
-          Swal.showValidationMessage("Por favor insira um valor válido")
+          Swal.showValidationMessage("Por favor insira um valor valido")
           return false
         }
         if (!dateInput.value) {
@@ -1044,7 +1109,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
         Swal.fire({
           icon: "error",
           title: "Erro",
-          text: "Erro ao eliminar cobrança",
+          text: "Erro ao eliminar cobranca",
           confirmButtonColor: "#b8860b"
         })
       }
@@ -1052,7 +1117,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       Swal.fire({
         icon: "error",
         title: "Erro",
-        text: "Erro ao eliminar cobrança",
+        text: "Erro ao eliminar cobranca",
         confirmButtonColor: "#b8860b"
       })
     }
@@ -1076,6 +1141,12 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       setTipoParcelado(false)
       setNumeroParcelas(2)
       setDataInicioVencimento("")
+      // Set prazo from existing cobranca
+      if (cobranca.prazoVencimentoDias === 4 || cobranca.prazoVencimentoDias === 30) {
+        setPrazoVencimento(cobranca.prazoVencimentoDias)
+      } else {
+        setPrazoVencimento(30) // default
+      }
     }
     setShowModal(true)
   }
@@ -1153,8 +1224,21 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
           <td className="px-4 py-4 text-right text-muted-foreground font-medium">
             {cobranca.valorSemIva ? formatCurrency(Number(cobranca.valorSemIva)) : "-"} €
           </td>
-          <td className="px-4 py-4 text-right text-primary font-semibold">
-            {cobranca.comissao ? formatCurrency(Number(cobranca.comissao)) : "-"} €
+          <td className="px-4 py-4 text-right">
+            <div className="flex flex-col items-end">
+              <span className="text-primary font-semibold">
+                {formatCurrency(cobranca.comissao ? Number(cobranca.comissao) : Number(cobranca.valorSemIva || 0) * 0.035)} €
+              </span>
+              {(cobranca.pago || cobranca.estado === "PAGO") ? (
+                <span className="text-xs text-green-600 font-medium">
+                  ✓ Ganha: {formatCurrency(cobranca.comissao ? Number(cobranca.comissao) : Number(cobranca.valorSemIva || 0) * 0.035)}€
+                </span>
+              ) : cobranca.estado === "PARCIAL" && Number(cobranca.valorPago || 0) > 0 ? (
+                <span className="text-xs text-green-600 font-medium">
+                  ✓ Ganha: {formatCurrency((cobranca.comissao ? Number(cobranca.comissao) : Number(cobranca.valorSemIva || 0) * 0.035) * (Number(cobranca.valorPago) / Number(cobranca.valor)))}€
+                </span>
+              ) : null}
+            </div>
           </td>
           <td className="px-4 py-4 text-center">
             {cobranca.parcelas.length > 0 ? (
@@ -1307,9 +1391,14 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
               </td>
               <td className="px-4 py-3 text-center">
                 {parcela.pago && parcela.dataPago && (
-                  <span className="text-sm text-muted-foreground">
-                    Pago em {formatDate(parcela.dataPago)}
-                  </span>
+                  <div className="flex flex-col items-center">
+                    <span className="text-sm text-muted-foreground">
+                      Pago em {formatDate(parcela.dataPago)}
+                    </span>
+                    <span className="text-xs text-green-600 font-medium">
+                      Comissão: {formatCurrency(Number(parcela.valor) / 1.23 * 0.035)}€
+                    </span>
+                  </div>
                 )}
               </td>
               <td className="px-4 py-3 text-center">
@@ -1365,7 +1454,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6">
         <div className="bg-white rounded-2xl shadow-sm p-4 md:p-5 border-l-4 border-orange-500 border border-border">
           <div className="flex items-center gap-2 md:gap-3 mb-2">
             <div className="p-2 md:p-2.5 bg-orange-500/10 rounded-xl">
@@ -1389,10 +1478,22 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
           </div>
           <p className="text-xl md:text-3xl font-bold text-green-600">{formatCurrency(totalPago)} €</p>
           <div className="text-xs text-muted-foreground mt-1 hidden md:flex md:gap-2">
-            <span>Este mes: {formatCurrency(pagoEsteMes)}€</span>
+            <span>Este mês: {formatCurrency(pagoEsteMes)}€</span>
             <span>•</span>
-            <span>Mes passado: {formatCurrency(pagoMesPassado)}€</span>
+            <span>Mês passado: {formatCurrency(pagoMesPassado)}€</span>
           </div>
+        </div>
+        <div className="bg-white rounded-2xl shadow-sm p-4 md:p-5 border-l-4 border-primary border border-border">
+          <div className="flex items-center gap-2 md:gap-3 mb-2">
+            <div className="p-2 md:p-2.5 bg-primary/10 rounded-xl">
+              <svg className="w-5 h-5 md:w-6 md:h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-xs md:text-sm font-bold text-primary uppercase tracking-wide">Comissões</h3>
+          </div>
+          <p className="text-xl md:text-3xl font-bold text-primary">{formatCurrency(comissoesGanhasMesAtual)} €</p>
+          <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden md:block">Ganhas este mês</p>
         </div>
         {totalAtrasadas > 0 && (
           <div className="bg-white rounded-2xl shadow-sm p-4 md:p-5 border-l-4 border-red-500 border border-border col-span-2 md:col-span-1 hover:shadow-md transition-shadow">
@@ -1961,6 +2062,41 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                   </button>
                 </div>
 
+                {!tipoParcelado && (
+                  <div className="bg-secondary/50 rounded-xl p-4 space-y-4">
+                    <div>
+                      <label className="block text-sm font-bold text-foreground mb-2">Prazo de Vencimento</label>
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setPrazoVencimento(4)}
+                          className={`flex-1 py-2 px-4 rounded-lg font-medium transition border-2 ${
+                            prazoVencimento === 4
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-card text-foreground border-border hover:bg-secondary"
+                          }`}
+                        >
+                          4 dias
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPrazoVencimento(30)}
+                          className={`flex-1 py-2 px-4 rounded-lg font-medium transition border-2 ${
+                            prazoVencimento === 30
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-card text-foreground border-border hover:bg-secondary"
+                          }`}
+                        >
+                          30 dias
+                        </button>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        O pagamento será considerado em atraso após {prazoVencimento} dias da data de emissão.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {tipoParcelado && (
                   <div className="bg-secondary/50 rounded-xl p-4 space-y-4">
                     {editingCobranca.parcelas.length > 0 && (
@@ -2095,8 +2231,9 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                       <span className="text-orange-600 font-semibold">Pendente: {formatCurrency(group.totalPendente)}€</span>
                       <span className="text-muted-foreground">|</span>
                       <span className="text-green-600 font-semibold">Pago: {formatCurrency(group.totalPago)}€</span>
+                      <span className="text-muted-foreground">|</span>
+                      <span className="text-primary font-semibold">Comissão Ganha: {formatCurrency(group.comissaoGanha)}€</span>
                     </div>
-                    <span className="font-bold text-foreground">Total: {formatCurrency(group.total)}€</span>
                   </div>
                 </button>
 
