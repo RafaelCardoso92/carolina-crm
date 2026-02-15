@@ -1267,11 +1267,13 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                 className={`px-4 py-2 rounded-xl text-sm font-bold transition flex items-center gap-2 mx-auto ${
                   cobranca.pago || cobranca.estado === "PAGO"
                     ? "bg-green-100 text-green-700 hover:bg-green-200"
-                    : cobranca.estado === "PARCIAL"
-                      ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
-                      : isCobrancaAtrasada(cobranca)
-                        ? "bg-red-100 text-red-700 hover:bg-red-200"
-                        : "bg-orange-100 text-orange-700 hover:bg-orange-200"
+                    : cobranca.estado === "PARCIAL" && isCobrancaAtrasada(cobranca)
+                      ? "bg-red-100 text-red-700 hover:bg-red-200"
+                      : cobranca.estado === "PARCIAL"
+                        ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
+                        : isCobrancaAtrasada(cobranca)
+                          ? "bg-red-100 text-red-700 hover:bg-red-200"
+                          : "bg-orange-100 text-orange-700 hover:bg-orange-200"
                 }`}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1285,10 +1287,17 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                           : "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                   } />
                 </svg>
-                {cobranca.pago || cobranca.estado === "PAGO" ? "Pago" : cobranca.estado === "PARCIAL" ? "+ Pagamento" : isCobrancaAtrasada(cobranca) ? "Atrasado" : "Pendente"}
-                {cobranca.estado === "PARCIAL" && cobranca.valorPago != null && Number(cobranca.valorPago) > 0 && (
-                  <span className="text-xs">({formatCurrency(Number(cobranca.valorPago))}€)</span>
-                )}
+                <span className="flex flex-col items-start">
+                  <span className="flex items-center gap-1">
+                    {cobranca.pago || cobranca.estado === "PAGO" ? "Pago" : cobranca.estado === "PARCIAL" ? "Pagamento" : isCobrancaAtrasada(cobranca) ? "Atrasado" : "Pendente"}
+                    {cobranca.estado === "PARCIAL" && cobranca.valorPago != null && Number(cobranca.valorPago) > 0 && (
+                      <span className="text-xs">({formatCurrency(Number(cobranca.valorPago))}€)</span>
+                    )}
+                  </span>
+                  {cobranca.estado === "PARCIAL" && isCobrancaAtrasada(cobranca) && (
+                    <span className="text-xs font-medium">Atrasado</span>
+                  )}
+                </span>
               </button>
             ) : (
               <button
@@ -1407,14 +1416,19 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                   className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
                     parcela.pago
                       ? "bg-green-100 text-green-700 hover:bg-green-200"
-                      : isParcelaParcial
-                        ? "bg-purple-100 text-purple-700 hover:bg-purple-200"
-                        : isAtrasada
-                          ? "bg-red-100 text-red-700 hover:bg-red-200"
-                          : "bg-orange-100 text-orange-700 hover:bg-orange-200"
+                      : isParcelaParcial && isAtrasada
+                        ? "bg-red-100 text-red-700 hover:bg-red-200"
+                        : isParcelaParcial
+                          ? "bg-purple-100 text-purple-700 hover:bg-purple-200"
+                          : isAtrasada
+                            ? "bg-red-100 text-red-700 hover:bg-red-200"
+                            : "bg-orange-100 text-orange-700 hover:bg-orange-200"
                   }`}
                 >
-                  {parcela.pago ? "Pago" : isParcelaParcial ? "+ Pagamento" : "Marcar Pago"}
+                  <span className="flex flex-col">
+                    {parcela.pago ? "Pago" : isParcelaParcial ? "Pagamento" : "Marcar Pago"}
+                    {isParcelaParcial && isAtrasada && <span className="text-xs">Atrasado</span>}
+                  </span>
                 </button>
               </td>
               <td className="px-4 py-3"></td>
