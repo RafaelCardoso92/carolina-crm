@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { isAdminOrHigher } from "@/lib/permissions"
 import SendMessageModal from "@/components/SendMessageModal"
@@ -46,6 +47,7 @@ const entityLabels: Record<string, string> = {
 }
 
 export default function MensagensPage() {
+  const router = useRouter()
   const { data: session } = useSession()
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
@@ -84,12 +86,22 @@ export default function MensagensPage() {
 
   async function markAsRead(id: string) {
     try {
-      await fetch(`/api/messages/${id}`, {
+      const res = await fetch(`/api/messages/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ read: true })
       })
-      fetchMessages()
+      if (res.ok) {
+        // Update local state immediately
+        setMessages(prev => prev.map(m =>
+          m.id === id ? { ...m, read: true, readAt: new Date().toISOString() } : m
+        ))
+        if (selectedMessage?.id === id) {
+          setSelectedMessage(prev => prev ? { ...prev, read: true, readAt: new Date().toISOString() } : null)
+        }
+        // Dispatch event to update sidebar unread count
+        window.dispatchEvent(new CustomEvent('messageRead'))
+      }
     } catch (error) {
       console.error("Error marking as read:", error)
     }
@@ -225,7 +237,7 @@ export default function MensagensPage() {
                         </span>
                       </div>
                       <p className="text-sm text-muted-foreground line-clamp-2">{msg.content}</p>
-                      <div className="flex items-center gap-2 mt-2">
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${priorityColors[msg.priority]}`}>
                           {priorityLabels[msg.priority]}
                         </span>
@@ -237,6 +249,26 @@ export default function MensagensPage() {
                         {msg._count && msg._count.replies > 0 && (
                           <span className="text-xs text-muted-foreground">
                             {msg._count.replies} resposta{msg._count.replies > 1 ? "s" : ""}
+                          </span>
+                        )}
+                        {/* Read receipt for sent messages */}
+                        {msg.sender.id === session?.user?.id && (
+                          <span className={`flex items-center gap-1 text-xs ${msg.read ? "text-blue-600" : "text-muted-foreground"}`}>
+                            {msg.read ? (
+                              <>
+                                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z"/>
+                                </svg>
+                                Lida
+                              </>
+                            ) : (
+                              <>
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
+                                </svg>
+                                Enviada
+                              </>
+                            )}
                           </span>
                         )}
                       </div>
@@ -258,7 +290,7 @@ export default function MensagensPage() {
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <h3 className="font-bold text-foreground">
-                    {selectedMessage.sender.id === session?.user?.id 
+                    {selectedMessage.sender.id === session?.user?.id
                       ? `Para: ${selectedMessage.recipient.name || selectedMessage.recipient.email}`
                       : `De: ${selectedMessage.sender.name || selectedMessage.sender.email}`
                     }
@@ -266,6 +298,26 @@ export default function MensagensPage() {
                   <p className="text-sm text-muted-foreground">
                     {new Date(selectedMessage.createdAt).toLocaleString("pt-PT")}
                   </p>
+                  {/* Read receipt for sender */}
+                  {selectedMessage.sender.id === session?.user?.id && (
+                    <p className={`text-xs mt-1 flex items-center gap-1 ${selectedMessage.read ? "text-blue-600" : "text-muted-foreground"}`}>
+                      {selectedMessage.read ? (
+                        <>
+                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z"/>
+                          </svg>
+                          Lida {selectedMessage.readAt && `em ${new Date(selectedMessage.readAt).toLocaleString("pt-PT")}`}
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
+                          </svg>
+                          Enviada, aguardando leitura
+                        </>
+                      )}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   {isAdmin && (

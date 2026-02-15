@@ -228,7 +228,15 @@ export default function Sidebar() {
     }
     fetchUnread()
     const interval = setInterval(fetchUnread, 30000) // Refresh every 30s
-    return () => clearInterval(interval)
+
+    // Listen for messageRead event to update immediately
+    const handleMessageRead = () => fetchUnread()
+    window.addEventListener('messageRead', handleMessageRead)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('messageRead', handleMessageRead)
+    }
   }, [])
 
   // Close sidebar on escape key
