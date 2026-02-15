@@ -76,11 +76,10 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Apenas administradores podem sinalizar mensagens" }, { status: 403 })
     }
 
-    const updateData: any = { updatedAt: new Date() }
-    
+    const updateData: any = {}
+
     if (read !== undefined) {
       updateData.read = read
-      updateData.readAt = read ? new Date() : null
     }
     
     if (flagged !== undefined) {
