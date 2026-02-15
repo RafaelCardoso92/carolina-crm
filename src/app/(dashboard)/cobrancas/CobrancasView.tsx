@@ -63,12 +63,16 @@ type SortOrder = "asc" | "desc"
 
 
 function isCobrancaAtrasada(cobranca: Cobranca): boolean {
-  if (cobranca.pago || cobranca.estado === "PAGO" || cobranca.estado === "PARCIAL") return false
+  // Fully paid - not late
+  if (cobranca.pago || cobranca.estado === "PAGO") return false
+  // Has parcelas - check parcelas instead
   if (cobranca.parcelas.length > 0) return false
+  // No due date - can't determine
   if (!cobranca.dataVencimento) return false
   const vencimento = cobranca.dataVencimento instanceof Date
     ? cobranca.dataVencimento
     : new Date(cobranca.dataVencimento)
+  // Partial or pending - check if past due date
   return new Date() > vencimento
 }
 
