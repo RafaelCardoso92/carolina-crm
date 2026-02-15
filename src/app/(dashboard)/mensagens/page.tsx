@@ -101,6 +101,9 @@ export default function MensagensPage() {
         }
         // Dispatch event to update sidebar unread count
         window.dispatchEvent(new CustomEvent('messageRead'))
+      } else {
+        const errorData = await res.json().catch(() => ({}))
+        console.error("Failed to mark as read:", res.status, errorData)
       }
     } catch (error) {
       console.error("Error marking as read:", error)
@@ -211,7 +214,8 @@ export default function MensagensPage() {
                   key={msg.id}
                   onClick={() => {
                     setSelectedMessage(msg)
-                    if (!msg.read && msg.recipient.id === session?.user?.id) {
+                    // Mark as read if unread - API will check if user is recipient
+                    if (!msg.read) {
                       markAsRead(msg.id)
                     }
                   }}
