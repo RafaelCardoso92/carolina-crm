@@ -621,7 +621,7 @@ export default function GestaoPage() {
               </svg>
             </div>
             <div>
-              <p className="font-medium text-sm">Cobrancas</p>
+              <p className="font-medium text-sm">Cobranças</p>
               <p className="text-xs text-muted-foreground">Ver pendentes</p>
             </div>
           </Link>

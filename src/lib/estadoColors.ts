@@ -10,9 +10,9 @@ export interface EstadoConfig {
 export const DEFAULT_ESTADO_COLORS: EstadoConfig[] = [
   { value: "NOVO", label: "Novo", color: "#64748b" },
   { value: "CONTACTADO", label: "Contactado", color: "#3b82f6" },
-  { value: "REUNIAO", label: "Reuniao", color: "#f59e0b" },
+  { value: "REUNIAO", label: "Reunião", color: "#f59e0b" },
   { value: "PROPOSTA", label: "Proposta", color: "#f97316" },
-  { value: "NEGOCIACAO", label: "Negociacao", color: "#a855f7" },
+  { value: "NEGOCIACAO", label: "Negociação", color: "#a855f7" },
   { value: "GANHO", label: "Ganho", color: "#22c55e" },
   { value: "PERDIDO", label: "Perdido", color: "#ef4444" },
 ]

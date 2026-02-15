@@ -30,13 +30,13 @@ export default function ClienteBaborella({ clienteId }: ClienteBaborellaProps) {
         // Basic info
         contextParts.push("=== INFORMACAO DO CLIENTE ===")
         contextParts.push(`Nome: ${data.nome}`)
-        if (data.codigo) contextParts.push(`Codigo: ${data.codigo}`)
+        if (data.codigo) contextParts.push(`Código: ${data.codigo}`)
         if (data.telefone) contextParts.push(`Telefone: ${data.telefone}`)
         if (data.email) contextParts.push(`Email: ${data.email}`)
         if (data.morada) contextParts.push(`Morada: ${data.morada}`)
         contextParts.push(`Estado: ${data.ativo ? "Ativo" : "Inativo"}`)
         if (data.ultimoContacto) {
-          contextParts.push(`Ultimo contacto: ${new Date(data.ultimoContacto).toLocaleDateString("pt-PT")}`)
+          contextParts.push(`Último contacto: ${new Date(data.ultimoContacto).toLocaleDateString("pt-PT")}`)
         }
         if (data.notas) contextParts.push(`Notas: ${data.notas}`)
         

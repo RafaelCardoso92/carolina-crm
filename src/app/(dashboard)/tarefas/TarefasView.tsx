@@ -157,7 +157,7 @@ export default function TarefasView() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-1">Descricao</label>
+                <label className="block text-sm font-medium text-muted-foreground mb-1">Descrição</label>
                 <textarea
                   value={formData.descricao}
                   onChange={e => setFormData({ ...formData, descricao: e.target.value })}
@@ -176,7 +176,7 @@ export default function TarefasView() {
                     <option>Telefonema</option>
                     <option>Email</option>
                     <option>Visita</option>
-                    <option>Reuniao</option>
+                    <option>Reunião</option>
                     <option>Outro</option>
                   </select>
                 </div>

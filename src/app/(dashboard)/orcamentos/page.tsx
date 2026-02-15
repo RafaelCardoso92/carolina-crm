@@ -135,7 +135,7 @@ export default function OrcamentosPage() {
     <div>
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 md:mb-8">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Orcamentos</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Orçamentos</h1>
           <p className="text-muted-foreground text-sm mt-1">{orcamentos.length} orcamentos</p>
         </div>
         <Link

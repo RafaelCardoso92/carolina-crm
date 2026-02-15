@@ -38,7 +38,7 @@ type Produto = {
 const tipoLabels: Record<string, string> = {
   AMOSTRA: "Amostra",
   BRINDE: "Brinde",
-  DEMONSTRACAO: "Demonstracao"
+  DEMONSTRACAO: "Demonstração"
 }
 
 const tipoColors: Record<string, string> = {
@@ -400,7 +400,7 @@ export default function AmostrasPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Descricao</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Descrição</label>
                 <input
                   type="text"
                   placeholder="Descricao da amostra..."

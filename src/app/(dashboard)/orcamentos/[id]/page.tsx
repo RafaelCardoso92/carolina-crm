@@ -325,7 +325,7 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
         <table className="w-full">
           <thead>
             <tr className="bg-muted/50 text-sm">
-              <th className="text-left p-4">Descricao</th>
+              <th className="text-left p-4">Descrição</th>
               <th className="text-right p-4">Qtd</th>
               <th className="text-right p-4">Preco</th>
               <th className="text-right p-4">Desc.</th>

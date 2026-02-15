@@ -783,7 +783,7 @@ export function BulkActionsPanel({
                   <option value="Telefonema">Telefonema</option>
                   <option value="Visita">Visita</option>
                   <option value="Email">Email</option>
-                  <option value="Reuniao">Reuniao</option>
+                  <option value="Reunião">Reunião</option>
                 </select>
                 <select
                   value={taskPriority}
@@ -816,7 +816,7 @@ export function BulkActionsPanel({
                 <option value="EMAIL">Email</option>
                 <option value="VISITA">Visita</option>
                 <option value="WHATSAPP">WhatsApp</option>
-                <option value="REUNIAO">Reuniao</option>
+                <option value="REUNIAO">Reunião</option>
               </select>
               <input
                 type="text"

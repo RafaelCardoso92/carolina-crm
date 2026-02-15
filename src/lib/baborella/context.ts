@@ -172,7 +172,7 @@ export function getQuickActions(
     case "prospectos":
       actions.push(
         { label: "Novos", prompt: "Mostra-me os prospectos novos", icon: "new" },
-        { label: "Negociacao", prompt: "Quais prospectos estao em negociacao?", icon: "deal" },
+        { label: "Negociação", prompt: "Quais prospectos estao em negociacao?", icon: "deal" },
       );
       break;
     case "cobrancas":

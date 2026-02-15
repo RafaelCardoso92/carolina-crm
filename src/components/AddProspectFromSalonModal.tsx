@@ -112,7 +112,7 @@ export default function AddProspectFromSalonModal({ salon, onClose, onSuccess }:
 
           {/* Company info */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Informacao da Empresa</h3>
+            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Informação da Empresa</h3>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
@@ -150,9 +150,9 @@ export default function AddProspectFromSalonModal({ salon, onClose, onSuccess }:
                 >
                   <option value="NOVO">Novo</option>
                   <option value="CONTACTADO">Contactado</option>
-                  <option value="REUNIAO">Reuniao</option>
+                  <option value="REUNIAO">Reunião</option>
                   <option value="PROPOSTA">Proposta</option>
-                  <option value="NEGOCIACAO">Negociacao</option>
+                  <option value="NEGOCIACAO">Negociação</option>
                 </select>
               </div>
             </div>
@@ -160,7 +160,7 @@ export default function AddProspectFromSalonModal({ salon, onClose, onSuccess }:
 
           {/* Location info */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Localizacao</h3>
+            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Localização</h3>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
@@ -186,7 +186,7 @@ export default function AddProspectFromSalonModal({ salon, onClose, onSuccess }:
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Codigo Postal</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Código Postal</label>
                 <input
                   type="text"
                   name="codigoPostal"

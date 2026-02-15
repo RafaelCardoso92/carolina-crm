@@ -128,7 +128,7 @@ export default function SampleTracking({ clienteId, prospectoId, produtos = [] }
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-1">Descricao</label>
+                <label className="block text-sm font-medium text-muted-foreground mb-1">Descrição</label>
                 <input
                   type="text"
                   value={formData.descricao}

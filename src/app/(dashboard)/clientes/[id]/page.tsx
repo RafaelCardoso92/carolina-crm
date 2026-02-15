@@ -229,7 +229,7 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
 
       {/* Cobrancas */}
       <div className="bg-card rounded-xl shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Cobrancas</h3>
+        <h3 className="text-lg font-semibold text-foreground mb-4">Cobranças</h3>
         {cliente.cobrancas.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">

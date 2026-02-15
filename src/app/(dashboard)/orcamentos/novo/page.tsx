@@ -484,7 +484,7 @@ export default function NovoOrcamentoPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs text-muted-foreground mb-1">Descricao</label>
+                  <label className="block text-xs text-muted-foreground mb-1">Descrição</label>
                   <input
                     type="text"
                     value={item.descricao}
@@ -608,7 +608,7 @@ export default function NovoOrcamentoPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Descricao</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Descrição</label>
                     <input
                       type="text"
                       value={item.titulo}
@@ -681,7 +681,7 @@ export default function NovoOrcamentoPage() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs text-muted-foreground mb-1">Descricao</label>
+                      <label className="block text-xs text-muted-foreground mb-1">Descrição</label>
                       <input
                         type="text"
                         value={item.titulo}

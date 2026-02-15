@@ -153,7 +153,7 @@ export default function QuotationForm({ prospectoId, clienteId, onSuccess }: Pro
                   </select>
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-xs text-muted-foreground mb-1">Descricao</label>
+                  <label className="block text-xs text-muted-foreground mb-1">Descrição</label>
                   <input
                     type="text"
                     value={item.descricao}

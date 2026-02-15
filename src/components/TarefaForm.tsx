@@ -38,7 +38,7 @@ const TIPOS_TAREFA = [
   "Telefonema",
   "Visita",
   "Email",
-  "Reuniao",
+  "Reunião",
   "Proposta",
   "Follow-up",
   "Outro"
