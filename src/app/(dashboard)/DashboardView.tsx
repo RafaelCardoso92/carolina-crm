@@ -16,10 +16,10 @@ const meses = [
 
 const IVA_RATE = 0.23
 
-function calcularIVA(totalComIVA: number) {
-  const semIVA = totalComIVA / (1 + IVA_RATE)
-  const iva = totalComIVA - semIVA
-  return { semIVA, iva }
+function calcularIVA(totalSemIVA: number) {
+  const iva = totalSemIVA * IVA_RATE
+  const comIVA = totalSemIVA + iva
+  return { semIVA: totalSemIVA, iva, comIVA }
 }
 
 interface ProximaParcela {
@@ -467,16 +467,16 @@ export default function DashboardView() {
               <h3 className="text-sm font-semibold text-foreground mb-3">Resumo Anual {data.currentYear}</h3>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="bg-secondary/50 rounded-xl p-4 text-center">
-                  <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Total</p>
-                  <p className="text-xl font-bold text-foreground">{formatCurrency(data.vendasAno)}€</p>
-                </div>
-                <div className="bg-secondary/50 rounded-xl p-4 text-center">
                   <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Sem IVA</p>
                   <p className="text-xl font-bold text-foreground">{formatCurrency(ivaAno.semIVA)}€</p>
                 </div>
                 <div className="bg-secondary/50 rounded-xl p-4 text-center">
                   <p className="text-xs font-medium text-muted-foreground uppercase mb-1">IVA</p>
                   <p className="text-xl font-bold text-foreground">{formatCurrency(ivaAno.iva)}€</p>
+                </div>
+                <div className="bg-secondary/50 rounded-xl p-4 text-center">
+                  <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Total</p>
+                  <p className="text-xl font-bold text-foreground">{formatCurrency(ivaAno.comIVA)}€</p>
                 </div>
                 <div className="bg-secondary/50 rounded-xl p-4 text-center">
                   <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Objetivo</p>
@@ -506,7 +506,7 @@ export default function DashboardView() {
                 <div className="grid grid-cols-3 gap-2">
                   <MiniStat label="Sem IVA" value={`${formatCurrency(ivaMes.semIVA)}€`} />
                   <MiniStat label="IVA" value={`${formatCurrency(ivaMes.iva)}€`} />
-                  <MiniStat label="Total" value={`${formatCurrency(data.vendasMes)}€`} />
+                  <MiniStat label="Total" value={`${formatCurrency(ivaMes.comIVA)}€`} />
                 </div>
               </div>
               <div className="bg-card rounded-lg border border-border p-4">
@@ -514,7 +514,7 @@ export default function DashboardView() {
                 <div className="grid grid-cols-3 gap-2">
                   <MiniStat label="Sem IVA" value={`${formatCurrency(ivaTrimestre.semIVA)}€`} />
                   <MiniStat label="IVA" value={`${formatCurrency(ivaTrimestre.iva)}€`} />
-                  <MiniStat label="Total" value={`${formatCurrency(data.vendasTrimestre)}€`} />
+                  <MiniStat label="Total" value={`${formatCurrency(ivaTrimestre.comIVA)}€`} />
                 </div>
               </div>
             </div>
