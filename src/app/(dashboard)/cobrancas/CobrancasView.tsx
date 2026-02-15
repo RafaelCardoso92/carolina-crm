@@ -378,18 +378,33 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
     }
   }
 
-  async function handleTogglePaid(id: string, pago: boolean, valorTotal?: number) {
-    // If marking as unpaid
-    if (pago) {
+  async function handleTogglePaid(id: string, pago: boolean, valorTotal?: number, valorJaPago?: number) {
+    const cobranca = cobrancas.find(c => c.id === id)
+    const currentValorPago = valorJaPago || (cobranca?.valorPago ? Number(cobranca.valorPago) : 0)
+    const isPartialPayment = cobranca?.estado === "PARCIAL" || (currentValorPago > 0 && currentValorPago < (valorTotal || 0))
+
+    // If already fully paid, allow marking as unpaid
+    if (pago && !isPartialPayment) {
       const result = await Swal.fire({
-        title: "Marcar como pendente?",
-        text: "Tem a certeza que quer marcar esta cobranca como pendente?",
-        icon: "question",
+        title: "",
+        html: `
+          <div style="text-align: center; padding: 0;">
+            <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+              <svg width="32" height="32" fill="none" stroke="white" viewBox="0 0 24 24" style="stroke-width: 2.5;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <h2 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin: 0 0 8px 0;">Marcar como Pendente?</h2>
+            <p style="font-size: 0.875rem; color: #6b7280; margin: 0;">Isto ira remover todos os pagamentos registados.</p>
+          </div>
+        `,
         showCancelButton: true,
-        confirmButtonColor: "#b8860b",
-        cancelButtonColor: "#666666",
-        confirmButtonText: "Sim, confirmar",
-        cancelButtonText: "Cancelar"
+        confirmButtonColor: "#f97316",
+        cancelButtonColor: "#6b7280",
+        confirmButtonText: "Sim, marcar pendente",
+        cancelButtonText: "Cancelar",
+        width: '360px',
+        padding: '24px'
       })
       if (!result.isConfirmed) return
       try {
@@ -405,31 +420,82 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       return
     }
 
-    // Marking as paid - ask for actual value paid
+    // Handle partial payment - add more payment
     const valorCobranca = valorTotal || 0
+    const valorRestante = valorCobranca - currentValorPago
     const today = new Date().toISOString().split("T")[0]
+
     const result = await Swal.fire({
-      title: "Marcar como pago",
+      title: "",
       html: `
-        <div class="text-left">
-          <p class="mb-4">Valor da cobranca: <strong>${formatCurrency(valorCobranca)} u20ac</strong></p>
-          <div class="mb-4">
-            <label class="block text-sm font-medium mb-2">Valor efetivamente pago:</label>
-            <input type="number" step="0.01" id="valorPago" class="swal2-input" value="${valorCobranca.toFixed(2)}" style="width: 100%;">
+        <div style="text-align: left; padding: 0;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <div style="width: 64px; height: 64px; background: linear-gradient(135deg, ${isPartialPayment ? '#eab308' : '#10b981'} 0%, ${isPartialPayment ? '#ca8a04' : '#059669'} 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+              <svg width="32" height="32" fill="none" stroke="white" viewBox="0 0 24 24" style="stroke-width: 2.5;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="${isPartialPayment ? 'M12 6v6m0 0v6m0-6h6m-6 0H6' : 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'}"/>
+              </svg>
+            </div>
+            <h2 style="font-size: 1.5rem; font-weight: 700; color: #1f2937; margin: 0;">${isPartialPayment ? 'Adicionar Pagamento' : 'Registar Pagamento'}</h2>
           </div>
-          <div class="mb-4">
-            <label class="block text-sm font-medium mb-2">Data de pagamento:</label>
-            <input type="date" id="dataPago" class="swal2-input" value="${today}" max="${today}" style="width: 100%;">
+
+          <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid #bbf7d0;">
+            <p style="font-size: 0.875rem; color: #166534; margin: 0 0 4px 0; font-weight: 500;">Valor total</p>
+            <p style="font-size: 1.75rem; font-weight: 700; color: #15803d; margin: 0;">${formatCurrency(valorCobranca)} €</p>
           </div>
-          <p class="text-sm text-gray-500">Se o valor pago for inferior ao total, sera marcado como pagamento parcial.</p>
+
+          ${isPartialPayment ? `
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+            <div style="background: #fef3c7; border-radius: 10px; padding: 12px; border: 1px solid #fde68a;">
+              <p style="font-size: 0.75rem; color: #92400e; margin: 0 0 2px 0; font-weight: 500;">Ja pago</p>
+              <p style="font-size: 1.25rem; font-weight: 700; color: #b45309; margin: 0;">${formatCurrency(currentValorPago)} €</p>
+            </div>
+            <div style="background: #fef2f2; border-radius: 10px; padding: 12px; border: 1px solid #fecaca;">
+              <p style="font-size: 0.75rem; color: #dc2626; margin: 0 0 2px 0; font-weight: 500;">Em falta</p>
+              <p style="font-size: 1.25rem; font-weight: 700; color: #dc2626; margin: 0;">${formatCurrency(valorRestante)} €</p>
+            </div>
+          </div>
+          ` : ''}
+
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 8px;">
+              ${isPartialPayment ? 'Valor a adicionar' : 'Valor efetivamente pago'}
+            </label>
+            <div style="position: relative;">
+              <input type="number" step="0.01" id="valorPago" value="${isPartialPayment ? valorRestante.toFixed(2) : valorCobranca.toFixed(2)}"
+                style="width: 100%; padding: 14px 40px 14px 16px; font-size: 1.125rem; font-weight: 600; border: 2px solid #e5e7eb; border-radius: 12px; outline: none; transition: border-color 0.2s; box-sizing: border-box;"
+                onfocus="this.style.borderColor='#10b981'" onblur="this.style.borderColor='#e5e7eb'">
+              <span style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 1.125rem; font-weight: 600; color: #6b7280;">€</span>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 20px;">
+            <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 8px;">
+              Data de pagamento
+            </label>
+            <input type="date" id="dataPago" value="${today}" max="${today}"
+              style="width: 100%; padding: 14px 16px; font-size: 1rem; border: 2px solid #e5e7eb; border-radius: 12px; outline: none; transition: border-color 0.2s; box-sizing: border-box;"
+              onfocus="this.style.borderColor='#10b981'" onblur="this.style.borderColor='#e5e7eb'">
+          </div>
+
+          <div style="background: #f0f9ff; border-radius: 8px; padding: 12px; display: flex; align-items: flex-start; gap: 10px;">
+            <svg width="20" height="20" fill="none" stroke="#0284c7" viewBox="0 0 24 24" style="flex-shrink: 0; margin-top: 1px;">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <p style="font-size: 0.8125rem; color: #0369a1; margin: 0; line-height: 1.4;">
+              ${isPartialPayment
+                ? 'Este valor sera <strong>adicionado</strong> ao pagamento ja efetuado.'
+                : 'Se o valor pago for inferior ao total, sera marcado como <strong>pagamento parcial</strong>.'}
+            </p>
+          </div>
         </div>
       `,
-      icon: "question",
       showCancelButton: true,
-      confirmButtonColor: "#b8860b",
-      cancelButtonColor: "#666666",
-      confirmButtonText: "Confirmar pagamento",
+      confirmButtonColor: "#10b981",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: '<span style="display: flex; align-items: center; gap: 8px; padding: 4px 8px;"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Confirmar</span>',
       cancelButtonText: "Cancelar",
+      width: '400px',
+      padding: '24px',
       preConfirm: () => {
         const valorInput = document.getElementById("valorPago") as HTMLInputElement
         const dateInput = document.getElementById("dataPago") as HTMLInputElement
@@ -447,15 +513,17 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
 
     if (!result.isConfirmed || !result.value) return
 
-    const { valorPago, dataPago } = result.value
-    const isParcial = valorPago < valorCobranca
+    const novoPagamento = result.value.valorPago
+    const dataPago = result.value.dataPago
+    const totalPago = isPartialPayment ? currentValorPago + novoPagamento : novoPagamento
+    const isParcial = totalPago < valorCobranca
     const estado = isParcial ? "PARCIAL" : "PAGO"
 
     try {
       const res = await fetch(`/api/cobrancas/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pago: !isParcial, valorPago, dataPago, estado })
+        body: JSON.stringify({ pago: !isParcial, valorPago: totalPago, dataPago, estado })
       })
       if (res.ok) router.refresh()
     } catch {
@@ -463,91 +531,163 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
     }
   }
 
-  async function handleToggleParcelaPaid(parcelaId: string, pago: boolean, cobrancaId: string) {
-    // Find the parcela to check if it is late
+  async function handleToggleParcelaPaid(parcelaId: string, pago: boolean, cobrancaId: string, valorJaPago: number = 0) {
     const cobranca = cobrancas.find(c => c.id === cobrancaId)
     const parcela = cobranca?.parcelas.find(p => p.id === parcelaId)
     const isLate = parcela ? isParcelaAtrasada(parcela) : false
-    
-    // If marking as paid AND the parcela is late, show date picker
-    if (!pago && isLate) {
-      const today = new Date().toISOString().split("T")[0]
+    const valorParcela = parcela ? Number(parcela.valor) : 0
+    const numeroParcela = parcela?.numero || 0
+    const currentValorPago = valorJaPago
+    const isPartialPayment = currentValorPago > 0 && currentValorPago < valorParcela
+
+    // If marking as unpaid (and not a partial payment click)
+    if (pago && !isPartialPayment) {
       const result = await Swal.fire({
-        title: "Marcar parcela como paga",
+        title: "",
         html: `
-          <p class="mb-4">Esta parcela esta em atraso. Por favor, selecione a data em que foi paga:</p>
-          <input type="date" id="dataPago" class="swal2-input" value="${today}" max="${today}">
-          <p class="text-sm text-gray-500 mt-2">A data de pagamento afeta o calculo de comissoes do mes.</p>
+          <div style="text-align: center; padding: 0;">
+            <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+              <svg width="32" height="32" fill="none" stroke="white" viewBox="0 0 24 24" style="stroke-width: 2.5;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <h2 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin: 0 0 8px 0;">Marcar como Pendente?</h2>
+            <p style="font-size: 0.875rem; color: #6b7280; margin: 0;">Parcela ${numeroParcela} - ${formatCurrency(valorParcela)} €</p>
+          </div>
         `,
-        icon: "question",
         showCancelButton: true,
-        confirmButtonColor: "#b8860b",
-        cancelButtonColor: "#666666",
-        confirmButtonText: "Confirmar pagamento",
+        confirmButtonColor: "#f97316",
+        cancelButtonColor: "#6b7280",
+        confirmButtonText: "Sim, marcar pendente",
         cancelButtonText: "Cancelar",
-        preConfirm: () => {
-          const dateInput = document.getElementById("dataPago") as HTMLInputElement
-          if (!dateInput.value) {
-            Swal.showValidationMessage("Por favor selecione uma data")
-            return false
-          }
-          return dateInput.value
-        }
+        width: '340px',
+        padding: '24px'
       })
-
-      if (!result.isConfirmed || !result.value) return
-
+      if (!result.isConfirmed) return
       try {
         const res = await fetch(`/api/parcelas/${parcelaId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pago: true, dataPago: result.value })
+          body: JSON.stringify({ pago: false, dataPago: null, valorPago: null })
         })
-        if (res.ok) {
-          router.refresh()
-        }
+        if (res.ok) router.refresh()
       } catch {
-        Swal.fire({
-          icon: "error",
-          title: "Erro",
-          text: "Erro ao atualizar parcela",
-          confirmButtonColor: "#b8860b"
-        })
+        Swal.fire({ icon: "error", title: "Erro", text: "Erro ao atualizar parcela", confirmButtonColor: "#b8860b" })
       }
       return
     }
 
-    // Standard confirmation for non-late payments or marking as unpaid
-    const action = pago ? "marcar como pendente" : "marcar como pago"
+    // Marking as paid (or adding to partial payment)
+    const today = new Date().toISOString().split("T")[0]
+    const emFalta = valorParcela - currentValorPago
+    const defaultValue = isPartialPayment ? emFalta : valorParcela
+
     const result = await Swal.fire({
-      title: pago ? "Marcar como pendente?" : "Marcar como pago?",
-      text: `Tem a certeza que quer ${action} esta parcela?`,
-      icon: "question",
+      title: "",
+      html: `
+        <div style="text-align: left; padding: 0;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <div style="width: 64px; height: 64px; background: linear-gradient(135deg, ${isPartialPayment ? '#8b5cf6' : '#10b981'} 0%, ${isPartialPayment ? '#7c3aed' : '#059669'} 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+              <svg width="32" height="32" fill="none" stroke="white" viewBox="0 0 24 24" style="stroke-width: 2.5;">
+                ${isPartialPayment
+                  ? '<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>'
+                  : '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>'}
+              </svg>
+            </div>
+            <h2 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin: 0;">${isPartialPayment ? 'Adicionar Pagamento' : `Pagar Parcela ${numeroParcela}`}</h2>
+            ${isPartialPayment ? `<p style="font-size: 0.875rem; color: #6b7280; margin: 4px 0 0 0;">Parcela ${numeroParcela}</p>` : ''}
+          </div>
+
+          ${isLate && !isPartialPayment ? `
+          <div style="background: #fef2f2; border-radius: 8px; padding: 12px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; border: 1px solid #fecaca;">
+            <svg width="20" height="20" fill="none" stroke="#dc2626" viewBox="0 0 24 24" style="flex-shrink: 0;">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+            <p style="font-size: 0.8125rem; color: #dc2626; margin: 0; font-weight: 500;">Esta parcela esta em atraso</p>
+          </div>
+          ` : ''}
+
+          ${isPartialPayment ? `
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+            <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 12px; padding: 14px; border: 1px solid #bbf7d0;">
+              <p style="font-size: 0.75rem; color: #166534; margin: 0 0 4px 0; font-weight: 500;">Ja pago</p>
+              <p style="font-size: 1.25rem; font-weight: 700; color: #15803d; margin: 0;">${formatCurrency(currentValorPago)} €</p>
+            </div>
+            <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; padding: 14px; border: 1px solid #fcd34d;">
+              <p style="font-size: 0.75rem; color: #92400e; margin: 0 0 4px 0; font-weight: 500;">Em falta</p>
+              <p style="font-size: 1.25rem; font-weight: 700; color: #b45309; margin: 0;">${formatCurrency(emFalta)} €</p>
+            </div>
+          </div>
+          <div style="background: #f3f4f6; border-radius: 8px; padding: 10px; margin-bottom: 16px; text-align: center;">
+            <p style="font-size: 0.75rem; color: #6b7280; margin: 0;">Valor total da parcela: <strong>${formatCurrency(valorParcela)} €</strong></p>
+          </div>
+          ` : `
+          <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 12px; padding: 16px; margin-bottom: 20px; border: 1px solid #bbf7d0;">
+            <p style="font-size: 0.875rem; color: #166534; margin: 0 0 4px 0; font-weight: 500;">Valor da parcela</p>
+            <p style="font-size: 1.5rem; font-weight: 700; color: #15803d; margin: 0;">${formatCurrency(valorParcela)} €</p>
+          </div>
+          `}
+
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 8px;">
+              ${isPartialPayment ? 'Valor a adicionar' : 'Valor pago'}
+            </label>
+            <div style="position: relative;">
+              <input type="number" step="0.01" id="valorPago" value="${defaultValue.toFixed(2)}"
+                style="width: 100%; padding: 14px 40px 14px 16px; font-size: 1.125rem; font-weight: 600; border: 2px solid #e5e7eb; border-radius: 12px; outline: none; transition: border-color 0.2s; box-sizing: border-box;"
+                onfocus="this.style.borderColor='${isPartialPayment ? '#8b5cf6' : '#10b981'}'" onblur="this.style.borderColor='#e5e7eb'">
+              <span style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 1.125rem; font-weight: 600; color: #6b7280;">€</span>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 8px;">
+              Data de pagamento
+            </label>
+            <input type="date" id="dataPago" value="${today}" max="${today}"
+              style="width: 100%; padding: 14px 16px; font-size: 1rem; border: 2px solid #e5e7eb; border-radius: 12px; outline: none; transition: border-color 0.2s; box-sizing: border-box;"
+              onfocus="this.style.borderColor='${isPartialPayment ? '#8b5cf6' : '#10b981'}'" onblur="this.style.borderColor='#e5e7eb'">
+          </div>
+        </div>
+      `,
       showCancelButton: true,
-      confirmButtonColor: "#b8860b",
-      cancelButtonColor: "#666666",
-      confirmButtonText: "Sim, confirmar",
-      cancelButtonText: "Cancelar"
+      confirmButtonColor: isPartialPayment ? "#8b5cf6" : "#10b981",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: `<span style="display: flex; align-items: center; gap: 8px; padding: 4px 8px;"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${isPartialPayment ? 'M12 4v16m8-8H4' : 'M5 13l4 4L19 7'}"/></svg>${isPartialPayment ? 'Adicionar' : 'Confirmar'}</span>`,
+      cancelButtonText: "Cancelar",
+      width: '380px',
+      padding: '24px',
+      preConfirm: () => {
+        const valorInput = document.getElementById("valorPago") as HTMLInputElement
+        const dateInput = document.getElementById("dataPago") as HTMLInputElement
+        if (!valorInput.value || parseFloat(valorInput.value) <= 0) {
+          Swal.showValidationMessage("Por favor insira um valor valido")
+          return false
+        }
+        if (!dateInput.value) {
+          Swal.showValidationMessage("Por favor selecione uma data")
+          return false
+        }
+        return { valorPago: parseFloat(valorInput.value), dataPago: dateInput.value }
+      }
     })
 
-    if (!result.isConfirmed) return
+    if (!result.isConfirmed || !result.value) return
+
+    const novoPagamento = result.value.valorPago
+    const dataPago = result.value.dataPago
+    const totalPago = isPartialPayment ? currentValorPago + novoPagamento : novoPagamento
+    const isParcial = totalPago < valorParcela
 
     try {
       const res = await fetch(`/api/parcelas/${parcelaId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pago: !pago })
+        body: JSON.stringify({ pago: !isParcial, valorPago: totalPago, dataPago })
       })
-      if (res.ok) {
-        router.refresh()
-      }
+      if (res.ok) router.refresh()
     } catch {
-      Swal.fire({
-        icon: "error",
-        title: "Erro",
-        text: "Erro ao atualizar parcela",
-        confirmButtonColor: "#b8860b"
-      })
+      Swal.fire({ icon: "error", title: "Erro", text: "Erro ao atualizar parcela", confirmButtonColor: "#b8860b" })
     }
   }
 
@@ -703,7 +843,12 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
           <td className="px-4 py-4 text-center">
             {cobranca.parcelas.length === 0 ? (
               <button
-                onClick={() => handleTogglePaid(cobranca.id, cobranca.pago || cobranca.estado === "PAGO" || cobranca.estado === "PARCIAL", Number(cobranca.valor))}
+                onClick={() => handleTogglePaid(
+                  cobranca.id,
+                  cobranca.pago || cobranca.estado === "PAGO",
+                  Number(cobranca.valor),
+                  cobranca.valorPago ? Number(cobranca.valorPago) : 0
+                )}
                 className={`px-4 py-2 rounded-xl text-sm font-bold transition flex items-center gap-2 mx-auto ${
                   cobranca.pago || cobranca.estado === "PAGO"
                     ? "bg-green-100 text-green-700 hover:bg-green-200"
@@ -719,13 +864,13 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                     cobranca.pago || cobranca.estado === "PAGO"
                       ? "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                       : cobranca.estado === "PARCIAL"
-                        ? "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        ? "M12 6v6m0 0v6m0-6h6m-6 0H6"
                         : isCobrancaAtrasada(cobranca)
                           ? "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                           : "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                   } />
                 </svg>
-                {cobranca.pago || cobranca.estado === "PAGO" ? "Pago" : cobranca.estado === "PARCIAL" ? "Parcial" : isCobrancaAtrasada(cobranca) ? "Atrasado" : "Pendente"}
+                {cobranca.pago || cobranca.estado === "PAGO" ? "Pago" : cobranca.estado === "PARCIAL" ? "+ Pagamento" : isCobrancaAtrasada(cobranca) ? "Atrasado" : "Pendente"}
                 {cobranca.estado === "PARCIAL" && cobranca.valorPago != null && Number(cobranca.valorPago) > 0 && (
                   <span className="text-xs">({formatCurrency(Number(cobranca.valorPago))}€)</span>
                 )}
@@ -782,6 +927,9 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
         {/* Expanded Parcelas Rows */}
         {isExpanded && cobranca.parcelas.map((parcela) => {
           const isAtrasada = isParcelaAtrasada(parcela)
+          const valorParcela = Number(parcela.valor)
+          const valorPagoParcela = parcela.valorPago ? Number(parcela.valorPago) : 0
+          const isParcelaParcial = !parcela.pago && valorPagoParcela > 0 && valorPagoParcela < valorParcela
           return (
             <tr
               key={parcela.id}
@@ -790,7 +938,9 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                   ? "bg-red-50 dark:bg-red-900/10"
                   : parcela.pago
                     ? "bg-green-50 dark:bg-green-900/10"
-                    : "bg-secondary/30"
+                    : isParcelaParcial
+                      ? "bg-purple-50 dark:bg-purple-900/10"
+                      : "bg-secondary/30"
               }`}
             >
               <td className="px-2 py-3"></td>
@@ -799,12 +949,19 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                   <div className={`w-2 h-2 rounded-full ${
                     parcela.pago
                       ? "bg-green-500"
-                      : isAtrasada
-                        ? "bg-red-500"
-                        : "bg-orange-500"
+                      : isParcelaParcial
+                        ? "bg-purple-500"
+                        : isAtrasada
+                          ? "bg-red-500"
+                          : "bg-orange-500"
                   }`}></div>
                   <span className="font-medium text-foreground">Parcela {parcela.numero}</span>
-                  {isAtrasada && (
+                  {isParcelaParcial && (
+                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-semibold">
+                      PARCIAL ({formatCurrency(valorPagoParcela)}€)
+                    </span>
+                  )}
+                  {isAtrasada && !isParcelaParcial && (
                     <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold">
                       ATRASADA
                     </span>
@@ -826,16 +983,18 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
               </td>
               <td className="px-4 py-3 text-center">
                 <button
-                  onClick={() => handleToggleParcelaPaid(parcela.id, parcela.pago, cobranca.id)}
+                  onClick={() => handleToggleParcelaPaid(parcela.id, parcela.pago, cobranca.id, valorPagoParcela)}
                   className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
                     parcela.pago
                       ? "bg-green-100 text-green-700 hover:bg-green-200"
-                      : isAtrasada
-                        ? "bg-red-100 text-red-700 hover:bg-red-200"
-                        : "bg-orange-100 text-orange-700 hover:bg-orange-200"
+                      : isParcelaParcial
+                        ? "bg-purple-100 text-purple-700 hover:bg-purple-200"
+                        : isAtrasada
+                          ? "bg-red-100 text-red-700 hover:bg-red-200"
+                          : "bg-orange-100 text-orange-700 hover:bg-orange-200"
                   }`}
                 >
-                  {parcela.pago ? "Pago" : "Marcar Pago"}
+                  {parcela.pago ? "Pago" : isParcelaParcial ? "+ Pagamento" : "Marcar Pago"}
                 </button>
               </td>
               <td className="px-4 py-3"></td>
