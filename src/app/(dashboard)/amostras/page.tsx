@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Swal from "sweetalert2"
@@ -47,7 +47,7 @@ const tipoColors: Record<string, string> = {
   DEMONSTRACAO: "bg-green-100 text-green-700"
 }
 
-export default function AmostrasPage() {
+function AmostrasContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const seller = searchParams.get("seller")
@@ -513,5 +513,13 @@ export default function AmostrasPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function AmostrasPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
+      <AmostrasContent />
+    </Suspense>
   )
 }

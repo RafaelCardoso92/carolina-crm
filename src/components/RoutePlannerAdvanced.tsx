@@ -2177,12 +2177,12 @@ export default function RoutePlannerAdvanced() {
                     onCloseClick={() => setSelectedMarker(null)}
                   >
                     <div className="p-1 min-w-[180px]">
-                      <h4 className="font-bold text-gray-900 text-sm">{selectedMarker.nome}</h4>
-                      <p className="text-xs text-gray-600 capitalize mt-0.5">
+                      <h4 className="font-bold text-gray-900 dark:text-gray-100 text-sm">{selectedMarker.nome}</h4>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 capitalize mt-0.5">
                         {selectedMarker.tipo === "cliente" ? "Cliente" : "Prospecto"}
                       </p>
                       {selectedMarker.morada && (
-                        <p className="text-xs text-gray-500 mt-1">{selectedMarker.morada}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{selectedMarker.morada}</p>
                       )}
                       {selectedMarker.telefone && (
                         <a href={`tel:${selectedMarker.telefone}`} className="text-xs text-blue-600 mt-1 block hover:underline">

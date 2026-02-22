@@ -1,6 +1,7 @@
 "use client"
 
 import TokensTab from "@/components/TokensTab"
+import ComissaoHistorico from "@/components/ComissaoHistorico"
 import { useSearchParams } from "next/navigation"
 import { Suspense } from "react"
 
@@ -133,7 +134,7 @@ const meses = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
 ]
 
-export default function DefinicoesPage() {
+function DefinicoesContent() {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const [fontSize, setFontSize] = useState<"small" | "normal" | "large">("normal")
@@ -388,35 +389,8 @@ export default function DefinicoesPage() {
             <p className="text-xs md:text-sm text-muted-foreground mt-2">Taxa de IVA (padrão: 23%)</p>
           </div>
 
-          {/* Comissao */}
-          <div className="bg-card rounded-xl shadow-sm p-4 md:p-6 border border-border">
-            <h3 className="text-base md:text-lg font-bold text-foreground mb-3 md:mb-4 flex items-center gap-2">
-              <svg className="w-4 h-4 md:w-5 md:h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Comissão
-            </h3>
-            <div className="flex gap-2 md:gap-3">
-              <div className="relative flex-1">
-                <input
-                  type="number"
-                  step="0.1"
-                  value={comissao}
-                  onChange={(e) => setComissao(e.target.value)}
-                  className="w-full px-3 md:px-4 py-2.5 md:py-3 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none pr-10 text-sm md:text-base"
-                />
-                <span className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm">%</span>
-              </div>
-              <button
-                onClick={() => saveConfig("COMISSAO_PERCENTAGEM", comissao)}
-                disabled={saving}
-                className="px-4 md:px-6 py-2.5 md:py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary-hover transition disabled:opacity-50 text-sm md:text-base"
-              >
-                OK
-              </button>
-            </div>
-            <p className="text-xs md:text-sm text-muted-foreground mt-2">Comissão sobre vendas (padrão: 3.5%)</p>
-          </div>
+          {/* Comissao - Now with date-based history */}
+          <ComissaoHistorico />
         </div>
       )}
 
@@ -817,6 +791,14 @@ export default function DefinicoesPage() {
         <TokensTab isAdmin={userRole === "MASTERADMIN" || userRole === "ADMIN"} />
       )}
     </div>
+  )
+}
+
+export default function DefinicoesPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
+      <DefinicoesContent />
+    </Suspense>
   )
 }
 

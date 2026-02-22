@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { formatCurrency } from "@/lib/utils"
 
@@ -42,7 +42,7 @@ const meses = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
 ]
 
-export default function CampanhasPage() {
+function CampanhasContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -517,5 +517,13 @@ export default function CampanhasPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function CampanhasPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
+      <CampanhasContent />
+    </Suspense>
   )
 }

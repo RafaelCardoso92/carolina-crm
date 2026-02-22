@@ -419,8 +419,8 @@ export default function UnifiedMap() {
     return !visitFilter
   })
 
-  if (loadError) return <div className="h-64 bg-white rounded-2xl border flex items-center justify-center"><p className="text-red-600">Erro ao carregar o mapa</p></div>
-  if (!isLoaded) return <div className="h-64 bg-white rounded-2xl border flex items-center justify-center"><p className="text-gray-500 animate-pulse">A carregar mapa...</p></div>
+  if (loadError) return <div className="h-64 bg-white dark:bg-card rounded-2xl border border-border flex items-center justify-center"><p className="text-red-600">Erro ao carregar o mapa</p></div>
+  if (!isLoaded) return <div className="h-64 bg-white dark:bg-card rounded-2xl border border-border flex items-center justify-center"><p className="text-gray-500 dark:text-gray-400 animate-pulse">A carregar mapa...</p></div>
 
   // Icons
   const clientIcon = { url: "/babor-rose.png", scaledSize: new google.maps.Size(22, 32), anchor: new google.maps.Point(11, 16) }
@@ -458,39 +458,39 @@ export default function UnifiedMap() {
   return (
     <div className="space-y-4">
       {/* Top Action Bar */}
-      <div className="bg-white rounded-xl border border-gray-200 p-3">
+      <div className="bg-white dark:bg-card rounded-xl border border-gray-200 dark:border-gray-700 p-3">
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setActivePanel(activePanel === "filters" ? null : "filters")}
-            className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${activePanel === "filters" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+            className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${activePanel === "filters" ? "bg-gray-900 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"}`}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
             Filtros
           </button>
           <button
             onClick={() => { setActivePanel(activePanel === "route" ? null : "route"); if (activePanel !== "route") setRouteMode(true); else { setRouteMode(false); setSelectedForRoute(new Set()); } }}
-            className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${activePanel === "route" ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+            className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${activePanel === "route" ? "bg-purple-600 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"}`}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
             Rota ({selectedForRoute.size})
           </button>
           <button
             onClick={() => setActivePanel(activePanel === "tasks" ? null : "tasks")}
-            className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${activePanel === "tasks" ? "bg-violet-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+            className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${activePanel === "tasks" ? "bg-violet-600 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"}`}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
             Agenda ({tasks.today.length + tasks.overdue.length})
           </button>
           <button
             onClick={() => setActivePanel(activePanel === "nearby" ? null : "nearby")}
-            className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${activePanel === "nearby" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+            className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${activePanel === "nearby" ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"}`}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /></svg>
             Perto ({nearbyLocations.length})
           </button>
           <button
             onClick={() => setShowColorSettings(true)}
-            className="px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 bg-gray-100 text-gray-700 hover:bg-gray-200 ml-auto"
+            className="px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 ml-auto"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
           </button>
@@ -499,13 +499,13 @@ export default function UnifiedMap() {
 
       {/* Panels */}
       {activePanel === "filters" && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
+        <div className="bg-white dark:bg-card rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4">
           <div className="flex flex-wrap gap-2">
-            <button onClick={() => setTypeFilter("all")} className={`px-3 py-2 rounded-lg text-sm font-medium ${typeFilter === "all" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-700"}`}>Todos ({filteredLocations.length})</button>
-            <button onClick={() => setTypeFilter("clients")} className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${typeFilter === "clients" ? "bg-green-600 text-white" : "bg-gray-100 text-gray-700"}`}>
+            <button onClick={() => setTypeFilter("all")} className={`px-3 py-2 rounded-lg text-sm font-medium ${typeFilter === "all" ? "bg-gray-900 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"}`}>Todos ({filteredLocations.length})</button>
+            <button onClick={() => setTypeFilter("clients")} className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${typeFilter === "clients" ? "bg-green-600 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"}`}>
               <img src="/babor-rose.png" alt="" className="h-4 w-auto" />Clientes ({clientCount})
             </button>
-            <button onClick={() => setTypeFilter("prospects")} className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${typeFilter === "prospects" ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-700"}`}>Prospectos ({prospectCount})</button>
+            <button onClick={() => setTypeFilter("prospects")} className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${typeFilter === "prospects" ? "bg-purple-600 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"}`}>Prospectos ({prospectCount})</button>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             {typeFilter !== "clients" && (
@@ -528,11 +528,11 @@ export default function UnifiedMap() {
             </select>
           </div>
           {/* Salon Search */}
-          <div className="bg-amber-50 rounded-lg p-3 space-y-2">
+          <div className="bg-amber-50 dark:bg-amber-950 rounded-lg p-3 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-900">Procurar Saloes</span>
+              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Procurar Saloes</span>
               <div className="flex gap-2">
-                <button onClick={() => setIsPlacingPin(!isPlacingPin)} className={`px-2 py-1 rounded text-xs font-medium ${isPlacingPin ? "bg-red-500 text-white" : "bg-white border"}`}>
+                <button onClick={() => setIsPlacingPin(!isPlacingPin)} className={`px-2 py-1 rounded text-xs font-medium ${isPlacingPin ? "bg-red-500 text-white" : "bg-white dark:bg-gray-800 border dark:border-gray-600 dark:text-gray-200"}`}>
                   {isPlacingPin ? "Clique no mapa" : "Marcar"}
                 </button>
                 {searchPin && <button onClick={() => searchNearbySalons(searchPin)} disabled={searchingNearby} className="px-2 py-1 bg-amber-500 text-white rounded text-xs font-medium">Procurar</button>}
@@ -540,7 +540,7 @@ export default function UnifiedMap() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-600">Raio:</span>
+              <span className="text-xs text-gray-600 dark:text-gray-400">Raio:</span>
               <input type="range" min={0.5} max={5} step={0.5} value={searchRadius} onChange={(e) => setSearchRadius(Number(e.target.value))} className="flex-1 h-1.5 accent-amber-500" />
               <span className="text-xs font-medium text-amber-600">{searchRadius}km</span>
             </div>
@@ -549,20 +549,20 @@ export default function UnifiedMap() {
       )}
 
       {activePanel === "route" && (
-        <div className="bg-purple-50 rounded-xl border border-purple-200 p-4 space-y-3">
+        <div className="bg-purple-50 dark:bg-purple-950 rounded-xl border border-purple-200 dark:border-purple-800 p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-gray-900">Planear Rota</h3>
-              <p className="text-xs text-gray-600">Clique nos marcadores para adicionar a rota</p>
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">Planear Rota</h3>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Clique nos marcadores para adicionar a rota</p>
             </div>
             {selectedForRoute.size > 0 && (
-              <button onClick={() => setSelectedForRoute(new Set())} className="text-xs text-gray-500 hover:text-gray-700">Limpar</button>
+              <button onClick={() => setSelectedForRoute(new Set())} className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">Limpar</button>
             )}
           </div>
           {selectedForRoute.size > 0 && (
             <>
-              <div className="bg-white rounded-lg p-3">
-                <div className="text-sm text-gray-600 mb-2">{selectedForRoute.size} pontos selecionados</div>
+              <div className="bg-white dark:bg-card rounded-lg p-3">
+                <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">{selectedForRoute.size} pontos selecionados</div>
                 <div className="space-y-1">
                   {optimizedRoute.map((p, i) => {
                     const loc = locations.find((l) => `${l.type}-${l.id}` === p.id)
@@ -570,7 +570,7 @@ export default function UnifiedMap() {
                       <div key={p.id} className="flex items-center gap-2 text-sm">
                         <span className="w-5 h-5 bg-purple-600 text-white rounded-full flex items-center justify-center text-xs">{i + 1}</span>
                         <span className="flex-1 truncate">{loc.name}</span>
-                        <span className="text-xs text-gray-500">{loc.cidade}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">{loc.cidade}</span>
                       </div>
                     ) : null
                   })}
@@ -586,15 +586,15 @@ export default function UnifiedMap() {
       )}
 
       {activePanel === "tasks" && (
-        <div className="bg-violet-50 rounded-xl border border-violet-200 p-4 space-y-3">
-          <h3 className="font-semibold text-gray-900">Agenda de Hoje</h3>
+        <div className="bg-violet-50 dark:bg-violet-950 rounded-xl border border-violet-200 dark:border-violet-800 p-4 space-y-3">
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100">Agenda de Hoje</h3>
           {tasks.overdue.length > 0 && (
             <div className="space-y-2">
               <span className="text-xs font-medium text-red-600 uppercase">Atrasadas ({tasks.overdue.length})</span>
               {tasks.overdue.slice(0, 3).map((t) => (
-                <button key={t.id} onClick={() => { setSelectedTask(t); map?.panTo({ lat: t.latitude, lng: t.longitude }) }} className="w-full p-2 bg-red-50 border border-red-200 rounded-lg text-left">
-                  <div className="font-medium text-sm text-gray-900 truncate">{t.titulo}</div>
-                  <div className="text-xs text-gray-600">{t.locationName}</div>
+                <button key={t.id} onClick={() => { setSelectedTask(t); map?.panTo({ lat: t.latitude, lng: t.longitude }) }} className="w-full p-2 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg text-left">
+                  <div className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">{t.titulo}</div>
+                  <div className="text-xs text-gray-600 dark:text-gray-400">{t.locationName}</div>
                 </button>
               ))}
             </div>
@@ -603,22 +603,22 @@ export default function UnifiedMap() {
             <div className="space-y-2">
               <span className="text-xs font-medium text-violet-600 uppercase">Hoje ({tasks.today.length})</span>
               {tasks.today.map((t) => (
-                <button key={t.id} onClick={() => { setSelectedTask(t); map?.panTo({ lat: t.latitude, lng: t.longitude }) }} className="w-full p-2 bg-white border rounded-lg text-left">
-                  <div className="font-medium text-sm text-gray-900 truncate">{t.titulo}</div>
-                  <div className="text-xs text-gray-600">{t.locationName}</div>
+                <button key={t.id} onClick={() => { setSelectedTask(t); map?.panTo({ lat: t.latitude, lng: t.longitude }) }} className="w-full p-2 bg-white dark:bg-card border dark:border-gray-700 rounded-lg text-left">
+                  <div className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">{t.titulo}</div>
+                  <div className="text-xs text-gray-600 dark:text-gray-400">{t.locationName}</div>
                 </button>
               ))}
             </div>
           ) : tasks.overdue.length === 0 && (
-            <p className="text-sm text-gray-500">Sem tarefas para hoje</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Sem tarefas para hoje</p>
           )}
         </div>
       )}
 
       {activePanel === "nearby" && (
-        <div className="bg-blue-50 rounded-xl border border-blue-200 p-4 space-y-3">
+        <div className="bg-blue-50 dark:bg-blue-950 rounded-xl border border-blue-200 dark:border-blue-800 p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900">Perto de Ti</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Perto de Ti</h3>
             <div className="flex items-center gap-2">
               <input type="range" min={1} max={10} value={nearbyRadius} onChange={(e) => setNearbyRadius(Number(e.target.value))} className="w-20 h-1.5 accent-blue-500" />
               <span className="text-xs font-medium text-blue-600">{nearbyRadius}km</span>
@@ -628,26 +628,26 @@ export default function UnifiedMap() {
             nearbyLocations.length > 0 ? (
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {nearbyLocations.slice(0, 10).map((loc) => (
-                  <button key={`${loc.type}-${loc.id}`} onClick={() => { setSelectedLocation(loc); map?.panTo({ lat: loc.latitude, lng: loc.longitude }) }} className="w-full p-2 bg-white border rounded-lg text-left flex items-center gap-2">
+                  <button key={`${loc.type}-${loc.id}`} onClick={() => { setSelectedLocation(loc); map?.panTo({ lat: loc.latitude, lng: loc.longitude }) }} className="w-full p-2 bg-white dark:bg-card border dark:border-gray-700 rounded-lg text-left flex items-center gap-2">
                     {loc.type === "cliente" ? <img src="/babor-rose.png" alt="" className="h-4 w-auto" /> : <span className="w-3 h-3 rounded-full" style={{ backgroundColor: getColor(loc.estado || "NOVO") }} />}
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm text-gray-900 truncate">{loc.name}</div>
-                      <div className="text-xs text-gray-500">{loc.cidade}</div>
+                      <div className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">{loc.name}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">{loc.cidade}</div>
                     </div>
                   </button>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-500">Nenhum local num raio de {nearbyRadius}km</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum local num raio de {nearbyRadius}km</p>
             )
           ) : (
-            <p className="text-sm text-gray-500">A obter localizacao...</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">A obter localizacao...</p>
           )}
         </div>
       )}
 
       {/* Map */}
-      <div className="bg-white rounded-xl border overflow-hidden relative">
+      <div className="bg-white dark:bg-card rounded-xl border border-border overflow-hidden relative">
         <GoogleMap
           mapContainerStyle={{ width: "100%", height: "calc(100vh - 300px)", minHeight: "400px", maxHeight: "600px" }}
           center={userLocation || DEFAULT_CENTER}
@@ -778,9 +778,9 @@ export default function UnifiedMap() {
         </GoogleMap>
 
         {/* Legend */}
-        <button onClick={() => setShowLegend(!showLegend)} className="absolute bottom-3 left-3 px-3 py-2 bg-white border rounded-lg text-xs font-medium shadow-sm">Legenda</button>
+        <button onClick={() => setShowLegend(!showLegend)} className="absolute bottom-3 left-3 px-3 py-2 bg-white dark:bg-card border dark:border-gray-700 rounded-lg text-xs font-medium shadow-sm">Legenda</button>
         {showLegend && (
-          <div className="absolute bottom-12 left-3 bg-white border rounded-xl shadow-lg p-3 text-xs space-y-1.5">
+          <div className="absolute bottom-12 left-3 bg-white dark:bg-card border dark:border-gray-700 rounded-xl shadow-lg p-3 text-xs space-y-1.5">
             <div className="flex items-center gap-2"><img src="/babor-rose.png" alt="" className="h-4 w-auto" /><span>Cliente BABOR</span></div>
             {estadoColors.slice(0, 5).map((e) => <div key={e.value} className="flex items-center gap-2"><span className="w-3 h-3 rounded-full" style={{ backgroundColor: e.color }} /><span>{e.label}</span></div>)}
             <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-violet-600" /><span>Tarefa hoje</span></div>
@@ -789,12 +789,12 @@ export default function UnifiedMap() {
           </div>
         )}
 
-        {loading && <div className="absolute inset-0 bg-white/60 flex items-center justify-center"><p className="text-gray-500 animate-pulse text-sm">A carregar...</p></div>}
+        {loading && <div className="absolute inset-0 bg-white/60 dark:bg-gray-900/60 flex items-center justify-center"><p className="text-gray-500 animate-pulse text-sm">A carregar...</p></div>}
       </div>
 
       {/* Salon Results */}
       {salons.length > 0 && (
-        <div className="bg-white rounded-xl border p-4">
+        <div className="bg-white dark:bg-card rounded-xl border border-border p-4">
           <div className="flex items-center justify-between mb-3">
             <span className="font-semibold">{salons.length} saloes encontrados</span>
             <button onClick={() => { setSalons([]); setSearchPin(null); }} className="text-sm text-gray-500">Limpar</button>
@@ -818,7 +818,7 @@ export default function UnifiedMap() {
       {showQuickVisit && quickVisitTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowQuickVisit(false)} />
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+          <div className="relative bg-white dark:bg-card rounded-2xl shadow-xl w-full max-w-sm p-6">
             <h3 className="font-bold text-lg mb-1">Registar Visita</h3>
             <p className="text-sm text-gray-600 mb-4">{quickVisitTarget.name}</p>
             <textarea

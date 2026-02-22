@@ -169,7 +169,7 @@ export default function ProspectosList() {
               placeholder="Pesquisar empresa, contacto..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground bg-background text-sm"
+              className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground bg-background text-sm"
             />
           </div>
           <div className="flex gap-2 flex-wrap md:flex-nowrap">
@@ -177,7 +177,7 @@ export default function ProspectosList() {
               <select
                 value={filtroEstado}
                 onChange={(e) => setFiltroEstado(e.target.value)}
-                className="w-full md:w-auto pl-3 pr-8 py-2.5 border border-border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground bg-background text-sm appearance-none cursor-pointer"
+                className="w-full md:w-auto pl-3 pr-8 py-2.5 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground bg-background text-sm appearance-none cursor-pointer"
               >
                 <option value="">Todos estados</option>
                 {colors.map((estado) => (
@@ -193,7 +193,7 @@ export default function ProspectosList() {
                 <select
                   value={cityFilter}
                   onChange={(e) => setCityFilter(e.target.value)}
-                  className="w-full md:w-auto pl-3 pr-8 py-2.5 border border-border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground bg-background text-sm appearance-none cursor-pointer"
+                  className="w-full md:w-auto pl-3 pr-8 py-2.5 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground bg-background text-sm appearance-none cursor-pointer"
                 >
                   <option value="">Todas cidades</option>
                   {uniqueCities.map(city => (
@@ -207,7 +207,7 @@ export default function ProspectosList() {
             )}
             <Link
               href="/prospectos/novo"
-              className="bg-purple-600 text-white px-4 py-2.5 rounded-lg font-medium hover:bg-purple-700 transition flex items-center justify-center gap-2 text-sm whitespace-nowrap"
+              className="bg-purple-600 dark:bg-purple-500 text-white px-4 py-2.5 rounded-lg font-medium hover:bg-purple-700 dark:hover:bg-purple-600 transition flex items-center justify-center gap-2 text-sm whitespace-nowrap"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

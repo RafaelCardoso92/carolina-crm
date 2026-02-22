@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { formatCurrency } from "@/lib/utils"
@@ -55,7 +55,7 @@ type CampanhaItemForm = {
   precoUnit: number
 }
 
-export default function NovoOrcamentoPage() {
+function NovoOrcamentoContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const clienteIdParam = searchParams.get("clienteId")
@@ -786,5 +786,13 @@ export default function NovoOrcamentoPage() {
         </div>
       </form>
     </div>
+  )
+}
+
+export default function NovoOrcamentoPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
+      <NovoOrcamentoContent />
+    </Suspense>
   )
 }

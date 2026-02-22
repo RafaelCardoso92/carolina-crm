@@ -386,14 +386,14 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
 
     const formData = new FormData(e.currentTarget)
     const valor = parseFloat(formData.get("valor") as string)
-    const comissaoPercent = 3.5
 
+    // Commission is now calculated server-side using date-based rates
     const data: Record<string, unknown> = {
       clienteId: formData.get("clienteId") as string,
       fatura: formData.get("fatura") as string || null,
       valor,
       valorSemIva: valor / 1.23,
-      comissao: (valor / 1.23) * (comissaoPercent / 100),
+      // comissao is calculated server-side based on emission date
       dataEmissao: formData.get("dataEmissao") as string || null,
       notas: formData.get("notas") as string || null
     }
@@ -1473,7 +1473,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6">
-        <div className="bg-white rounded-2xl shadow-sm p-4 md:p-5 border-l-4 border-orange-500 border border-border">
+        <div className="bg-white dark:bg-card rounded-2xl shadow-sm p-4 md:p-5 border-l-4 border-orange-500 border border-border">
           <div className="flex items-center gap-2 md:gap-3 mb-2">
             <div className="p-2 md:p-2.5 bg-orange-500/10 rounded-xl">
               <svg className="w-5 h-5 md:w-6 md:h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1485,7 +1485,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
           <p className="text-xl md:text-3xl font-bold text-orange-600">{formatCurrency(totalPendente)} €</p>
           <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden md:block">Por receber {ano ? `(${ano})` : ""}</p>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm p-4 md:p-5 border-l-4 border-green-500 border border-border">
+        <div className="bg-white dark:bg-card rounded-2xl shadow-sm p-4 md:p-5 border-l-4 border-green-500 border border-border">
           <div className="flex items-center gap-2 md:gap-3 mb-2">
             <div className="p-2 md:p-2.5 bg-green-500/10 rounded-xl">
               <svg className="w-5 h-5 md:w-6 md:h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1501,7 +1501,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
             <span>Mês passado: {formatCurrency(pagoMesPassado)}€</span>
           </div>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm p-4 md:p-5 border-l-4 border-primary border border-border">
+        <div className="bg-white dark:bg-card rounded-2xl shadow-sm p-4 md:p-5 border-l-4 border-primary border border-border">
           <div className="flex items-center gap-2 md:gap-3 mb-2">
             <div className="p-2 md:p-2.5 bg-primary/10 rounded-xl">
               <svg className="w-5 h-5 md:w-6 md:h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1514,7 +1514,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
           <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden md:block">Ganhas este mês</p>
         </div>
         {totalAtrasadas > 0 && (
-          <div className="bg-white rounded-2xl shadow-sm p-4 md:p-5 border-l-4 border-red-500 border border-border col-span-2 md:col-span-1 hover:shadow-md transition-shadow">
+          <div className="bg-white dark:bg-card rounded-2xl shadow-sm p-4 md:p-5 border-l-4 border-red-500 border border-border col-span-2 md:col-span-1 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-2 md:gap-3 mb-2">
               <div className="p-2 md:p-2.5 bg-red-500/15 rounded-xl">
                 <svg className="w-5 h-5 md:w-6 md:h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

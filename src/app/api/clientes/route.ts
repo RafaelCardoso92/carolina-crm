@@ -10,28 +10,35 @@ import { logger } from "@/lib/logger"
 
 export async function GET(request: Request) {
   try {
+    console.log("[clientes] GET request started")
     const session = await requirePermission(PERMISSIONS.CLIENTES_READ)
+    console.log("[clientes] Session authenticated:", session.user?.id)
     const { searchParams } = new URL(request.url)
 
     // Check if full list is requested (for backward compatibility)
     const all = searchParams.get('all') === 'true'
+    console.log("[clientes] all param:", all)
 
     if (all) {
       // Return full list for dropdowns, etc. (cached)
       const userId = session.user?.id || 'anonymous'
       const cacheKey = cacheKeys.clientesList(userId)
+      console.log("[clientes] Fetching all clientes for user:", userId)
 
       const clientes = await cache.getOrSet(
         cacheKey,
         async () => {
-          return prisma.cliente.findMany({
+          const result = await prisma.cliente.findMany({
             where: { ...userScopedWhere(session), ativo: true },
             select: { id: true, nome: true, codigo: true },
             orderBy: { nome: "asc" }
           })
+          console.log("[clientes] Found", result.length, "clientes")
+          return result
         },
         { ttl: 300, tags: [cacheTags.clientes] }
       )
+      console.log("[clientes] Returning", clientes.length, "clientes")
       return NextResponse.json(clientes)
     }
 

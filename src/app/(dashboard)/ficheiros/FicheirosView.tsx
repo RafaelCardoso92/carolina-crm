@@ -223,39 +223,39 @@ export default function FicheirosView() {
     <div className="space-y-6">
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl p-4 border border-border shadow-sm">
+        <div className="bg-white dark:bg-card rounded-xl p-4 border border-border shadow-sm">
           <p className="text-sm text-muted-foreground">Total de Ficheiros</p>
           <p className="text-2xl font-bold text-foreground">{files.length}</p>
         </div>
-        <div className="bg-white rounded-xl p-4 border border-border shadow-sm">
+        <div className="bg-white dark:bg-card rounded-xl p-4 border border-border shadow-sm">
           <p className="text-sm text-muted-foreground">Espaco Utilizado</p>
           <p className="text-2xl font-bold text-foreground">{formatFileSize(totalSize)}</p>
         </div>
-        <div className="bg-white rounded-xl p-4 border border-border shadow-sm col-span-2 md:col-span-1">
+        <div className="bg-white dark:bg-card rounded-xl p-4 border border-border shadow-sm col-span-2 md:col-span-1">
           <p className="text-sm text-muted-foreground">Tipos de Ficheiros</p>
           <p className="text-2xl font-bold text-foreground">{new Set(files.map(f => f.mimeType.split("/")[0])).size}</p>
         </div>
       </div>
 
       {/* Upload Area */}
-      <div className={`relative border-2 border-dashed rounded-xl p-8 transition-all ${dragActive ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:border-gray-400"}`}
+      <div className={`relative border-2 border-dashed rounded-xl p-8 transition-all ${dragActive ? "border-blue-500 bg-blue-50 dark:bg-blue-950" : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"}`}
         onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}>
         <input ref={fileInputRef} type="file" multiple onChange={handleFileSelect} className="hidden" id="file-upload" />
         <div className="text-center">
           <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             <label htmlFor="file-upload" className="cursor-pointer text-blue-600 hover:text-blue-500 font-medium">Clica para selecionar</label>
             {" "}ou arrasta ficheiros para aqui
           </p>
-          <p className="text-xs text-gray-500 mt-1">PDF, Word, Excel, imagens, videos, audio ate 50MB</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">PDF, Word, Excel, imagens, videos, audio ate 50MB</p>
         </div>
         {uploading && (
-          <div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-xl">
+          <div className="absolute inset-0 bg-white/80 dark:bg-gray-900/80 flex items-center justify-center rounded-xl">
             <div className="flex items-center gap-3">
               <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-              <span className="text-gray-600">A carregar...</span>
+              <span className="text-gray-600 dark:text-gray-300">A carregar...</span>
             </div>
           </div>
         )}
@@ -268,15 +268,15 @@ export default function FicheirosView() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input type="text" placeholder="Pesquisar ficheiros..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-foreground focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setViewMode("grid")} className={`p-2 rounded-lg border ${viewMode === "grid" ? "bg-blue-100 border-blue-300 text-blue-600" : "bg-white border-gray-300 text-gray-600"}`}>
+          <button onClick={() => setViewMode("grid")} className={`p-2 rounded-lg border ${viewMode === "grid" ? "bg-blue-100 border-blue-300 text-blue-600" : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300"}`}>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
             </svg>
           </button>
-          <button onClick={() => setViewMode("list")} className={`p-2 rounded-lg border ${viewMode === "list" ? "bg-blue-100 border-blue-300 text-blue-600" : "bg-white border-gray-300 text-gray-600"}`}>
+          <button onClick={() => setViewMode("list")} className={`p-2 rounded-lg border ${viewMode === "list" ? "bg-blue-100 border-blue-300 text-blue-600" : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300"}`}>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
             </svg>
@@ -288,19 +288,19 @@ export default function FicheirosView() {
       {loading ? (
         <div className="flex justify-center py-12"><div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>
       ) : filteredFiles.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-xl border border-border">
+        <div className="text-center py-12 bg-white dark:bg-card rounded-xl border border-border">
           <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
           </svg>
-          <p className="mt-2 text-gray-600">{searchQuery ? "Nenhum ficheiro encontrado" : "Ainda nao tens ficheiros"}</p>
-          <p className="text-sm text-gray-500">Carrega ficheiros para comecar</p>
+          <p className="mt-2 text-gray-600 dark:text-gray-300">{searchQuery ? "Nenhum ficheiro encontrado" : "Ainda nao tens ficheiros"}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Carrega ficheiros para comecar</p>
         </div>
       ) : viewMode === "grid" ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {filteredFiles.map(file => {
             const { icon, color } = getFileIcon(file.mimeType)
             return (
-              <div key={file.id} className="bg-white rounded-xl border border-border p-4 hover:shadow-md transition-shadow group cursor-pointer" onClick={() => setPreviewFile(file)}>
+              <div key={file.id} className="bg-white dark:bg-card rounded-xl border border-border p-4 hover:shadow-md transition-shadow group cursor-pointer" onClick={() => setPreviewFile(file)}>
                 <div className="flex flex-col items-center">
                   {file.mimeType.startsWith("image/") ? (
                     <div className="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden">
@@ -313,7 +313,7 @@ export default function FicheirosView() {
                       </svg>
                     </div>
                   )}
-                  <p className="mt-2 text-sm font-medium text-gray-800 text-center truncate w-full" title={file.filename}>{file.filename}</p>
+                  <p className="mt-2 text-sm font-medium text-gray-800 dark:text-gray-100 text-center truncate w-full" title={file.filename}>{file.filename}</p>
                   <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
                   <p className="text-xs text-gray-400 mt-1">{formatDate(file.createdAt)}</p>
                 </div>
@@ -330,21 +330,21 @@ export default function FicheirosView() {
           })}
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-border overflow-hidden">
+        <div className="bg-white dark:bg-card rounded-xl border border-border overflow-hidden">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-border">
+            <thead className="bg-gray-50 dark:bg-gray-800 border-b border-border">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Ficheiro</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 hidden sm:table-cell">Tamanho</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 hidden md:table-cell">Data</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">Acoes</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300">Ficheiro</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300 hidden sm:table-cell">Tamanho</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300 hidden md:table-cell">Data</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-600 dark:text-gray-300">Acoes</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {filteredFiles.map(file => {
                 const { icon, color } = getFileIcon(file.mimeType)
                 return (
-                  <tr key={file.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setPreviewFile(file)}>
+                  <tr key={file.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer" onClick={() => setPreviewFile(file)}>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
@@ -354,11 +354,11 @@ export default function FicheirosView() {
                             <svg className={`w-5 h-5 ${color}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} /></svg>
                           )}
                         </div>
-                        <span className="text-sm font-medium text-gray-800 truncate max-w-xs" title={file.filename}>{file.filename}</span>
+                        <span className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate max-w-xs" title={file.filename}>{file.filename}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 hidden sm:table-cell">{formatFileSize(file.size)}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600 hidden md:table-cell">{formatDate(file.createdAt)}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 hidden sm:table-cell">{formatFileSize(file.size)}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 hidden md:table-cell">{formatDate(file.createdAt)}</td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
                         <button onClick={(e) => { e.stopPropagation(); downloadFile(file) }} className="p-1.5 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200" title="Descarregar">
@@ -380,14 +380,14 @@ export default function FicheirosView() {
       {/* Preview Modal */}
       {previewFile && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setPreviewFile(null)}>
-          <div className="relative max-w-4xl max-h-[90vh] w-full bg-white rounded-xl overflow-hidden" onClick={e => e.stopPropagation()}>
+          <div className="relative max-w-4xl max-h-[90vh] w-full bg-white dark:bg-gray-900 rounded-xl overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-border">
-              <h3 className="font-medium text-gray-800 truncate">{previewFile.filename}</h3>
+              <h3 className="font-medium text-gray-800 dark:text-gray-100 truncate">{previewFile.filename}</h3>
               <div className="flex items-center gap-2">
                 <button onClick={() => downloadFile(previewFile)} className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                 </button>
-                <button onClick={() => setPreviewFile(null)} className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200">
+                <button onClick={() => setPreviewFile(null)} className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>

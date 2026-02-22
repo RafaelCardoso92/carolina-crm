@@ -1,13 +1,23 @@
 "use client"
 
+import { Suspense } from "react"
 import { useSession } from "next-auth/react"
 import FicheirosView from "./FicheirosView"
 import SellerTabs from "@/components/SellerTabs"
 
-export default function FicheirosPage() {
+function FicheirosContent() {
   const { data: session } = useSession()
   const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "MASTERADMIN"
 
+  return (
+    <>
+      {isAdmin && <SellerTabs />}
+      <FicheirosView />
+    </>
+  )
+}
+
+export default function FicheirosPage() {
   return (
     <div>
       <div className="mb-6 md:mb-8">
@@ -20,9 +30,9 @@ export default function FicheirosPage() {
         </p>
       </div>
 
-      {isAdmin && <SellerTabs />}
-
-      <FicheirosView />
+      <Suspense fallback={<div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
+        <FicheirosContent />
+      </Suspense>
     </div>
   )
 }

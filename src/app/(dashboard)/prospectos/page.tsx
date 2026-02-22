@@ -1,18 +1,18 @@
 "use client"
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import { useSession } from "next-auth/react"
 import ProspectosList from "@/components/ProspectosList"
 import ProspectosMap from "@/components/ProspectosMap"
 import SellerTabs from "@/components/SellerTabs"
 
-export default function ProspectosPage() {
+function ProspectosContent() {
   const [view, setView] = useState<"list" | "map">("list")
   const { data: session } = useSession()
   const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "MASTERADMIN"
 
   return (
-    <div>
+    <>
       <div className="mb-4 md:mb-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -60,6 +60,16 @@ export default function ProspectosPage() {
       {isAdmin && <SellerTabs />}
 
       {view === "list" ? <ProspectosList /> : <ProspectosMap />}
+    </>
+  )
+}
+
+export default function ProspectosPage() {
+  return (
+    <div>
+      <Suspense fallback={<div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
+        <ProspectosContent />
+      </Suspense>
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 import { requirePermission, getEffectiveUserId } from "@/lib/api-auth"
 import { PERMISSIONS, canViewAllData } from "@/lib/permissions"
+import { getComissaoForDate } from "@/lib/comissao"
 
 // Helper to check cobranca ownership through cliente
 async function checkCobrancaOwnership(
@@ -104,6 +105,12 @@ export async function PUT(
       }
     }
 
+    // Calculate commission using the rate effective on the emission date
+    const emissionDate = data.dataEmissao ? new Date(data.dataEmissao) : new Date()
+    const comissaoRate = await getComissaoForDate(emissionDate)
+    const valorSemIva = data.valorSemIva || (Number(data.valor) / 1.23)
+    const calculatedComissao = data.comissao ?? Math.round(valorSemIva * (comissaoRate / 100) * 100) / 100
+
     // If updateParcelas is true, regenerate all parcelas
     if (data.updateParcelas && data.numeroParcelas && data.dataInicioVencimento) {
       // Delete existing parcelas
@@ -137,8 +144,8 @@ export async function PUT(
           clienteId: data.clienteId,
           fatura: data.fatura || null,
           valor: data.valor,
-          valorSemIva: data.valorSemIva || null,
-          comissao: data.comissao || null,
+          valorSemIva: valorSemIva,
+          comissao: calculatedComissao,
           dataEmissao: data.dataEmissao ? new Date(data.dataEmissao) : null,
           notas: data.notas || null,
           numeroParcelas: data.numeroParcelas,
@@ -186,8 +193,8 @@ export async function PUT(
         clienteId: data.clienteId,
         fatura: data.fatura || null,
         valor: data.valor,
-        valorSemIva: data.valorSemIva || null,
-        comissao: data.comissao || null,
+        valorSemIva: valorSemIva,
+        comissao: calculatedComissao,
         dataEmissao: data.dataEmissao ? new Date(data.dataEmissao) : null,
         notas: data.notas || null,
         numeroParcelas: numeroParcelas,

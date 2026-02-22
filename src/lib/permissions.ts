@@ -182,6 +182,7 @@ const STANDARD_USER_ROUTES = [
   "/prospectos",
   "/reconciliacao",
   "/tarefas",
+  "/visitas",
   "/definicoes",
   "/produtos",
   "/rotas",

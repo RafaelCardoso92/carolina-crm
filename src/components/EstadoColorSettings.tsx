@@ -138,7 +138,7 @@ export default function EstadoColorSettings({ isOpen, onClose }: Props) {
           </button>
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg"
+            className="px-4 py-2 bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600 text-white text-sm font-medium rounded-lg"
           >
             Concluido
           </button>

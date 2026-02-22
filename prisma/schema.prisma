@@ -4,9 +4,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum UserRole {
@@ -48,6 +47,7 @@ model User {
   tokenBalance    TokenBalance?
   files           UserFile[]
   despesas        Despesa[]
+  visitas         Visita[]
 
   @@index([role])
   @@index([status])
@@ -95,6 +95,7 @@ model Cliente {
   tarefas            Tarefa[]
   vendas             Venda[]
   acordoParceria     AcordoParceria?
+  visitas            Visita[]
 
   @@index([userId])
   @@index([ativo])
@@ -318,6 +319,7 @@ model Prospecto {
   orcamentos         Orcamento[]
   tactics            ProspectoTactic[]
   tarefas            Tarefa[]
+  visitas            Visita[]
 
   @@index([userId])
   @@index([estado])
@@ -1276,4 +1278,63 @@ enum EstadoCobranca {
   PAGO
   PARCIAL
   ATRASADO
+}
+
+// ===========================================
+// Visitas (Client Visits) System
+// ===========================================
+
+enum EstadoVisita {
+  AGENDADA
+  REALIZADA
+  CANCELADA
+  REAGENDADA
+}
+
+model Visita {
+  id            String       @id @default(cuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id])
+  clienteId     String?
+  cliente       Cliente?     @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  prospectoId   String?
+  prospecto     Prospecto?   @relation(fields: [prospectoId], references: [id], onDelete: Cascade)
+
+  dataAgendada  DateTime     // Scheduled visit date/time
+  dataRealizada DateTime?    // Actual visit date/time (when completed)
+  duracao       Int?         // Duration in minutes
+
+  estado        EstadoVisita @default(AGENDADA)
+  objetivo      String?      // Visit objective/purpose
+  notas         String?      // Pre-visit notes
+  resultado     String?      // Post-visit outcome/notes
+  proximosPassos String?     // Next steps defined during visit
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([clienteId])
+  @@index([prospectoId])
+  @@index([estado])
+  @@index([dataAgendada])
+  @@index([userId, dataAgendada])
+  @@index([userId, estado])
+}
+
+// ===========================================
+// Commission Rate History
+// ===========================================
+
+model HistoricoComissao {
+  id          String    @id @default(cuid())
+  percentagem Decimal   @db.Decimal(5, 2)  // e.g., 3.50 for 3.5%
+  dataInicio  DateTime  // Effective from this date
+  dataFim     DateTime? // Effective until this date (null = current/active)
+  notas       String?   // Optional notes about the change
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([dataInicio])
+  @@index([dataFim])
 }

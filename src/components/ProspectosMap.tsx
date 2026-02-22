@@ -379,11 +379,11 @@ export default function ProspectosMap() {
               onCloseClick={() => setSelectedProspecto(null)}
             >
               <div className="p-1 min-w-[160px] max-w-[220px]">
-                <h3 className="font-bold text-gray-900 text-sm mb-1">
+                <h3 className="font-bold text-gray-900 dark:text-gray-100 text-sm mb-1">
                   {selectedProspecto.nomeEmpresa}
                 </h3>
                 {selectedProspecto.tipoNegocio && (
-                  <p className="text-xs text-gray-600 mb-1">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
                     {selectedProspecto.tipoNegocio}
                   </p>
                 )}

@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
@@ -69,7 +70,11 @@ export default async function ClientesPage({
         </Link>
       </div>
 
-      {showSellerTabs && <SellerTabs />}
+      {showSellerTabs && (
+        <Suspense fallback={<div className="h-9 bg-muted/30 rounded-xl animate-pulse mb-4" />}>
+          <SellerTabs />
+        </Suspense>
+      )}
 
       <ClientesList clientes={clientes} showSeller={showSellerTabs && !selectedSeller} />
     </div>

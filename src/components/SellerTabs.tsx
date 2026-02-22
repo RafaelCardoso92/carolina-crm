@@ -76,7 +76,7 @@ export default function SellerTabs({ onSellerChange }: SellerTabsProps) {
         className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
           !selectedSeller
             ? "bg-primary text-white shadow-sm"
-            : "bg-white text-foreground hover:bg-primary/10 border border-border"
+            : "bg-white dark:bg-card text-foreground hover:bg-primary/10 border border-border"
         }`}
       >
         Todos
@@ -88,7 +88,7 @@ export default function SellerTabs({ onSellerChange }: SellerTabsProps) {
           className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
             selectedSeller === seller.id
               ? "bg-primary text-white shadow-sm"
-              : "bg-white text-foreground hover:bg-primary/10 border border-border"
+              : "bg-white dark:bg-card text-foreground hover:bg-primary/10 border border-border"
           }`}
         >
           {seller.name || seller.email.split("@")[0]}

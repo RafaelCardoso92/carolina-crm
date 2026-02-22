@@ -28,8 +28,8 @@ export default async function EditarClientePage({ params }: { params: Promise<{ 
           </svg>
           Voltar
         </Link>
-        <h1 className="text-3xl font-bold text-gray-800">Editar Cliente</h1>
-        <p className="text-gray-500">{cliente.nome}</p>
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Editar Cliente</h1>
+        <p className="text-gray-500 dark:text-gray-400">{cliente.nome}</p>
       </div>
 
       <ClienteForm cliente={cliente} />

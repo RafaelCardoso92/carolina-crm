@@ -410,7 +410,7 @@ export default function DashboardView() {
           <>
             {/* Cobrancas Summary Card */}
             {data.cobrancasStats && (
-              <div className="bg-white rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
+              <div className="bg-white dark:bg-card rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold text-foreground flex items-center gap-2">
                     <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -423,35 +423,35 @@ export default function DashboardView() {
                   </a>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                  <div className="bg-white border border-orange-200 dark:border-orange-800 rounded-xl p-3 text-center">
+                  <div className="bg-white dark:bg-card border border-orange-200 dark:border-orange-800 rounded-xl p-3 text-center">
                     <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{data.cobrancasStats.pendentesCount}</p>
                     <p className="text-xs text-muted-foreground">Pendentes</p>
                     <p className="text-sm font-semibold text-orange-600 dark:text-orange-400 mt-1">
                       {formatCurrency(data.cobrancasStats.pendentesValor)}€
                     </p>
                   </div>
-                  <div className="bg-white border border-green-200 dark:border-green-800 rounded-xl p-3 text-center">
+                  <div className="bg-white dark:bg-card border border-green-200 dark:border-green-800 rounded-xl p-3 text-center">
                     <p className="text-2xl font-bold text-green-600 dark:text-green-400">{data.cobrancasStats.pagasCount}</p>
                     <p className="text-xs text-muted-foreground">Pagas</p>
                     <p className="text-sm font-semibold text-green-600 dark:text-green-400 mt-1">
                       {formatCurrency(data.cobrancasStats.pagasValor)}€
                     </p>
                   </div>
-                  <div className="bg-white border border-red-200 dark:border-red-800 rounded-xl p-3 text-center">
+                  <div className="bg-white dark:bg-card border border-red-200 dark:border-red-800 rounded-xl p-3 text-center">
                     <p className="text-2xl font-bold text-red-600 dark:text-red-400">{data.parcelasAtrasadas}</p>
                     <p className="text-xs text-muted-foreground">Em Atraso</p>
                     <p className="text-sm font-semibold text-red-600 dark:text-red-400 mt-1">
                       {formatCurrency(data.valorAtrasado)}€
                     </p>
                   </div>
-                  <div className="bg-white border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-center">
+                  <div className="bg-white dark:bg-card border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-center">
                     <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{data.proximasParcelas.length}</p>
                     <p className="text-xs text-muted-foreground">Proximos 7 dias</p>
                     <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 mt-1">
                       {formatCurrency(data.proximasParcelas.reduce((sum, p) => sum + p.valor, 0))}€
                     </p>
                   </div>
-                  <div className="bg-white border-2 border-purple-300 dark:border-purple-700 rounded-xl p-3 text-center">
+                  <div className="bg-white dark:bg-card border-2 border-purple-300 dark:border-purple-700 rounded-xl p-3 text-center">
                     <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{formatCurrency(data.cobrancasStats.comissaoMensal)}€</p>
                     <p className="text-xs text-muted-foreground">Comissao do Mes</p>
                     <p className="text-sm font-semibold text-purple-600 dark:text-purple-400 mt-1">
@@ -565,7 +565,7 @@ export default function DashboardView() {
           <>
             {/* Objetivos Varios Widget */}
             {data.objetivosVarios && data.objetivosVarios.length > 0 && (
-              <div className="bg-white rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
+              <div className="bg-white dark:bg-card rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-semibold text-foreground flex items-center gap-2">
                     <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">

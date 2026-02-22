@@ -7,9 +7,7 @@ const globalForPrisma = globalThis as unknown as {
 // Configure Prisma with optimized settings
 const prismaClientSingleton = () => {
   return new PrismaClient({
-    log: process.env.NODE_ENV === 'development'
-      ? ['query', 'error', 'warn']
-      : ['error'],
+    log: ['error', 'warn'],
     // Connection pool configuration via datasource URL params
     // Add ?connection_limit=10&pool_timeout=30 to DATABASE_URL for production
   })

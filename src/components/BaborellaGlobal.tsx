@@ -516,7 +516,7 @@ export default function BaborellaGlobal() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-6 right-6 z-50 w-[95vw] sm:w-96 md:w-[480px] lg:w-[520px] h-[80vh] sm:h-[560px] md:h-[640px] lg:h-[700px] max-h-[800px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200"
+            className="fixed bottom-6 right-6 z-50 w-[95vw] sm:w-96 md:w-[480px] lg:w-[520px] h-[80vh] sm:h-[560px] md:h-[640px] lg:h-[700px] max-h-[800px] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200 dark:border-gray-700"
           >
             {/* Header */}
             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4">
@@ -572,7 +572,7 @@ export default function BaborellaGlobal() {
                   <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
                 </div>
               ) : messages.length === 0 ? (
-                <div className="text-center text-gray-500 mt-8">
+                <div className="text-center text-gray-500 dark:text-gray-400 mt-8">
                   <Bot className="w-16 h-16 mx-auto mb-4 text-indigo-300" />
                   <p className="text-base font-medium">Ola! Sou a Baborella.</p>
                   <p className="text-sm mt-1">Posso ajudar com vendas, clientes, rotas e mais!</p>
@@ -587,7 +587,7 @@ export default function BaborellaGlobal() {
                 <>
                   {messages.length > 0 && messages[0].timestamp && (
                     <div className="flex items-center justify-center">
-                      <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
+                      <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
                         <RotateCcw className="w-3 h-3 inline mr-1" />
                         Conversa anterior
                       </span>
@@ -603,8 +603,8 @@ export default function BaborellaGlobal() {
                         <div
                           className={"w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 " +
                             (msg.role === "user"
-                              ? "bg-indigo-100 text-indigo-600"
-                              : "bg-purple-100 text-purple-600")}
+                              ? "bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400"
+                              : "bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400")}
                         >
                           {msg.role === "user" ? (
                             <User className="w-5 h-5" />
@@ -616,7 +616,7 @@ export default function BaborellaGlobal() {
                           className={"max-w-[80%] rounded-2xl px-4 py-3 " +
                             (msg.role === "user"
                               ? "bg-indigo-600 text-white"
-                              : "bg-gray-100 text-gray-800")}
+                              : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100")}
                         >
                           <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                           {msg.role === "assistant" && msg.tokensUsed && (
@@ -629,8 +629,8 @@ export default function BaborellaGlobal() {
                       </div>
                       
                       {msg.chainedActions && msg.chainedActions.length > 1 && (
-                        <div className="ml-12 mt-2 bg-indigo-50 rounded-lg p-3 border border-indigo-100">
-                          <div className="flex items-center gap-1 text-xs text-indigo-600 mb-2">
+                        <div className="ml-12 mt-2 bg-indigo-50 dark:bg-indigo-950 rounded-lg p-3 border border-indigo-100 dark:border-indigo-800">
+                          <div className="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 mb-2">
                             <Link className="w-3 h-3" />
                             <span className="font-medium">Acoes executadas:</span>
                           </div>
@@ -644,7 +644,7 @@ export default function BaborellaGlobal() {
                                 ) : (
                                   <XCircle className="w-3 h-3 text-red-500" />
                                 )}
-                                <span className={action.success ? "text-gray-600" : "text-red-600"}>
+                                <span className={action.success ? "text-gray-600 dark:text-gray-300" : "text-red-600 dark:text-red-400"}>
                                   {getToolDisplayName(action.toolName)}
                                 </span>
                               </div>
@@ -658,14 +658,14 @@ export default function BaborellaGlobal() {
               )}
 
               {pendingActions.length > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
+                <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-xl p-4 space-y-3">
                   <p className="text-sm font-medium text-amber-800">
                     {pendingActions.length > 1 ? "Acoes pendentes:" : "Acao pendente:"}
                   </p>
                   {pendingActions.map((action) => (
                     <div
                       key={action.id}
-                      className="bg-white rounded-lg p-4 border border-amber-200"
+                      className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-amber-200 dark:border-amber-700"
                     >
                       <p className="text-sm text-gray-700 mb-3">
                         {action.description}

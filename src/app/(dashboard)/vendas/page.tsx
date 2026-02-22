@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
@@ -189,11 +190,15 @@ export default async function VendasPage({
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Vendas</h1>
-        <p className="text-gray-500">{meses[mes]} {ano}</p>
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Vendas</h1>
+        <p className="text-gray-500 dark:text-gray-400">{meses[mes]} {ano}</p>
       </div>
 
-      {showSellerTabs && <SellerTabs />}
+      {showSellerTabs && (
+        <Suspense fallback={<div className="h-9 bg-muted/30 rounded-xl animate-pulse mb-4" />}>
+          <SellerTabs />
+        </Suspense>
+      )}
 
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <VendasView

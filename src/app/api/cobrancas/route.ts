@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { NextResponse } from "next/server"
 import { requirePermission, getEffectiveUserId } from "@/lib/api-auth"
 import { PERMISSIONS, canViewAllData } from "@/lib/permissions"
+import { getComissaoForDate } from "@/lib/comissao"
 
 export async function GET(request: Request) {
   try {
@@ -79,6 +80,12 @@ export async function POST(request: Request) {
       calculatedDataVencimento = new Date(data.dataVencimento)
     }
 
+    // Calculate commission using the rate effective on the emission date
+    const emissionDate = data.dataEmissao ? new Date(data.dataEmissao) : new Date()
+    const comissaoRate = await getComissaoForDate(emissionDate)
+    const valorSemIva = data.valorSemIva || (Number(data.valor) / 1.23)
+    const calculatedComissao = data.comissao ?? Math.round(valorSemIva * (comissaoRate / 100) * 100) / 100
+
     // Create cobranca with parcelas in a transaction
     const cobranca = await prisma.$transaction(async (tx) => {
       // Create the main cobranca
@@ -87,8 +94,8 @@ export async function POST(request: Request) {
           clienteId: data.clienteId,
           fatura: data.fatura || null,
           valor: data.valor,
-          valorSemIva: data.valorSemIva || null,
-          comissao: data.comissao || null,
+          valorSemIva: valorSemIva,
+          comissao: calculatedComissao,
           dataEmissao: data.dataEmissao ? new Date(data.dataEmissao) : null,
           numeroParcelas,
           dataInicioVencimento,
