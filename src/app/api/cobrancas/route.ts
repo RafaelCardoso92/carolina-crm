@@ -4,6 +4,7 @@ import { NextResponse } from "next/server"
 import { requirePermission, getEffectiveUserId } from "@/lib/api-auth"
 import { PERMISSIONS, canViewAllData } from "@/lib/permissions"
 import { getComissaoForDate } from "@/lib/comissao"
+import { getIVAForDate } from "@/lib/iva"
 
 export async function GET(request: Request) {
   try {
@@ -80,10 +81,11 @@ export async function POST(request: Request) {
       calculatedDataVencimento = new Date(data.dataVencimento)
     }
 
-    // Calculate commission using the rate effective on the emission date
+    // Calculate commission and IVA using the rates effective on the emission date
     const emissionDate = data.dataEmissao ? new Date(data.dataEmissao) : new Date()
     const comissaoRate = await getComissaoForDate(emissionDate)
-    const valorSemIva = data.valorSemIva || (Number(data.valor) / 1.23)
+    const ivaRate = await getIVAForDate(emissionDate)
+    const valorSemIva = data.valorSemIva || (Number(data.valor) / (1 + ivaRate / 100))
     const calculatedComissao = data.comissao ?? Math.round(valorSemIva * (comissaoRate / 100) * 100) / 100
 
     // Create cobranca with parcelas in a transaction

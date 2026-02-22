@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { requirePermission, getEffectiveUserId } from "@/lib/api-auth"
 import { PERMISSIONS, canViewAllData } from "@/lib/permissions"
 import { getComissaoForDate } from "@/lib/comissao"
+import { getIVAForDate } from "@/lib/iva"
 
 // Helper to check cobranca ownership through cliente
 async function checkCobrancaOwnership(
@@ -105,10 +106,11 @@ export async function PUT(
       }
     }
 
-    // Calculate commission using the rate effective on the emission date
+    // Calculate commission and IVA using the rates effective on the emission date
     const emissionDate = data.dataEmissao ? new Date(data.dataEmissao) : new Date()
     const comissaoRate = await getComissaoForDate(emissionDate)
-    const valorSemIva = data.valorSemIva || (Number(data.valor) / 1.23)
+    const ivaRate = await getIVAForDate(emissionDate)
+    const valorSemIva = data.valorSemIva || (Number(data.valor) / (1 + ivaRate / 100))
     const calculatedComissao = data.comissao ?? Math.round(valorSemIva * (comissaoRate / 100) * 100) / 100
 
     // If updateParcelas is true, regenerate all parcelas
