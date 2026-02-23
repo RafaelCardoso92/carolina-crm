@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import HelpTooltip from "./HelpTooltip"
 
@@ -43,13 +44,16 @@ const prioridadeLabels = {
 export function TarefasWidget() {
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
   const [loading, setLoading] = useState(true)
+  const searchParams = useSearchParams()
+  const seller = searchParams.get("seller")
 
   useEffect(() => {
     async function fetchTarefas() {
       try {
+        const sellerParam = seller ? `&seller=${seller}` : ""
         const [pendentes, atrasadas] = await Promise.all([
-          fetch("/api/tarefas?hoje=true&limit=5").then(r => r.json()),
-          fetch("/api/tarefas?atrasadas=true&limit=5").then(r => r.json())
+          fetch(`/api/tarefas?hoje=true&limit=5${sellerParam}`).then(r => r.json()),
+          fetch(`/api/tarefas?atrasadas=true&limit=5${sellerParam}`).then(r => r.json())
         ])
         // Combine and dedupe
         const all = [...atrasadas, ...pendentes]
@@ -61,7 +65,7 @@ export function TarefasWidget() {
       setLoading(false)
     }
     fetchTarefas()
-  }, [])
+  }, [seller])
 
   if (loading) {
     return (
@@ -149,11 +153,14 @@ export function TarefasWidget() {
 export function FollowUpWidget() {
   const [clientes, setClientes] = useState<ClienteFollowUp[]>([])
   const [loading, setLoading] = useState(true)
+  const searchParams = useSearchParams()
+  const seller = searchParams.get("seller")
 
   useEffect(() => {
     async function fetchFollowUp() {
       try {
-        const res = await fetch("/api/dashboard/followup?dias=30")
+        const sellerParam = seller ? `&seller=${seller}` : ""
+        const res = await fetch(`/api/dashboard/followup?dias=30${sellerParam}`)
         const data = await res.json()
         setClientes(data.slice(0, 5))
       } catch (error) {
@@ -162,7 +169,7 @@ export function FollowUpWidget() {
       setLoading(false)
     }
     fetchFollowUp()
-  }, [])
+  }, [seller])
 
   if (loading) {
     return (

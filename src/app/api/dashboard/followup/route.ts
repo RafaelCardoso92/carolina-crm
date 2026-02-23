@@ -1,19 +1,31 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
+import { userScopedWhere } from "@/lib/permissions"
 
 // GET - Get clients needing follow-up (no contact in X days)
 export async function GET(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const dias = parseInt(searchParams.get("dias") || "30")
+    const seller = searchParams.get("seller")
 
     const cutoffDate = new Date()
     cutoffDate.setDate(cutoffDate.getDate() - dias)
+
+    // Apply user scoping
+    const userFilter = userScopedWhere(session, seller)
 
     // Get clients with no contact in X days or never contacted
     const clientesSemContacto = await prisma.cliente.findMany({
       where: {
         ativo: true,
+        ...userFilter,
         OR: [
           { ultimoContacto: null },
           { ultimoContacto: { lt: cutoffDate } }
