@@ -1,8 +1,21 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
+import { userScopedWhere } from "@/lib/permissions"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const seller = searchParams.get("seller")
+
+    // Apply user scoping
+    const userFilter = userScopedWhere(session, seller)
+
     const now = new Date()
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
@@ -16,29 +29,36 @@ export async function GET() {
       staleLeads,
       clientsNoContact
     ] = await Promise.all([
-      // Overdue payments count
+      // Overdue payments count - filter by client's vendedoraId
       prisma.parcela.count({
         where: {
           pago: false,
-          dataVencimento: { lt: now }
+          dataVencimento: { lt: now },
+          cobranca: {
+            cliente: userFilter
+          }
         }
       }),
-      // Overdue payments value
+      // Overdue payments value - filter by client's vendedoraId
       prisma.parcela.aggregate({
         where: {
           pago: false,
-          dataVencimento: { lt: now }
+          dataVencimento: { lt: now },
+          cobranca: {
+            cliente: userFilter
+          }
         },
         _sum: { valor: true }
       }),
-      // Tasks due today
+      // Tasks due today - filter by userId
       prisma.tarefa.count({
         where: {
           estado: { in: ["PENDENTE", "EM_PROGRESSO"] },
           dataVencimento: {
             gte: todayStart,
             lt: todayEnd
-          }
+          },
+          ...userFilter
         }
       }),
       // Stale leads (no contact in 7+ days, not closed)
@@ -46,6 +66,7 @@ export async function GET() {
         where: {
           ativo: true,
           estado: { notIn: ["GANHO", "PERDIDO"] },
+          ...userFilter,
           OR: [
             { dataUltimoContacto: { lt: sevenDaysAgo } },
             { dataUltimoContacto: null }
@@ -56,6 +77,7 @@ export async function GET() {
       prisma.cliente.count({
         where: {
           ativo: true,
+          ...userFilter,
           OR: [
             { ultimoContacto: { lt: thirtyDaysAgo } },
             { ultimoContacto: null }

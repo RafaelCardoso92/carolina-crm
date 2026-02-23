@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { formatCurrency } from "@/lib/utils"
 import HelpTooltip from "./HelpTooltip"
@@ -395,11 +396,14 @@ export function QuickStatsWidget() {
     clientsNoContact: 0
   })
   const [loading, setLoading] = useState(true)
+  const searchParams = useSearchParams()
+  const seller = searchParams.get("seller")
 
   useEffect(() => {
     async function fetchStats() {
       try {
-        const res = await fetch("/api/dashboard/quick-stats")
+        const sellerParam = seller ? `?seller=${seller}` : ""
+        const res = await fetch(`/api/dashboard/quick-stats${sellerParam}`)
         const data = await res.json()
         setStats(data)
       } catch (error) {
@@ -408,7 +412,7 @@ export function QuickStatsWidget() {
       setLoading(false)
     }
     fetchStats()
-  }, [])
+  }, [seller])
 
   if (loading) {
     return (
