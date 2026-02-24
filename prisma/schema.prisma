@@ -94,7 +94,7 @@ model Cliente {
   orcamentos         Orcamento[]
   tarefas            Tarefa[]
   vendas             Venda[]
-  acordoParceria     AcordoParceria?
+  acordosParceria    AcordoParceria[]
   visitas            Visita[]
 
   @@index([userId])
@@ -864,7 +864,7 @@ enum TipoNotificacao {
 
 model AcordoParceria {
   id         String    @id @default(cuid())
-  clienteId  String    @unique
+  clienteId  String
   cliente    Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   valorAnual Decimal   @db.Decimal(10, 2)
   ano        Int

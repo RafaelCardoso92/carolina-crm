@@ -1,7 +1,7 @@
 "use client"
 import VendasAITrends from "@/components/VendasAITrends"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Swal from "sweetalert2"
@@ -155,11 +155,28 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
     setVendas(initialVendas)
   }, [initialVendas])
   const [selectedClienteId, setSelectedClienteId] = useState<string>("")
+  const [clienteSearch, setClienteSearch] = useState("")
+  const [showClienteDropdown, setShowClienteDropdown] = useState(false)
+  const clienteDropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close cliente dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (clienteDropdownRef.current && !clienteDropdownRef.current.contains(event.target as Node)) {
+        setShowClienteDropdown(false)
+      }
+    }
+    if (showClienteDropdown) {
+      document.addEventListener("mousedown", handleClickOutside)
+      return () => document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [showClienteDropdown])
+
   const [selectedObjetivoVarioId, setSelectedObjetivoVarioId] = useState<string>("")
   const [objetivoVarioValor, setObjetivoVarioValor] = useState<string>("")
   const [selectedCampanhas, setSelectedCampanhas] = useState<{ id: string; quantidade: number }[]>([])
   const [formItems, setFormItems] = useState<FormItem[]>([])
-  const [useItems, setUseItems] = useState(true) // Default to items mode
+  const [useItems, setUseItems] = useState(false) // Default to manual value mode
   const [notas, setNotas] = useState("")
   const [valor1, setValor1] = useState("")
   const [valor2, setValor2] = useState("")
@@ -260,14 +277,26 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
     }))
   }, [produtos, lastPrices])
 
+  // Filtered clients for search
+  const filteredClientes = useMemo(() => {
+    if (!clienteSearch.trim()) return clientes
+    const search = clienteSearch.toLowerCase()
+    return clientes.filter(c =>
+      c.nome.toLowerCase().includes(search) ||
+      (c.codigo && c.codigo.toLowerCase().includes(search))
+    )
+  }, [clientes, clienteSearch])
+
   // Reset form when closing modal
   function resetForm() {
     setSelectedClienteId("")
+    setClienteSearch("")
+    setShowClienteDropdown(false)
     setSelectedObjetivoVarioId("")
     setObjetivoVarioValor("")
     setSelectedCampanhas([])
     setFormItems([])
-    setUseItems(true)
+    setUseItems(false)
     setNotas("")
     setValor1("")
     setValor2("")
@@ -1293,19 +1322,54 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                 <label className="block text-sm font-bold text-foreground mb-2">
                   Cliente *
                 </label>
-                <select
-                  value={selectedClienteId}
-                  onChange={(e) => setSelectedClienteId(e.target.value)}
-                  required
-                  className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card text-lg"
-                >
-                  <option value="">Escolher cliente...</option>
-                  {clientes.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nome} {c.codigo ? `(${c.codigo})` : ""}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative" ref={clienteDropdownRef}>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={selectedClienteId ? clientes.find(c => c.id === selectedClienteId)?.nome || clienteSearch : clienteSearch}
+                      onChange={(e) => {
+                        setClienteSearch(e.target.value)
+                        setSelectedClienteId("")
+                        setShowClienteDropdown(true)
+                      }}
+                      onFocus={() => setShowClienteDropdown(true)}
+                      placeholder="Pesquisar cliente por nome ou código..."
+                      className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card text-lg pr-10"
+                    />
+                    <svg className="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  {showClienteDropdown && (
+                    <div className="absolute z-50 w-full mt-1 bg-card border-2 border-border rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                      {filteredClientes.length === 0 ? (
+                        <div className="px-4 py-3 text-muted-foreground text-sm">
+                          Nenhum cliente encontrado
+                        </div>
+                      ) : (
+                        filteredClientes.slice(0, 50).map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedClienteId(c.id)
+                              setClienteSearch("")
+                              setShowClienteDropdown(false)
+                            }}
+                            className={`w-full px-4 py-3 text-left hover:bg-secondary transition flex items-center justify-between ${
+                              selectedClienteId === c.id ? "bg-primary/10" : ""
+                            }`}
+                          >
+                            <span className="font-medium text-foreground">{c.nome}</span>
+                            {c.codigo && <span className="text-sm text-muted-foreground">({c.codigo})</span>}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+                {/* Hidden required input for form validation */}
+                <input type="hidden" required value={selectedClienteId} />
               </div>
 
               {/* Products Section */}
