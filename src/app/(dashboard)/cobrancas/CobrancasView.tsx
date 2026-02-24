@@ -34,6 +34,7 @@ type Cobranca = {
   dataVencimento: Date | string | null
   valorPago: unknown | null
   estado: "PENDENTE" | "PAGO" | "PARCIAL" | "ATRASADO"
+  tipoDocumento: "FATURA" | "CONSUMO_INTERNO" | null
   cliente: {
     id: string
     nome: string
@@ -131,6 +132,9 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set())
   const [selectedMonth, setSelectedMonth] = useState<string>("")
 
+  // Document type filter
+  const [filterTipoDoc, setFilterTipoDoc] = useState<"all" | "FATURA" | "CI">("all")
+
   // Form state for installments
   const [tipoParcelado, setTipoParcelado] = useState(false)
   const [numeroParcelas, setNumeroParcelas] = useState(2)
@@ -192,12 +196,19 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
     // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
-      result = result.filter(c => 
+      result = result.filter(c =>
         c.cliente.nome.toLowerCase().includes(query) ||
         (c.cliente.codigo && c.cliente.codigo.toLowerCase().includes(query)) ||
         (c.fatura && c.fatura.toLowerCase().includes(query)) ||
         (c.notas && c.notas.toLowerCase().includes(query))
       )
+    }
+
+    // Document type filter
+    if (filterTipoDoc === "FATURA") {
+      result = result.filter(c => c.tipoDocumento !== "CONSUMO_INTERNO")
+    } else if (filterTipoDoc === "CI") {
+      result = result.filter(c => c.tipoDocumento === "CONSUMO_INTERNO")
     }
 
     // Sort
@@ -223,7 +234,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
     })
 
     return result
-  }, [cobrancas, filter, selectedCliente, selectedMonth, searchQuery, sortField, sortOrder])
+  }, [cobrancas, filter, selectedCliente, selectedMonth, searchQuery, sortField, sortOrder, filterTipoDoc])
 
   // Group cobrancas by month
   const groupedByMonth = useMemo(() => {
@@ -313,6 +324,35 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       }
       return total
     }, 0)
+  }, [cobrancas])
+
+  // Calculate commission breakdown by document type
+  const comissoesPorTipo = useMemo(() => {
+    const result = {
+      faturas: { total: 0, pendente: 0, ganha: 0, count: 0 },
+      ci: { total: 0, pendente: 0, ganha: 0, count: 0 }
+    }
+
+    cobrancas.forEach(c => {
+      const isCI = c.tipoDocumento === "CONSUMO_INTERNO"
+      const target = isCI ? result.ci : result.faturas
+      const comissaoTotal = c.comissao ? Number(c.comissao) : Number(c.valorSemIva || 0) * 0.035
+
+      target.count++
+      target.total += comissaoTotal
+
+      if (c.estado === "PAGO" || c.pago) {
+        target.ganha += comissaoTotal
+      } else if (c.estado === "PARCIAL" && c.valorPago) {
+        const percentPago = Number(c.valorPago) / Number(c.valor)
+        target.ganha += comissaoTotal * percentPago
+        target.pendente += comissaoTotal * (1 - percentPago)
+      } else {
+        target.pendente += comissaoTotal
+      }
+    })
+
+    return result
   }, [cobrancas])
 
   function toggleRowExpanded(id: string) {
@@ -1214,11 +1254,16 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
             )}
           </td>
           <td className="px-4 py-4">
-            <Link href={`/clientes/${cobranca.cliente.id}`} className="font-semibold text-foreground hover:text-primary transition">
-              {cobranca.cliente.nome}
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href={`/clientes/${cobranca.cliente.id}`} className="font-semibold text-foreground hover:text-primary transition">
+                {cobranca.cliente.nome}
+              </Link>
+              {cobranca.tipoDocumento === "CONSUMO_INTERNO" && (
+                <span className="px-1.5 py-0.5 text-xs font-bold bg-orange-500/10 text-orange-600 rounded">C.I.</span>
+              )}
+            </div>
             {cobranca.cliente.codigo && (
-              <span className="text-muted-foreground text-sm ml-2">({cobranca.cliente.codigo})</span>
+              <span className="text-muted-foreground text-sm">({cobranca.cliente.codigo})</span>
             )}
           </td>
           <td className="px-4 py-4 text-foreground font-medium">{cobranca.fatura || "-"}</td>
@@ -1529,6 +1574,103 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
         )}
       </div>
 
+      {/* Commission Breakdown by Document Type */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 md:mb-6">
+        {/* Faturas Commission Card */}
+        <div
+          className={`bg-white dark:bg-card rounded-2xl shadow-sm p-4 md:p-5 border-2 transition-all cursor-pointer ${
+            filterTipoDoc === "FATURA"
+              ? "border-blue-500 shadow-lg shadow-blue-500/10"
+              : "border-border hover:border-blue-300"
+          }`}
+          onClick={() => setFilterTipoDoc(filterTipoDoc === "FATURA" ? "all" : "FATURA")}
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2.5 bg-blue-500/10 rounded-xl">
+              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-blue-600 uppercase tracking-wide">Comissões Faturas</h3>
+              <p className="text-xs text-muted-foreground">{comissoesPorTipo.faturas.count} cobranças</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-green-500/5 rounded-lg p-2.5">
+              <p className="text-xs text-muted-foreground">Ganhas</p>
+              <p className="text-lg font-bold text-green-600">{formatCurrency(comissoesPorTipo.faturas.ganha)} €</p>
+            </div>
+            <div className="bg-orange-500/5 rounded-lg p-2.5">
+              <p className="text-xs text-muted-foreground">Pendentes</p>
+              <p className="text-lg font-bold text-orange-600">{formatCurrency(comissoesPorTipo.faturas.pendente)} €</p>
+            </div>
+          </div>
+          {filterTipoDoc === "FATURA" && (
+            <div className="mt-3 pt-2 border-t border-blue-200 text-xs text-blue-600 font-medium">
+              A mostrar apenas faturas
+            </div>
+          )}
+        </div>
+
+        {/* C.I. Commission Card */}
+        <div
+          className={`bg-white dark:bg-card rounded-2xl shadow-sm p-4 md:p-5 border-2 transition-all cursor-pointer ${
+            filterTipoDoc === "CI"
+              ? "border-orange-500 shadow-lg shadow-orange-500/10"
+              : "border-border hover:border-orange-300"
+          }`}
+          onClick={() => setFilterTipoDoc(filterTipoDoc === "CI" ? "all" : "CI")}
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2.5 bg-orange-500/10 rounded-xl">
+              <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-orange-600 uppercase tracking-wide">Comissões C.I.</h3>
+              <p className="text-xs text-muted-foreground">{comissoesPorTipo.ci.count} cobranças</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-green-500/5 rounded-lg p-2.5">
+              <p className="text-xs text-muted-foreground">Ganhas</p>
+              <p className="text-lg font-bold text-green-600">{formatCurrency(comissoesPorTipo.ci.ganha)} €</p>
+            </div>
+            <div className="bg-orange-500/5 rounded-lg p-2.5">
+              <p className="text-xs text-muted-foreground">Pendentes</p>
+              <p className="text-lg font-bold text-orange-600">{formatCurrency(comissoesPorTipo.ci.pendente)} €</p>
+            </div>
+          </div>
+          {filterTipoDoc === "CI" && (
+            <div className="mt-3 pt-2 border-t border-orange-200 text-xs text-orange-600 font-medium">
+              A mostrar apenas C.I.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Filter Status Bar */}
+      {filterTipoDoc !== "all" && (
+        <div className={`flex items-center justify-between px-4 py-3 rounded-xl mb-4 ${
+          filterTipoDoc === "FATURA" ? "bg-blue-500/10" : "bg-orange-500/10"
+        }`}>
+          <span className={`font-medium ${filterTipoDoc === "FATURA" ? "text-blue-700" : "text-orange-700"}`}>
+            {filterTipoDoc === "FATURA" ? "A mostrar apenas Faturas" : "A mostrar apenas Consumo Interno (C.I.)"}
+          </span>
+          <button
+            onClick={() => setFilterTipoDoc("all")}
+            className={`px-3 py-1 rounded-lg text-sm font-medium ${
+              filterTipoDoc === "FATURA"
+                ? "bg-blue-500/20 text-blue-700 hover:bg-blue-500/30"
+                : "bg-orange-500/20 text-orange-700 hover:bg-orange-500/30"
+            }`}
+          >
+            Mostrar Todos
+          </button>
+        </div>
+      )}
 
       {/* AI Risk Analysis */}
       <div className="mb-4">
