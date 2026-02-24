@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
+import { userScopedWhere } from "@/lib/permissions"
 
 // Calculate health score for a client
 function calculateHealthScore(data: {
@@ -71,9 +73,16 @@ function calculateHealthScore(data: {
 
 export async function GET(request: Request) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const clienteId = searchParams.get("clienteId")
     const recalculate = searchParams.get("recalculate") === "true"
+    const seller = searchParams.get("seller")
+    const userFilter = userScopedWhere(session, seller)
 
     if (clienteId) {
       // Get single client health
@@ -84,8 +93,11 @@ export async function GET(request: Request) {
       if (!health || recalculate) {
         // Calculate health score
         const now = new Date()
-        const cliente = await prisma.cliente.findUnique({
-          where: { id: clienteId },
+        const cliente = await prisma.cliente.findFirst({
+          where: {
+            id: clienteId,
+            ...userFilter
+          },
           include: {
             vendas: true,
             cobrancas: {
@@ -160,8 +172,16 @@ export async function GET(request: Request) {
       return NextResponse.json(health)
     }
 
-    // Get all clients health scores
+    // Get user's client IDs
+    const userClientes = await prisma.cliente.findMany({
+      where: userFilter,
+      select: { id: true }
+    })
+    const clienteIds = userClientes.map(c => c.id)
+
+    // Get all clients health scores (filtered by user's clients)
     const allHealth = await prisma.clienteHealth.findMany({
+      where: { clienteId: { in: clienteIds } },
       orderBy: { scoreGeral: "asc" }
     })
 
@@ -182,10 +202,19 @@ export async function GET(request: Request) {
 }
 
 // Recalculate all health scores
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const seller = searchParams.get("seller")
+    const userFilter = userScopedWhere(session, seller)
+
     const clientes = await prisma.cliente.findMany({
-      where: { ativo: true },
+      where: { ativo: true, ...userFilter },
       include: {
         vendas: true,
         cobrancas: {

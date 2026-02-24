@@ -295,14 +295,17 @@ export function HealthScoresWidget() {
     scores: HealthScore[]
   } | null>(null)
   const [loading, setLoading] = useState(true)
+  const searchParams = useSearchParams()
+  const seller = searchParams.get("seller")
 
   useEffect(() => {
     async function fetchHealth() {
       try {
+        const sellerParam = seller ? `?seller=${seller}` : ""
         // First recalculate scores
-        await fetch("/api/health", { method: "POST" })
+        await fetch(`/api/health${sellerParam}`, { method: "POST" })
         // Then fetch
-        const res = await fetch("/api/health")
+        const res = await fetch(`/api/health${sellerParam}`)
         const json = await res.json()
         setData(json)
       } catch (error) {
@@ -311,7 +314,7 @@ export function HealthScoresWidget() {
       setLoading(false)
     }
     fetchHealth()
-  }, [])
+  }, [seller])
 
   if (loading) {
     return (
@@ -526,11 +529,14 @@ export function AcordosWidget() {
     }>
   } | null>(null)
   const [loading, setLoading] = useState(true)
+  const searchParams = useSearchParams()
+  const seller = searchParams.get("seller")
 
   useEffect(() => {
     async function fetchAcordos() {
       try {
-        const res = await fetch("/api/acordos")
+        const sellerParam = seller ? `?seller=${seller}` : ""
+        const res = await fetch(`/api/acordos${sellerParam}`)
         const acordos = await res.json()
 
         if (Array.isArray(acordos)) {
@@ -558,7 +564,7 @@ export function AcordosWidget() {
       setLoading(false)
     }
     fetchAcordos()
-  }, [])
+  }, [seller])
 
   if (loading) {
     return (
