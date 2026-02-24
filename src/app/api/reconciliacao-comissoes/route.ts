@@ -175,51 +175,51 @@ export async function POST(request: NextRequest) {
     let totalSistema = 0
     let totalComissaoSistema = 0
 
-    // Aggregate ALL payments for the same invoice number (regardless of parcela)
-    // This handles cases where multiple partial payments are made for the same invoice
-    const invoiceAggregates = new Map<string, {
+    // Aggregate payments with the same invoice number AND parcela number
+    // This handles cases where the same parcela appears multiple times on different dates
+    const parcelaAggregates = new Map<string, {
       entidade: string
       tipoDoc: string
       serie: string
       numero: string
+      prestacao: number
       totalValorLiquido: number
       totalComissao: number
-      parcelas: number[]
+      count: number
       ultimaData: Date | null
     }>()
 
     for (const linha of parsed.linhas) {
-      // Key by client + doc type + series + invoice number (NOT parcela)
-      const key = `${linha.entidade}-${linha.tipoDoc}-${linha.serie}-${linha.numero}`
+      // Key by client + doc type + series + invoice number + parcela
+      const key = `${linha.entidade}-${linha.tipoDoc}-${linha.serie}-${linha.numero}-${linha.prestacao}`
 
-      if (invoiceAggregates.has(key)) {
-        const existing = invoiceAggregates.get(key)!
+      if (parcelaAggregates.has(key)) {
+        const existing = parcelaAggregates.get(key)!
         existing.totalValorLiquido += linha.valorLiquido
         existing.totalComissao += linha.valorComissao
-        if (!existing.parcelas.includes(linha.prestacao)) {
-          existing.parcelas.push(linha.prestacao)
-        }
+        existing.count++
         if (linha.data && (!existing.ultimaData || linha.data > existing.ultimaData)) {
           existing.ultimaData = linha.data
         }
       } else {
-        invoiceAggregates.set(key, {
+        parcelaAggregates.set(key, {
           entidade: linha.entidade,
           tipoDoc: linha.tipoDoc,
           serie: linha.serie,
           numero: linha.numero,
+          prestacao: linha.prestacao,
           totalValorLiquido: linha.valorLiquido,
           totalComissao: linha.valorComissao,
-          parcelas: [linha.prestacao],
+          count: 1,
           ultimaData: linha.data
         })
       }
     }
 
-    // Process each aggregated invoice
-    for (const [, invoiceData] of invoiceAggregates) {
+    // Process each aggregated parcela
+    for (const [, parcelaData] of parcelaAggregates) {
       const cliente = await prisma.cliente.findUnique({
-        where: { codigo: invoiceData.entidade }
+        where: { codigo: parcelaData.entidade }
       })
 
       let corresponde = false
@@ -229,20 +229,18 @@ export async function POST(request: NextRequest) {
       let valorSistema: number | null = null
       let comissaoSistema: number | null = null
       let cobrancaId: string | null = null
+      let parcelaId: string | null = null
 
-      // Round PDF values
-      const valorLiquidoPdf = Math.round(invoiceData.totalValorLiquido * 100) / 100
-      const valorComissaoPdf = Math.round(invoiceData.totalComissao * 100) / 100
-      const parcelaLabel = invoiceData.parcelas.length > 1
-        ? invoiceData.parcelas.sort((a, b) => a - b).join('+')
-        : String(invoiceData.parcelas[0])
+      // Round PDF values (summed from multiple entries)
+      const valorLiquidoPdf = Math.round(parcelaData.totalValorLiquido * 100) / 100
+      const valorComissaoPdf = Math.round(parcelaData.totalComissao * 100) / 100
 
       if (!cliente) {
         tipoDiscrepancia = "CLIENTE_NAO_EXISTE"
         itensComProblema++
       } else {
         const cobranca = await prisma.cobranca.findFirst({
-          where: { clienteId: cliente.id, fatura: invoiceData.numero },
+          where: { clienteId: cliente.id, fatura: parcelaData.numero },
           include: { parcelas: true }
         })
 
@@ -253,55 +251,105 @@ export async function POST(request: NextRequest) {
           cobrancaId = cobranca.id
 
           // Use valorSemIva for comparison (PDF shows values without IVA)
+          const cobrancaValorTotal = Number(cobranca.valor)
           const cobrancaValorSemIva = Number(cobranca.valorSemIva || cobranca.valor)
           const cobrancaComissao = Number(cobranca.comissao || 0)
 
-          valorSistema = cobrancaValorSemIva
-          comissaoSistema = cobrancaComissao
+          // Calculate IVA ratio for parcela calculations
+          const ivaRatio = cobrancaValorTotal > 0 ? cobrancaValorSemIva / cobrancaValorTotal : 1
 
-          totalSistema += cobrancaValorSemIva
-          totalComissaoSistema += cobrancaComissao
+          if (cobranca.parcelas.length > 0) {
+            const parcela = cobranca.parcelas.find(p => p.numero === parcelaData.prestacao)
 
-          diferencaValor = valorLiquidoPdf - valorSistema
-          diferencaComissao = valorComissaoPdf - comissaoSistema
+            if (!parcela) {
+              tipoDiscrepancia = "PARCELA_NAO_EXISTE"
+              itensComProblema++
+            } else {
+              parcelaId = parcela.id
+              const parcelaValorTotal = Number(parcela.valor)
 
-          // Allow small tolerance for rounding differences
-          if (Math.abs(diferencaValor) <= 0.10 && Math.abs(diferencaComissao) <= 0.15) {
-            corresponde = true
-            diferencaValor = 0
-            diferencaComissao = 0
-            itensCorretos++
-          } else if (Math.abs(diferencaValor) > 0.10) {
-            tipoDiscrepancia = "VALOR_DIFERENTE"
-            itensComProblema++
+              // Calculate parcela value without IVA
+              const parcelaValorSemIva = Math.round(parcelaValorTotal * ivaRatio * 100) / 100
+
+              // Calculate proportional commission
+              comissaoSistema = cobrancaValorTotal > 0
+                ? Math.round((parcelaValorTotal / cobrancaValorTotal) * cobrancaComissao * 100) / 100
+                : 0
+              valorSistema = parcelaValorSemIva
+
+              totalSistema += parcelaValorSemIva
+              totalComissaoSistema += comissaoSistema
+
+              diferencaValor = valorLiquidoPdf - valorSistema
+              diferencaComissao = valorComissaoPdf - comissaoSistema
+
+              // Allow small tolerance for rounding differences
+              if (Math.abs(diferencaValor) <= 0.10 && Math.abs(diferencaComissao) <= 0.15) {
+                corresponde = true
+                diferencaValor = 0
+                diferencaComissao = 0
+                itensCorretos++
+              } else if (Math.abs(diferencaValor) > 0.10) {
+                tipoDiscrepancia = "VALOR_DIFERENTE"
+                itensComProblema++
+              } else {
+                tipoDiscrepancia = "COMISSAO_DIFERENTE"
+                itensComProblema++
+              }
+            }
           } else {
-            tipoDiscrepancia = "COMISSAO_DIFERENTE"
-            itensComProblema++
+            // Single-payment cobranca (no parcelas)
+            if (parcelaData.prestacao !== 1) {
+              tipoDiscrepancia = "PARCELA_NAO_EXISTE"
+              itensComProblema++
+            } else {
+              valorSistema = cobrancaValorSemIva
+              comissaoSistema = cobrancaComissao
+
+              totalSistema += cobrancaValorSemIva
+              totalComissaoSistema += cobrancaComissao
+
+              diferencaValor = valorLiquidoPdf - valorSistema
+              diferencaComissao = valorComissaoPdf - comissaoSistema
+
+              if (Math.abs(diferencaValor) <= 0.10 && Math.abs(diferencaComissao) <= 0.15) {
+                corresponde = true
+                diferencaValor = 0
+                diferencaComissao = 0
+                itensCorretos++
+              } else if (Math.abs(diferencaValor) > 0.10) {
+                tipoDiscrepancia = "VALOR_DIFERENTE"
+                itensComProblema++
+              } else {
+                tipoDiscrepancia = "COMISSAO_DIFERENTE"
+                itensComProblema++
+              }
+            }
           }
         }
       }
-      
+
       itensToCreate.push({
-        dataPagamentoPdf: invoiceData.ultimaData,
-        codigoClientePdf: invoiceData.entidade,
+        dataPagamentoPdf: parcelaData.ultimaData,
+        codigoClientePdf: parcelaData.entidade,
         nomeClientePdf: cliente?.nome || null,
-        tipoDocPdf: invoiceData.tipoDoc,
-        seriePdf: invoiceData.serie,
-        numeroPdf: invoiceData.numero,
-        parcelaPdf: invoiceData.parcelas[0], // Store first parcela number
+        tipoDocPdf: parcelaData.tipoDoc,
+        seriePdf: parcelaData.serie,
+        numeroPdf: parcelaData.numero,
+        parcelaPdf: parcelaData.prestacao,
         valorLiquidoPdf: valorLiquidoPdf,
         valorComissaoPdf: valorComissaoPdf,
         clienteId: cliente?.id || null,
         cobrancaId,
-        parcelaId: null, // No single parcela when aggregated
+        parcelaId,
         valorSistema,
         comissaoSistema,
         corresponde,
         tipoDiscrepancia,
         diferencaValor,
         diferencaComissao,
-        notas: invoiceData.parcelas.length > 1
-          ? `Agregado de ${invoiceData.parcelas.length} pagamentos (parcelas: ${parcelaLabel})`
+        notas: parcelaData.count > 1
+          ? `Agregado de ${parcelaData.count} pagamentos`
           : null
       })
     }
