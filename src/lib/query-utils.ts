@@ -40,7 +40,7 @@ export const clienteDetailSelect = {
   createdAt: true,
   updatedAt: true,
   segmento: true,
-  acordoParceria: true,
+  acordosParceria: true,
 } satisfies Prisma.ClienteSelect
 
 /**
