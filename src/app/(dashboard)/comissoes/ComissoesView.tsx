@@ -106,6 +106,7 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
   const [uploadAno, setUploadAno] = useState(new Date().getFullYear())
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [filterProblemas, setFilterProblemas] = useState(false)
+  const [filterTipoDoc, setFilterTipoDoc] = useState<"all" | "FATURA" | "CI">("all")
 
   useEffect(() => {
     setReconciliacoes(initialReconciliacoes)
@@ -350,9 +351,30 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
         <div className="space-y-4">
           {reconciliacoes.map((rec) => {
             const isExpanded = expandedId === rec.id
-            const itensToShow = filterProblemas
+            const itensFiltered = filterProblemas
               ? rec.itens.filter(i => !i.corresponde && !i.resolvido)
               : rec.itens
+            const itensToShow = filterTipoDoc === "all"
+              ? itensFiltered
+              : itensFiltered.filter(i => {
+                  const tipoDoc = i.tipoDocPdf?.toUpperCase() || "FA"
+                  if (filterTipoDoc === "CI") return tipoDoc === "CI" || tipoDoc === "C.I."
+                  return tipoDoc !== "CI" && tipoDoc !== "C.I." // FATURA = everything that's not CI
+                })
+
+            // Calculate totals by document type for this reconciliation
+            const totalFaturas = rec.itens
+              .filter(i => {
+                const t = i.tipoDocPdf?.toUpperCase() || "FA"
+                return t !== "CI" && t !== "C.I."
+              })
+              .reduce((sum, i) => sum + Number(i.valorComissaoPdf), 0)
+            const totalCI = rec.itens
+              .filter(i => {
+                const t = i.tipoDocPdf?.toUpperCase() || "FA"
+                return t === "CI" || t === "C.I."
+              })
+              .reduce((sum, i) => sum + Number(i.valorComissaoPdf), 0)
 
             return (
               <div key={rec.id} className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
@@ -448,6 +470,26 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
                         Mostrar apenas problemas
                       </label>
 
+                      <select
+                        value={filterTipoDoc}
+                        onChange={(e) => setFilterTipoDoc(e.target.value as "all" | "FATURA" | "CI")}
+                        className="px-3 py-1.5 text-sm border border-border rounded-lg bg-card text-foreground"
+                      >
+                        <option value="all">Todos os tipos</option>
+                        <option value="FATURA">Apenas Faturas</option>
+                        <option value="CI">Apenas C.I.</option>
+                      </select>
+
+                      {/* Summary by document type */}
+                      <div className="flex items-center gap-4 ml-4 text-sm">
+                        <span className="text-muted-foreground">
+                          Faturas: <span className="font-bold text-primary">{formatCurrency(totalFaturas)} €</span>
+                        </span>
+                        <span className="text-muted-foreground">
+                          C.I.: <span className="font-bold text-orange-500">{formatCurrency(totalCI)} €</span>
+                        </span>
+                      </div>
+
                       <div className="flex-1" />
 
                       <button
@@ -469,6 +511,7 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
                             <th className="px-4 py-3 text-left font-bold text-foreground">Data</th>
                             <th className="px-4 py-3 text-left font-bold text-foreground">Cliente</th>
                             <th className="px-4 py-3 text-left font-bold text-foreground">Fatura</th>
+                            <th className="px-4 py-3 text-center font-bold text-foreground">Tipo</th>
                             <th className="px-4 py-3 text-center font-bold text-foreground">Parcela</th>
                             <th className="px-4 py-3 text-right font-bold text-foreground">Valor PDF</th>
                             <th className="px-4 py-3 text-right font-bold text-foreground">Valor Sistema</th>
@@ -502,6 +545,15 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
                               <td className="px-4 py-3 text-foreground">
                                 <span className="text-muted-foreground text-xs">{item.seriePdf}/</span>
                                 {item.numeroPdf}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className={`px-2 py-1 text-xs font-bold rounded ${
+                                  item.tipoDocPdf?.toUpperCase() === "CI" || item.tipoDocPdf?.toUpperCase() === "C.I."
+                                    ? "bg-orange-500/10 text-orange-600"
+                                    : "bg-blue-500/10 text-blue-600"
+                                }`}>
+                                  {item.tipoDocPdf?.toUpperCase() === "CI" || item.tipoDocPdf?.toUpperCase() === "C.I." ? "C.I." : item.tipoDocPdf || "FA"}
+                                </span>
                               </td>
                               <td className="px-4 py-3 text-center">
                                 <span className="bg-secondary px-2 py-1 rounded font-medium">{item.parcelaPdf}</span>
