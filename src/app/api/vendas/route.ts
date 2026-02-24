@@ -140,7 +140,8 @@ export async function POST(request: Request) {
           total,
           mes: data.mes,
           ano: data.ano,
-          notas: data.notas || null
+          notas: data.notas || null,
+          tipoDocumento: data.tipoDocumento || "FATURA"
         }
       })
 
@@ -191,7 +192,8 @@ export async function POST(request: Request) {
             dataEmissao,
             dataInicioVencimento: dataEmissao, // Use emission date as first due date
             numeroParcelas,
-            pago: false
+            pago: false,
+            tipoDocumento: data.tipoDocumento || "FATURA"
           }
         })
 

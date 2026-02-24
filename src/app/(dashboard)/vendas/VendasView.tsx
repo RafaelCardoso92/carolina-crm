@@ -55,6 +55,7 @@ type Venda = {
   mes: number
   ano: number
   notas: string | null
+  tipoDocumento: "FATURA" | "CONSUMO_INTERNO"
   cliente: {
     id: string
     nome: string
@@ -180,6 +181,7 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
   const [notas, setNotas] = useState("")
   const [valor1, setValor1] = useState("")
   const [valor2, setValor2] = useState("")
+  const [tipoDocumento, setTipoDocumento] = useState<"FATURA" | "CONSUMO_INTERNO">("FATURA")
 
   // Cobranca state
   const [criarCobranca, setCriarCobranca] = useState(true)
@@ -300,6 +302,7 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
     setNotas("")
     setValor1("")
     setValor2("")
+    setTipoDocumento("FATURA")
     setCriarCobranca(true)
     setCobrancaParcelas("1")
     setCobrancaDataEmissao("")
@@ -324,6 +327,7 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
     setObjetivoVarioValor(venda.objetivoVarioValor ? String(venda.objetivoVarioValor) : "")
     setSelectedCampanhas(venda.campanhas?.map(c => ({ id: c.campanha.id, quantidade: c.quantidade || 1 })) || [])
     setNotas(venda.notas || "")
+    setTipoDocumento(venda.tipoDocumento || "FATURA")
 
     if (venda.itens && venda.itens.length > 0) {
       setUseItems(true)
@@ -403,6 +407,7 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
 
     const data = {
       clienteId: selectedClienteId,
+      tipoDocumento,
       objetivoVarioId: selectedObjetivoVarioId || null,
       objetivoVarioValor: selectedObjetivoVarioId && objetivoVarioValor ? parseFloat(objetivoVarioValor) : null,
       campanhas: selectedCampanhas.length > 0 ? selectedCampanhas : null,
@@ -872,6 +877,11 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                             {venda.devolucoes!.length} dev.
                           </span>
                         )}
+                        {venda.tipoDocumento === "CONSUMO_INTERNO" && (
+                          <span className="ml-2 px-1.5 py-0.5 text-xs font-bold bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded">
+                            C.I.
+                          </span>
+                        )}
                         {venda.objetivoVario && (
                           <div className="mt-1">
                             <span className="px-2 py-0.5 text-xs font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-full">
@@ -1119,8 +1129,13 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                 </div>
 
                 {/* Tags - Objetivo Vario & Campanhas */}
-                {(venda.objetivoVario || (venda.campanhas && venda.campanhas.length > 0) || hasDevolucoes) && (
+                {(venda.objetivoVario || (venda.campanhas && venda.campanhas.length > 0) || hasDevolucoes || venda.tipoDocumento === "CONSUMO_INTERNO") && (
                   <div className="flex flex-wrap gap-1.5 mt-3">
+                    {venda.tipoDocumento === "CONSUMO_INTERNO" && (
+                      <span className="px-2.5 py-1 text-xs font-bold bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded-lg">
+                        C.I.
+                      </span>
+                    )}
                     {hasDevolucoes && (
                       <span className="px-2.5 py-1 text-xs font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300 rounded-lg">
                         {venda.devolucoes!.length} devolucao
@@ -1370,6 +1385,35 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                 </div>
                 {/* Hidden required input for form validation */}
                 <input type="hidden" required value={selectedClienteId} />
+              </div>
+
+              {/* Document Type Selection */}
+              <div className="flex gap-3 items-center bg-secondary/50 rounded-xl p-4 border border-border">
+                <label className="text-sm font-bold text-foreground">
+                  Tipo:
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setTipoDocumento("FATURA")}
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                    tipoDocumento === "FATURA"
+                      ? "bg-primary text-white"
+                      : "bg-card border-2 border-border text-foreground hover:border-primary"
+                  }`}
+                >
+                  Fatura
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTipoDocumento("CONSUMO_INTERNO")}
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                    tipoDocumento === "CONSUMO_INTERNO"
+                      ? "bg-orange-500 text-white"
+                      : "bg-card border-2 border-border text-foreground hover:border-orange-500"
+                  }`}
+                >
+                  C.I. (Consumo Interno)
+                </button>
               </div>
 
               {/* Products Section */}

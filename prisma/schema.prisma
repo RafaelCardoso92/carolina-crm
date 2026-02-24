@@ -20,6 +20,11 @@ enum UserStatus {
   PENDING
 }
 
+enum TipoDocumento {
+  FATURA
+  CONSUMO_INTERNO
+}
+
 model User {
   id                   String     @id @default(cuid())
   name                 String?
@@ -117,6 +122,7 @@ model Venda {
   updatedAt          DateTime            @updatedAt
   objetivoVarioId    String?
   objetivoVarioValor Decimal?            @db.Decimal(10, 2)
+  tipoDocumento      TipoDocumento       @default(FATURA)
   campanhas          CampanhaVenda[]
   cobranca           Cobranca?
   devolucoes         Devolucao[]
@@ -153,6 +159,7 @@ model Cobranca {
   dataVencimento       DateTime?
   valorPago            Decimal?  @db.Decimal(10, 2)
   estado               EstadoCobranca @default(PENDENTE)
+  tipoDocumento        TipoDocumento  @default(FATURA)
   cliente              Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   venda                Venda?    @relation(fields: [vendaId], references: [id], onDelete: Cascade)
   parcelas             Parcela[]

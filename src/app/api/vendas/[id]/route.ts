@@ -171,7 +171,8 @@ export async function PUT(
           valor1: data.valor1 || null,
           valor2: data.valor2 || null,
           total,
-          notas: data.notas || null
+          notas: data.notas || null,
+          tipoDocumento: data.tipoDocumento || undefined
         }
       })
 
