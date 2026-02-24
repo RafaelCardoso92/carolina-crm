@@ -174,8 +174,33 @@ export async function POST(request: NextRequest) {
     let itensComProblema = 0
     let totalSistema = 0
     let totalComissaoSistema = 0
-    
-    for (const linhaPdf of parsed.linhas) {
+
+    // Aggregate payments with the same invoice number and parcela
+    // This is common when multiple payments are made for the same invoice
+    const aggregatedLines = new Map<string, PdfComissaoLine>()
+
+    for (const linha of parsed.linhas) {
+      // Key by invoice number + parcela + client + doc type
+      const key = `${linha.entidade}-${linha.tipoDoc}-${linha.serie}-${linha.numero}-${linha.prestacao}`
+
+      if (aggregatedLines.has(key)) {
+        const existing = aggregatedLines.get(key)!
+        // Sum the values
+        existing.valorLiquido += linha.valorLiquido
+        existing.valorComissao += linha.valorComissao
+        // Keep the latest date
+        if (linha.data && (!existing.data || linha.data > existing.data)) {
+          existing.data = linha.data
+        }
+      } else {
+        // Create a copy to avoid mutating the original
+        aggregatedLines.set(key, { ...linha })
+      }
+    }
+
+    const linhasAgregadas = Array.from(aggregatedLines.values())
+
+    for (const linhaPdf of linhasAgregadas) {
       const cliente = await prisma.cliente.findUnique({
         where: { codigo: linhaPdf.entidade }
       })
