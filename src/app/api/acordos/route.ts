@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
+import { userScopedWhere } from "@/lib/permissions"
 
 function getCurrentQuarter(): number {
   const month = new Date().getMonth() + 1
@@ -18,8 +19,14 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const clienteId = searchParams.get("clienteId")
     const apenasAtivos = searchParams.get("ativos") !== "false"
+    const seller = searchParams.get("seller")
 
-    const where: any = {}
+    // Build user-scoped filter for the related cliente
+    const userFilter = userScopedWhere(session, seller)
+
+    const where: any = {
+      cliente: userFilter
+    }
     if (clienteId) where.clienteId = clienteId
     if (apenasAtivos) where.ativo = true
 
@@ -27,7 +34,7 @@ export async function GET(request: NextRequest) {
       where,
       include: {
         cliente: {
-          select: { id: true, nome: true, codigo: true }
+          select: { id: true, nome: true, codigo: true, userId: true }
         }
       }
     })
