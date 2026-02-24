@@ -196,11 +196,14 @@ export function NotificationsWidget() {
 export function ForecastWidget() {
   const [data, setData] = useState<ForecastData | null>(null)
   const [loading, setLoading] = useState(true)
+  const searchParams = useSearchParams()
+  const seller = searchParams.get("seller")
 
   useEffect(() => {
     async function fetchForecast() {
       try {
-        const res = await fetch("/api/forecast")
+        const sellerParam = seller ? `?seller=${seller}` : ""
+        const res = await fetch(`/api/forecast${sellerParam}`)
         const json = await res.json()
         setData(json)
       } catch (error) {
@@ -209,7 +212,7 @@ export function ForecastWidget() {
       setLoading(false)
     }
     fetchForecast()
-  }, [])
+  }, [seller])
 
   if (loading) {
     return (

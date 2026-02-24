@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import {
   BarChart,
   Bar,
@@ -74,15 +75,18 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function SalesCharts({ ano }: { ano: number }) {
   const [data, setData] = useState<TrendsData | null>(null)
   const [loading, setLoading] = useState(true)
+  const searchParams = useSearchParams()
+  const seller = searchParams.get("seller")
 
   useEffect(() => {
     fetchTrends()
-  }, [ano])
+  }, [ano, seller])
 
   async function fetchTrends() {
     setLoading(true)
     try {
-      const res = await fetch(`/api/dashboard/trends?ano=${ano}`)
+      const sellerParam = seller ? `&seller=${seller}` : ""
+      const res = await fetch(`/api/dashboard/trends?ano=${ano}${sellerParam}`)
       const json = await res.json()
       setData(json)
     } catch (error) {

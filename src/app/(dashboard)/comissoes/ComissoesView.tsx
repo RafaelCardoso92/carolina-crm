@@ -108,6 +108,24 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
   const [filterProblemas, setFilterProblemas] = useState(false)
   const [filterTipoDoc, setFilterTipoDoc] = useState<"all" | "FATURA" | "CI">("all")
 
+  // Calculate global totals across all reconciliations
+  const globalTotals = reconciliacoes.reduce((acc, rec) => {
+    rec.itens.forEach(item => {
+      const tipoDoc = item.tipoDocPdf?.toUpperCase() || "FA"
+      const isCI = tipoDoc === "CI" || tipoDoc === "C.I."
+      const comissao = Number(item.valorComissaoPdf) || 0
+
+      if (isCI) {
+        acc.totalCI += comissao
+        acc.countCI++
+      } else {
+        acc.totalFaturas += comissao
+        acc.countFaturas++
+      }
+    })
+    return acc
+  }, { totalFaturas: 0, totalCI: 0, countFaturas: 0, countCI: 0 })
+
   useEffect(() => {
     setReconciliacoes(initialReconciliacoes)
   }, [initialReconciliacoes])
@@ -250,18 +268,104 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
 
   return (
     <div className="space-y-6">
-      {/* Upload button */}
-      <div className="flex justify-end">
-        <button
-          onClick={() => setShowUpload(true)}
-          className="bg-primary text-white px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold hover:bg-primary-hover transition flex items-center gap-2 shadow-lg shadow-primary/20"
+      {/* Summary Cards - Prominent display of Faturas vs C.I. */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Total Faturas Card */}
+        <div
+          className={`bg-card rounded-xl p-6 border-2 transition-all cursor-pointer ${
+            filterTipoDoc === "FATURA"
+              ? "border-blue-500 shadow-lg shadow-blue-500/20"
+              : "border-border hover:border-blue-300"
+          }`}
+          onClick={() => setFilterTipoDoc(filterTipoDoc === "FATURA" ? "all" : "FATURA")}
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-          </svg>
-          Upload Mapa Comissões
-        </button>
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-blue-500/10 rounded-xl flex items-center justify-center">
+              <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground font-medium">Comissões Faturas</p>
+              <p className="text-2xl font-bold text-blue-600">{formatCurrency(globalTotals.totalFaturas)} €</p>
+              <p className="text-xs text-muted-foreground">{globalTotals.countFaturas} pagamentos</p>
+            </div>
+          </div>
+          {filterTipoDoc === "FATURA" && (
+            <div className="mt-3 pt-3 border-t border-blue-200 text-xs text-blue-600 font-medium">
+              A mostrar apenas faturas
+            </div>
+          )}
+        </div>
+
+        {/* Total C.I. Card */}
+        <div
+          className={`bg-card rounded-xl p-6 border-2 transition-all cursor-pointer ${
+            filterTipoDoc === "CI"
+              ? "border-orange-500 shadow-lg shadow-orange-500/20"
+              : "border-border hover:border-orange-300"
+          }`}
+          onClick={() => setFilterTipoDoc(filterTipoDoc === "CI" ? "all" : "CI")}
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-orange-500/10 rounded-xl flex items-center justify-center">
+              <svg className="w-7 h-7 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground font-medium">Comissões C.I.</p>
+              <p className="text-2xl font-bold text-orange-600">{formatCurrency(globalTotals.totalCI)} €</p>
+              <p className="text-xs text-muted-foreground">{globalTotals.countCI} pagamentos</p>
+            </div>
+          </div>
+          {filterTipoDoc === "CI" && (
+            <div className="mt-3 pt-3 border-t border-orange-200 text-xs text-orange-600 font-medium">
+              A mostrar apenas C.I.
+            </div>
+          )}
+        </div>
+
+        {/* Upload Card */}
+        <div
+          className="bg-card rounded-xl p-6 border-2 border-dashed border-border hover:border-primary transition-all cursor-pointer"
+          onClick={() => setShowUpload(true)}
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center">
+              <svg className="w-7 h-7 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground font-medium">Upload</p>
+              <p className="text-lg font-bold text-foreground">Novo Mapa</p>
+              <p className="text-xs text-muted-foreground">Carregar PDF de comissões</p>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Filter Info Bar */}
+      {filterTipoDoc !== "all" && (
+        <div className={`flex items-center justify-between px-4 py-3 rounded-xl ${
+          filterTipoDoc === "FATURA" ? "bg-blue-500/10" : "bg-orange-500/10"
+        }`}>
+          <span className={`font-medium ${filterTipoDoc === "FATURA" ? "text-blue-700" : "text-orange-700"}`}>
+            {filterTipoDoc === "FATURA" ? "A mostrar apenas Faturas" : "A mostrar apenas Consumo Interno (C.I.)"}
+          </span>
+          <button
+            onClick={() => setFilterTipoDoc("all")}
+            className={`px-3 py-1 rounded-lg text-sm font-medium ${
+              filterTipoDoc === "FATURA"
+                ? "bg-blue-500/20 text-blue-700 hover:bg-blue-500/30"
+                : "bg-orange-500/20 text-orange-700 hover:bg-orange-500/30"
+            }`}
+          >
+            Mostrar Todos
+          </button>
+        </div>
+      )}
 
       {/* Upload Modal */}
       {showUpload && (
@@ -419,8 +523,30 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
                     </div>
                   </div>
 
+                  {/* Commission Breakdown by Type - Most Important */}
+                  <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-border">
+                    <div className="bg-blue-500/5 rounded-lg p-3 border border-blue-500/20">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="px-2 py-0.5 text-xs font-bold bg-blue-500 text-white rounded">FATURAS</span>
+                      </div>
+                      <p className="text-xl font-bold text-blue-600">{formatCurrency(totalFaturas)} €</p>
+                      <p className="text-xs text-muted-foreground">
+                        {rec.itens.filter(i => { const t = i.tipoDocPdf?.toUpperCase() || "FA"; return t !== "CI" && t !== "C.I." }).length} pagamentos
+                      </p>
+                    </div>
+                    <div className="bg-orange-500/5 rounded-lg p-3 border border-orange-500/20">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="px-2 py-0.5 text-xs font-bold bg-orange-500 text-white rounded">C.I.</span>
+                      </div>
+                      <p className="text-xl font-bold text-orange-600">{formatCurrency(totalCI)} €</p>
+                      <p className="text-xs text-muted-foreground">
+                        {rec.itens.filter(i => { const t = i.tipoDocPdf?.toUpperCase() || "FA"; return t === "CI" || t === "C.I." }).length} pagamentos
+                      </p>
+                    </div>
+                  </div>
+
                   {/* Summary Stats */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-border">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3 pt-3 border-t border-border/50">
                     <div>
                       <p className="text-xs text-muted-foreground">Total Liquidado (PDF)</p>
                       <p className="font-bold text-foreground">{formatCurrency(rec.totalLiquidoPdf)} €</p>
@@ -459,48 +585,83 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
                 {isExpanded && (
                   <div className="border-t border-border">
                     {/* Actions */}
-                    <div className="p-4 bg-secondary/30 flex flex-wrap items-center gap-3">
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={filterProblemas}
-                          onChange={(e) => setFilterProblemas(e.target.checked)}
-                          className="rounded"
-                        />
-                        Mostrar apenas problemas
-                      </label>
+                    <div className="p-4 bg-secondary/30">
+                      {/* Tab-style filter buttons */}
+                      <div className="flex flex-wrap items-center gap-2 mb-3">
+                        <span className="text-sm font-medium text-muted-foreground mr-2">Filtrar:</span>
+                        <button
+                          onClick={() => setFilterTipoDoc("all")}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                            filterTipoDoc === "all"
+                              ? "bg-primary text-white shadow-md"
+                              : "bg-card text-foreground hover:bg-secondary border border-border"
+                          }`}
+                        >
+                          Todos
+                        </button>
+                        <button
+                          onClick={() => setFilterTipoDoc("FATURA")}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
+                            filterTipoDoc === "FATURA"
+                              ? "bg-blue-500 text-white shadow-md"
+                              : "bg-card text-foreground hover:bg-blue-50 border border-border"
+                          }`}
+                        >
+                          <span className={`w-2 h-2 rounded-full ${filterTipoDoc === "FATURA" ? "bg-white" : "bg-blue-500"}`}></span>
+                          Faturas
+                          <span className={`text-xs ${filterTipoDoc === "FATURA" ? "text-blue-100" : "text-muted-foreground"}`}>
+                            ({formatCurrency(totalFaturas)} €)
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => setFilterTipoDoc("CI")}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
+                            filterTipoDoc === "CI"
+                              ? "bg-orange-500 text-white shadow-md"
+                              : "bg-card text-foreground hover:bg-orange-50 border border-border"
+                          }`}
+                        >
+                          <span className={`w-2 h-2 rounded-full ${filterTipoDoc === "CI" ? "bg-white" : "bg-orange-500"}`}></span>
+                          C.I.
+                          <span className={`text-xs ${filterTipoDoc === "CI" ? "text-orange-100" : "text-muted-foreground"}`}>
+                            ({formatCurrency(totalCI)} €)
+                          </span>
+                        </button>
 
-                      <select
-                        value={filterTipoDoc}
-                        onChange={(e) => setFilterTipoDoc(e.target.value as "all" | "FATURA" | "CI")}
-                        className="px-3 py-1.5 text-sm border border-border rounded-lg bg-card text-foreground"
-                      >
-                        <option value="all">Todos os tipos</option>
-                        <option value="FATURA">Apenas Faturas</option>
-                        <option value="CI">Apenas C.I.</option>
-                      </select>
+                        <span className="mx-2 text-border">|</span>
 
-                      {/* Summary by document type */}
-                      <div className="flex items-center gap-4 ml-4 text-sm">
-                        <span className="text-muted-foreground">
-                          Faturas: <span className="font-bold text-primary">{formatCurrency(totalFaturas)} €</span>
-                        </span>
-                        <span className="text-muted-foreground">
-                          C.I.: <span className="font-bold text-orange-500">{formatCurrency(totalCI)} €</span>
-                        </span>
+                        <label className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={filterProblemas}
+                            onChange={(e) => setFilterProblemas(e.target.checked)}
+                            className="rounded border-border"
+                          />
+                          <span className="text-foreground">Apenas problemas</span>
+                        </label>
+
+                        <div className="flex-1" />
+
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDelete(rec.id, rec.mes, rec.ano) }}
+                          className="px-4 py-2 text-sm text-red-600 hover:bg-red-100 rounded-lg transition flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Eliminar
+                        </button>
                       </div>
 
-                      <div className="flex-1" />
-
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete(rec.id, rec.mes, rec.ano) }}
-                        className="px-4 py-2 text-sm text-red-600 hover:bg-red-100 rounded-lg transition flex items-center gap-2"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        Eliminar
-                      </button>
+                      {/* Results count */}
+                      <div className="text-sm text-muted-foreground">
+                        A mostrar {itensToShow.length} de {rec.totalItens} pagamentos
+                        {filterTipoDoc !== "all" && (
+                          <span className={filterTipoDoc === "FATURA" ? "text-blue-600" : "text-orange-600"}>
+                            {" "}({filterTipoDoc === "FATURA" ? "Faturas" : "C.I."})
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Items Table */}
@@ -522,14 +683,16 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
-                          {itensToShow.map((item) => (
+                          {itensToShow.map((item) => {
+                            const isCI = item.tipoDocPdf?.toUpperCase() === "CI" || item.tipoDocPdf?.toUpperCase() === "C.I."
+                            return (
                             <tr
                               key={item.id}
-                              className={
+                              className={`${
                                 item.corresponde || item.resolvido
                                   ? "bg-green-500/5"
                                   : "bg-red-500/5"
-                              }
+                              } ${isCI ? "border-l-4 border-l-orange-400" : ""}`}
                             >
                               <td className="px-4 py-3 text-foreground">{formatDate(item.dataPagamentoPdf)}</td>
                               <td className="px-4 py-3">
@@ -611,7 +774,7 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
                                 )}
                               </td>
                             </tr>
-                          ))}
+                          )})}
                         </tbody>
                       </table>
                     </div>

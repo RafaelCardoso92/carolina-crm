@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
+import { userScopedWhere } from "@/lib/permissions"
 
 const meses = [
   "", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
@@ -8,13 +10,27 @@ const meses = [
 
 export async function GET(request: Request) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const ano = parseInt(searchParams.get("ano") || new Date().getFullYear().toString())
+    const seller = searchParams.get("seller")
+    const userFilter = userScopedWhere(session, seller)
 
-    // Get monthly sales for the selected year
+    // Get user's client IDs for filtering
+    const userClientes = await prisma.cliente.findMany({
+      where: userFilter,
+      select: { id: true }
+    })
+    const clienteIds = userClientes.map(c => c.id)
+
+    // Get monthly sales for the selected year (filtered by user's clients)
     const vendasMensais = await prisma.venda.groupBy({
       by: ["mes"],
-      where: { ano },
+      where: { ano, clienteId: { in: clienteIds } },
       _sum: { total: true },
       orderBy: { mes: "asc" }
     })
@@ -22,21 +38,23 @@ export async function GET(request: Request) {
     // Get monthly sales for previous year for comparison
     const vendasAnoAnterior = await prisma.venda.groupBy({
       by: ["mes"],
-      where: { ano: ano - 1 },
+      where: { ano: ano - 1, clienteId: { in: clienteIds } },
       _sum: { total: true },
       orderBy: { mes: "asc" }
     })
 
-    // Get quarterly totals
-    const vendasTrimestrais = await prisma.$queryRaw<Array<{ trimestre: number; total: number }>>`
-      SELECT
-        CEIL(mes::float / 3)::int as trimestre,
-        SUM(total::numeric) as total
-      FROM "Venda"
-      WHERE ano = ${ano}
-      GROUP BY CEIL(mes::float / 3)::int
-      ORDER BY trimestre
-    `
+    // Get quarterly totals (filtered by user's clients)
+    const vendasTrimestrais = clienteIds.length > 0
+      ? await prisma.$queryRaw<Array<{ trimestre: number; total: number }>>`
+          SELECT
+            CEIL(mes::float / 3)::int as trimestre,
+            SUM(total::numeric) as total
+          FROM "Venda"
+          WHERE ano = ${ano} AND "clienteId" = ANY(${clienteIds})
+          GROUP BY CEIL(mes::float / 3)::int
+          ORDER BY trimestre
+        `
+      : []
 
     // Get objectives for the year
     const objetivosMensais = await prisma.objetivoMensal.findMany({
@@ -89,19 +107,19 @@ export async function GET(request: Request) {
       }
     })
 
-    // Get top clients for the year
+    // Get top clients for the year (filtered by user's clients)
     const topClientes = await prisma.venda.groupBy({
       by: ["clienteId"],
-      where: { ano },
+      where: { ano, clienteId: { in: clienteIds } },
       _sum: { total: true },
       orderBy: { _sum: { total: "desc" } },
       take: 5
     })
 
     // Get client names
-    const clienteIds = topClientes.map(c => c.clienteId)
+    const topClienteIds = topClientes.map(c => c.clienteId)
     const clientes = await prisma.cliente.findMany({
-      where: { id: { in: clienteIds } },
+      where: { id: { in: topClienteIds } },
       select: { id: true, nome: true }
     })
 

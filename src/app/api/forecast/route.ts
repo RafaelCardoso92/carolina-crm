@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { userScopedWhere } from "@/lib/permissions"
 
 export async function GET(request: Request) {
   const session = await auth()
@@ -11,19 +12,31 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const ano = parseInt(searchParams.get("ano") || new Date().getFullYear().toString())
     const mes = parseInt(searchParams.get("mes") || (new Date().getMonth() + 1).toString())
+    const seller = searchParams.get("seller")
+    const userFilter = userScopedWhere(session, seller)
 
-    // Get historical data for the same month in previous years
-    const historicalSales = await prisma.venda.groupBy({
-      by: ["ano"],
-      where: { mes },
-      _sum: { total: true }
+    // Get user's client IDs for filtering vendas
+    const userClientes = await prisma.cliente.findMany({
+      where: userFilter,
+      select: { id: true }
     })
+    const clienteIds = userClientes.map(c => c.id)
 
-    // Get pipeline data (prospects in negotiation/proposal stages)
+    // Get historical data for the same month in previous years (filtered by user's clients)
+    const historicalSales = clienteIds.length > 0
+      ? await prisma.venda.groupBy({
+          by: ["ano"],
+          where: { mes, clienteId: { in: clienteIds } },
+          _sum: { total: true }
+        })
+      : []
+
+    // Get pipeline data (prospects in negotiation/proposal stages, filtered by user)
     const pipeline = await prisma.prospecto.findMany({
       where: {
         ativo: true,
-        estado: { in: ["PROPOSTA", "NEGOCIACAO"] }
+        estado: { in: ["PROPOSTA", "NEGOCIACAO"] },
+        ...userFilter
       },
       include: {
         orcamentos: {
@@ -56,11 +69,13 @@ export async function GET(request: Request) {
       }
     }
 
-    // Get current month sales so far
-    const currentSales = await prisma.venda.aggregate({
-      where: { mes, ano },
-      _sum: { total: true }
-    })
+    // Get current month sales so far (filtered by user's clients)
+    const currentSales = clienteIds.length > 0
+      ? await prisma.venda.aggregate({
+          where: { mes, ano, clienteId: { in: clienteIds } },
+          _sum: { total: true }
+        })
+      : { _sum: { total: null } }
     const currentTotal = Number(currentSales._sum.total) || 0
 
     // Calculate trend based on year-over-year growth
@@ -115,12 +130,14 @@ export async function GET(request: Request) {
       orderBy: { mes: "asc" }
     })
 
-    // Get actual sales for comparison
-    const actualSales = await prisma.venda.groupBy({
-      by: ["mes"],
-      where: { ano },
-      _sum: { total: true }
-    })
+    // Get actual sales for comparison (filtered by user's clients)
+    const actualSales = clienteIds.length > 0
+      ? await prisma.venda.groupBy({
+          by: ["mes"],
+          where: { ano, clienteId: { in: clienteIds } },
+          _sum: { total: true }
+        })
+      : []
 
     const monthlyData = Array.from({ length: 12 }, (_, i) => {
       const month = i + 1
