@@ -40,6 +40,7 @@ interface ItemReconciliacaoComissao {
   diferencaComissao: number | null
   resolvido: boolean
   notaResolucao: string | null
+  editadoManualmente?: boolean
 }
 
 interface ReconciliacaoComissoes {
@@ -107,6 +108,14 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [filterProblemas, setFilterProblemas] = useState(false)
   const [filterTipoDoc, setFilterTipoDoc] = useState<"all" | "FATURA" | "CI">("all")
+  const [editingItem, setEditingItem] = useState<{ reconciliacaoId: string; item: ItemReconciliacaoComissao } | null>(null)
+  const [editValues, setEditValues] = useState({
+    valorLiquidoPdf: 0,
+    valorComissaoPdf: 0,
+    valorSistema: 0,
+    comissaoSistema: 0
+  })
+  const [saving, setSaving] = useState(false)
 
   // Calculate global totals across all reconciliations
   const globalTotals = reconciliacoes.reduce((acc, rec) => {
@@ -263,6 +272,53 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
 
     if (nota !== undefined) {
       handleItemResolve(reconciliacaoId, item.id, true, nota)
+    }
+  }
+
+  function openEditModal(reconciliacaoId: string, item: ItemReconciliacaoComissao) {
+    setEditingItem({ reconciliacaoId, item })
+    setEditValues({
+      valorLiquidoPdf: Number(item.valorLiquidoPdf) || 0,
+      valorComissaoPdf: Number(item.valorComissaoPdf) || 0,
+      valorSistema: Number(item.valorSistema) || 0,
+      comissaoSistema: Number(item.comissaoSistema) || 0
+    })
+  }
+
+  async function handleSaveEdit() {
+    if (!editingItem) return
+
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/reconciliacao-comissoes/${editingItem.reconciliacaoId}/item/${editingItem.item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editValues)
+      })
+
+      if (res.ok) {
+        Swal.fire({
+          icon: "success",
+          title: "Valores atualizados",
+          text: "Os valores foram atualizados com sucesso",
+          confirmButtonColor: "#b8860b",
+          timer: 2000,
+          showConfirmButton: false
+        })
+        setEditingItem(null)
+        refetchReconciliacoes()
+      } else {
+        throw new Error("Erro ao guardar")
+      }
+    } catch (err) {
+      Swal.fire({
+        icon: "error",
+        title: "Erro",
+        text: "Não foi possível guardar as alterações",
+        confirmButtonColor: "#b8860b"
+      })
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -432,6 +488,101 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
                 </button>
                 <button
                   onClick={() => { setShowUpload(false); setSelectedFile(null) }}
+                  className="px-6 py-3 border-2 border-border rounded-xl font-bold text-foreground hover:bg-secondary transition"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editingItem && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-lg p-6">
+            <h3 className="text-xl font-bold text-foreground mb-2">Editar Valores</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Fatura: {editingItem.item.seriePdf}/{editingItem.item.numeroPdf} - Parcela {editingItem.item.parcelaPdf}
+            </p>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-foreground mb-2">Valor PDF</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editValues.valorLiquidoPdf}
+                    onChange={(e) => setEditValues({ ...editValues, valorLiquidoPdf: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-4 py-3 border-2 border-border rounded-xl bg-card text-foreground"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-foreground mb-2">Comissão PDF</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editValues.valorComissaoPdf}
+                    onChange={(e) => setEditValues({ ...editValues, valorComissaoPdf: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-4 py-3 border-2 border-border rounded-xl bg-card text-foreground"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-foreground mb-2">Valor Sistema</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editValues.valorSistema}
+                    onChange={(e) => setEditValues({ ...editValues, valorSistema: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-4 py-3 border-2 border-border rounded-xl bg-card text-foreground"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-foreground mb-2">Comissão Sistema</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editValues.comissaoSistema}
+                    onChange={(e) => setEditValues({ ...editValues, comissaoSistema: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-4 py-3 border-2 border-border rounded-xl bg-card text-foreground"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-secondary/50 rounded-xl p-3 text-sm">
+                <p className="text-muted-foreground">
+                  <strong>Diferença Valor:</strong> {formatCurrency(editValues.valorLiquidoPdf - editValues.valorSistema)} €
+                </p>
+                <p className="text-muted-foreground">
+                  <strong>Diferença Comissão:</strong> {formatCurrency(editValues.valorComissaoPdf - editValues.comissaoSistema)} €
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={saving}
+                  className="flex-1 bg-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-primary-hover transition disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {saving ? (
+                    <>
+                      <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      A guardar...
+                    </>
+                  ) : (
+                    "Guardar Alterações"
+                  )}
+                </button>
+                <button
+                  onClick={() => setEditingItem(null)}
                   className="px-6 py-3 border-2 border-border rounded-xl font-bold text-foreground hover:bg-secondary transition"
                 >
                   Cancelar
@@ -735,43 +886,61 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
                                 {item.comissaoSistema !== null ? `${formatCurrency(item.comissaoSistema)} €` : "-"}
                               </td>
                               <td className="px-4 py-3 text-center">
-                                {item.corresponde ? (
-                                  <span className="text-green-600 flex items-center justify-center gap-1">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    OK
-                                  </span>
-                                ) : item.resolvido ? (
-                                  <span className="text-blue-600 flex items-center justify-center gap-1">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    Resolvido
-                                  </span>
-                                ) : (
-                                  <span className="text-red-600 text-xs font-medium">
-                                    {item.tipoDiscrepancia ? discrepanciaLabels[item.tipoDiscrepancia] : "Problema"}
-                                  </span>
-                                )}
+                                <div className="flex flex-col items-center gap-1">
+                                  {item.corresponde ? (
+                                    <span className="text-green-600 flex items-center justify-center gap-1">
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                      </svg>
+                                      OK
+                                    </span>
+                                  ) : item.resolvido ? (
+                                    <span className="text-blue-600 flex items-center justify-center gap-1">
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                      </svg>
+                                      Resolvido
+                                    </span>
+                                  ) : (
+                                    <span className="text-red-600 text-xs font-medium">
+                                      {item.tipoDiscrepancia ? discrepanciaLabels[item.tipoDiscrepancia] : "Problema"}
+                                    </span>
+                                  )}
+                                  {item.editadoManualmente && (
+                                    <span className="px-2 py-0.5 text-xs font-medium bg-purple-500/10 text-purple-600 rounded-full">
+                                      Editado
+                                    </span>
+                                  )}
+                                </div>
                               </td>
                               <td className="px-4 py-3 text-center">
-                                {!item.corresponde && !item.resolvido && (
+                                <div className="flex items-center justify-center gap-1">
                                   <button
-                                    onClick={() => handleResolveWithNote(rec.id, item)}
-                                    className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition"
+                                    onClick={() => openEditModal(rec.id, item)}
+                                    className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+                                    title="Editar valores"
                                   >
-                                    Resolver
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
                                   </button>
-                                )}
-                                {item.resolvido && item.notaResolucao && (
-                                  <button
-                                    onClick={() => Swal.fire({ title: "Nota de Resolução", text: item.notaResolucao || "", confirmButtonColor: "#b8860b" })}
-                                    className="px-3 py-1 text-xs bg-secondary text-foreground rounded-lg hover:bg-muted transition"
-                                  >
-                                    Ver nota
-                                  </button>
-                                )}
+                                  {!item.corresponde && !item.resolvido && (
+                                    <button
+                                      onClick={() => handleResolveWithNote(rec.id, item)}
+                                      className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition"
+                                    >
+                                      Resolver
+                                    </button>
+                                  )}
+                                  {item.resolvido && item.notaResolucao && (
+                                    <button
+                                      onClick={() => Swal.fire({ title: "Nota de Resolução", text: item.notaResolucao || "", confirmButtonColor: "#b8860b" })}
+                                      className="px-2 py-1 text-xs bg-secondary text-foreground rounded-lg hover:bg-muted transition"
+                                    >
+                                      Nota
+                                    </button>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           )})}

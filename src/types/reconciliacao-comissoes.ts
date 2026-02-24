@@ -73,6 +73,7 @@ export interface ItemReconciliacaoComissaoWithRelations {
   diferencaComissao: number | Prisma.Decimal | null
   resolvido: boolean
   notaResolucao: string | null
+  editadoManualmente: boolean
   createdAt: Date
 }
 
@@ -124,6 +125,10 @@ export interface ComissoesReconciliacaoListResponse {
 export interface UpdateItemComissaoRequest {
   resolvido?: boolean
   notaResolucao?: string
+  valorLiquidoPdf?: number
+  valorComissaoPdf?: number
+  valorSistema?: number
+  comissaoSistema?: number
 }
 
 export interface UpdateComissoesReconciliacaoRequest {

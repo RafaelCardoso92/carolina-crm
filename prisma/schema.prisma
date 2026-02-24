@@ -1254,6 +1254,7 @@ model ItemReconciliacaoComissao {
   notas                 String?
   resolvido             Boolean                  @default(false)
   notaResolucao         String?
+  editadoManualmente    Boolean                  @default(false)
   createdAt             DateTime                 @default(now())
   updatedAt             DateTime                 @updatedAt
 }
