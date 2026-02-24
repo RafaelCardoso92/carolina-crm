@@ -1,5 +1,24 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
+import { userScopedWhere } from "@/lib/permissions"
+
+// Helper to verify acordo belongs to user's client
+async function verifyAcordoOwnership(id: string, session: any) {
+  const userFilter = userScopedWhere(session)
+
+  const acordo = await prisma.acordoParceria.findFirst({
+    where: {
+      id,
+      cliente: userFilter
+    },
+    include: {
+      cliente: { select: { id: true, userId: true } }
+    }
+  })
+
+  return acordo
+}
 
 // PATCH - Update agreement
 export async function PATCH(
@@ -7,7 +26,19 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const { id } = await params
+
+    // Verify acordo belongs to user's client
+    const existing = await verifyAcordoOwnership(id, session)
+    if (!existing) {
+      return NextResponse.json({ error: "Acordo não encontrado" }, { status: 404 })
+    }
+
     const body = await request.json()
 
     const acordo = await prisma.acordoParceria.update({
@@ -31,7 +62,18 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const { id } = await params
+
+    // Verify acordo belongs to user's client
+    const existing = await verifyAcordoOwnership(id, session)
+    if (!existing) {
+      return NextResponse.json({ error: "Acordo não encontrado" }, { status: 404 })
+    }
 
     await prisma.acordoParceria.update({
       where: { id },

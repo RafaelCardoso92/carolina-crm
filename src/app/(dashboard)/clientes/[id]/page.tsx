@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma"
 import { formatCurrency } from "@/lib/utils"
+import { auth } from "@/lib/auth"
+import { userScopedWhere } from "@/lib/permissions"
+import { redirect } from "next/navigation"
 
 export const dynamic = "force-dynamic"
 import Link from "next/link"
@@ -15,9 +18,12 @@ import ClienteBaborella from "@/components/ClienteBaborella"
 import QuickReorder from "./QuickReorder"
 import ClienteActions from "./ClienteActions"
 
-async function getCliente(id: string) {
-  return prisma.cliente.findUnique({
-    where: { id },
+async function getCliente(id: string, session: any) {
+  return prisma.cliente.findFirst({
+    where: {
+      id,
+      ...userScopedWhere(session)
+    },
     include: {
       vendas: {
         orderBy: [{ ano: "desc" }, { mes: "desc" }],
@@ -49,9 +55,15 @@ const meses = [
 ]
 
 export default async function ClienteDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const session = await auth()
+
+  if (!session?.user) {
+    redirect("/login")
+  }
+
   const { id } = await params
   const [cliente, produtos] = await Promise.all([
-    getCliente(id),
+    getCliente(id, session),
     getProdutos()
   ])
 

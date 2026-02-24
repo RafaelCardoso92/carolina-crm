@@ -1,19 +1,31 @@
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
+import { userScopedWhere } from "@/lib/permissions"
+import { redirect } from "next/navigation"
 
 export const dynamic = 'force-dynamic'
 import ClienteForm from "@/components/ClienteForm"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 
-async function getCliente(id: string) {
-  return prisma.cliente.findUnique({
-    where: { id }
+async function getCliente(id: string, session: any) {
+  return prisma.cliente.findFirst({
+    where: {
+      id,
+      ...userScopedWhere(session)
+    }
   })
 }
 
 export default async function EditarClientePage({ params }: { params: Promise<{ id: string }> }) {
+  const session = await auth()
+
+  if (!session?.user) {
+    redirect("/login")
+  }
+
   const { id } = await params
-  const cliente = await getCliente(id)
+  const cliente = await getCliente(id, session)
 
   if (!cliente) {
     notFound()

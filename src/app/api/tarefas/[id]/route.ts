@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
+import { userScopedWhere } from "@/lib/permissions"
 
 // GET - Get single task
 export async function GET(
@@ -7,10 +9,19 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
 
-    const tarefa = await prisma.tarefa.findUnique({
-      where: { id },
+    const { id } = await params
+    const userFilter = userScopedWhere(session)
+
+    const tarefa = await prisma.tarefa.findFirst({
+      where: {
+        id,
+        ...userFilter
+      },
       include: {
         cliente: {
           select: { id: true, nome: true, codigo: true }
@@ -44,7 +55,22 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const { id } = await params
+    const userFilter = userScopedWhere(session)
+
+    // Verify task belongs to user
+    const existing = await prisma.tarefa.findFirst({
+      where: { id, ...userFilter }
+    })
+    if (!existing) {
+      return NextResponse.json({ error: "Tarefa não encontrada" }, { status: 404 })
+    }
+
     const body = await request.json()
     const {
       titulo,
@@ -116,7 +142,21 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const { id } = await params
+    const userFilter = userScopedWhere(session)
+
+    // Verify task belongs to user
+    const existing = await prisma.tarefa.findFirst({
+      where: { id, ...userFilter }
+    })
+    if (!existing) {
+      return NextResponse.json({ error: "Tarefa não encontrada" }, { status: 404 })
+    }
 
     await prisma.tarefa.delete({
       where: { id }
