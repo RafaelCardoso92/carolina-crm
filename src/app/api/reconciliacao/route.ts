@@ -151,7 +151,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const ano = searchParams.get("ano") ? parseInt(searchParams.get("ano")!) : undefined
 
-    const where = ano ? { ano } : {}
+    const where = {
+      userId: session.user.id,
+      ...(ano ? { ano } : {})
+    }
 
     const reconciliacoes = await prisma.reconciliacaoMensal.findMany({
       where,
@@ -388,9 +391,18 @@ export async function POST(request: NextRequest) {
     // Determine initial state
     const estado = itensComProblema > 0 ? "COM_PROBLEMAS" : "APROVADA"
 
+    // Check for existing reconciliation for this user/month/year
+    const existing = await prisma.reconciliacaoMensal.findUnique({
+      where: { userId_mes_ano: { userId: session.user.id, mes, ano } }
+    })
+    if (existing) {
+      await prisma.reconciliacaoMensal.delete({ where: { id: existing.id } })
+    }
+
     // Create reconciliation with items
     const reconciliacao = await prisma.reconciliacaoMensal.create({
       data: {
+        userId: session.user.id,
         mes,
         ano,
         nomeArquivo: file.name,

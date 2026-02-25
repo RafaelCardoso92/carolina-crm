@@ -53,6 +53,8 @@ model User {
   files           UserFile[]
   despesas        Despesa[]
   visitas         Visita[]
+  reconciliacoesMensais   ReconciliacaoMensal[]
+  reconciliacoesComissoes ReconciliacaoComissoes[]
 
   @@index([role])
   @@index([status])
@@ -391,6 +393,8 @@ model ImagemDevolucao {
 
 model ReconciliacaoMensal {
   id                String              @id @default(cuid())
+  userId            String?
+  user              User?               @relation(fields: [userId], references: [id])
   mes               Int
   ano               Int
   nomeArquivo       String
@@ -413,6 +417,8 @@ model ReconciliacaoMensal {
   updatedAt         DateTime            @updatedAt
   itens             ItemReconciliacao[]
 
+  @@unique([userId, mes, ano])
+  @@index([userId])
   @@index([mes, ano])
   @@index([estado])
 }
@@ -1200,6 +1206,8 @@ enum TipoDiscrepanciaComissao {
 
 model ReconciliacaoComissoes {
   id                   String                      @id @default(cuid())
+  userId               String?
+  user                 User?                       @relation(fields: [userId], references: [id])
   mes                  Int
   ano                  Int
   nomeArquivo          String
@@ -1223,7 +1231,8 @@ model ReconciliacaoComissoes {
   updatedAt            DateTime                    @updatedAt
   itens                ItemReconciliacaoComissao[]
 
-  @@unique([mes, ano])
+  @@unique([userId, mes, ano])
+  @@index([userId])
 }
 
 model ItemReconciliacaoComissao {

@@ -166,6 +166,8 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
   }
 
   async function handleUpload() {
+    console.log("[ComissoesUpload] Starting upload, file:", selectedFile?.name, "size:", selectedFile?.size)
+
     if (!selectedFile) {
       Swal.fire({
         icon: "error",
@@ -184,12 +186,15 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
       formData.append("mes", String(uploadMes))
       formData.append("ano", String(uploadAno))
 
+      console.log("[ComissoesUpload] Sending request to /api/reconciliacao-comissoes")
       const res = await fetch("/api/reconciliacao-comissoes", {
         method: "POST",
         body: formData
       })
+      console.log("[ComissoesUpload] Response status:", res.status)
 
       const data = await res.json()
+      console.log("[ComissoesUpload] Response data:", data)
 
       if (!data.success) {
         throw new Error(data.error || "Erro ao processar ficheiro")
