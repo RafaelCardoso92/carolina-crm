@@ -92,7 +92,7 @@ const discrepanciaLabels: Record<TipoDiscrepanciaComissao, string> = {
   COBRANCA_NAO_EXISTE: "Cobrança não registada",
   PARCELA_NAO_EXISTE: "Parcela não encontrada",
   PAGAMENTO_EXTRA_SISTEMA: "Extra no sistema",
-  PAGAMENTO_EXTRA_PDF: "Extra no PDF"
+  PAGAMENTO_EXTRA_PDF: "Não pago este mês"
 }
 
 export default function ComissoesView({ reconciliacoes: initialReconciliacoes, meses, anosDisponiveis }: Props) {
@@ -116,6 +116,27 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
     comissaoSistema: 0
   })
   const [saving, setSaving] = useState(false)
+
+  // Linking state
+  const [linkingItem, setLinkingItem] = useState<{ reconciliacaoId: string; item: ItemReconciliacaoComissao } | null>(null)
+  const [availableCobrancas, setAvailableCobrancas] = useState<Array<{
+    id: string
+    fatura: string | null
+    valor: number
+    valorSemIva: number | null
+    comissao: number | null
+    dataPago: string | Date | null
+    dataEmissao: string | Date | null
+    cliente: { id: string; nome: string; codigo: string | null } | null
+    parcelas: Array<{ id: string; numero: number; valor: number; dataPago: string | Date | null }>
+    linkedToThisRec: boolean
+    linkedToAny: boolean
+    clientMatch: boolean
+    score: number
+  }>>([])
+  const [loadingCobrancas, setLoadingCobrancas] = useState(false)
+  const [linking, setLinking] = useState(false)
+  const [cobrancaSearch, setCobrancaSearch] = useState("")
 
   // Calculate global totals across all reconciliations
   const globalTotals = reconciliacoes.reduce((acc, rec) => {
@@ -327,6 +348,73 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
     }
   }
 
+  // Open link modal and fetch available cobrancas
+  async function openLinkModal(reconciliacaoId: string, item: ItemReconciliacaoComissao) {
+    setLinkingItem({ reconciliacaoId, item })
+    setLoadingCobrancas(true)
+    setAvailableCobrancas([])
+    setCobrancaSearch("")
+
+    try {
+      const res = await fetch(`/api/reconciliacao-comissoes/${reconciliacaoId}/item/${item.id}/link`)
+      const data = await res.json()
+
+      if (data.success) {
+        setAvailableCobrancas(data.cobrancas || [])
+      } else {
+        throw new Error(data.error || "Erro ao carregar cobranças")
+      }
+    } catch (err) {
+      Swal.fire({
+        icon: "error",
+        title: "Erro",
+        text: err instanceof Error ? err.message : "Erro ao carregar cobranças disponíveis",
+        confirmButtonColor: "#b8860b"
+      })
+      setLinkingItem(null)
+    } finally {
+      setLoadingCobrancas(false)
+    }
+  }
+
+  // Link item to a cobranca
+  async function handleLinkCobranca(cobrancaId: string) {
+    if (!linkingItem) return
+
+    setLinking(true)
+    try {
+      const res = await fetch(`/api/reconciliacao-comissoes/${linkingItem.reconciliacaoId}/item/${linkingItem.item.id}/link`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cobrancaId })
+      })
+
+      const data = await res.json()
+
+      if (data.success) {
+        Swal.fire({
+          icon: "success",
+          title: "Cobrança ligada",
+          text: data.message || "A cobrança foi ligada com sucesso e o número da fatura foi atualizado no sistema.",
+          confirmButtonColor: "#b8860b"
+        })
+        setLinkingItem(null)
+        refetchReconciliacoes()
+      } else {
+        throw new Error(data.error || "Erro ao ligar cobrança")
+      }
+    } catch (err) {
+      Swal.fire({
+        icon: "error",
+        title: "Erro",
+        text: err instanceof Error ? err.message : "Não foi possível ligar a cobrança",
+        confirmButtonColor: "#b8860b"
+      })
+    } finally {
+      setLinking(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Summary Cards - Prominent display of Faturas vs C.I. */}
@@ -498,6 +586,258 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
                   Cancelar
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Link Modal */}
+      {linkingItem && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={(e) => { if (e.target === e.currentTarget && !linking) setLinkingItem(null) }}
+        >
+          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xl font-bold text-foreground">Ligar a uma Cobrança</h3>
+              <button
+                onClick={() => !linking && setLinkingItem(null)}
+                className="p-2 hover:bg-secondary rounded-lg transition"
+              >
+                <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="bg-blue-50 dark:bg-blue-950/30 rounded-xl p-4 mb-4">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>Do PDF:</strong> Fatura {linkingItem.item.seriePdf}/{linkingItem.item.numeroPdf} •
+                Cliente {linkingItem.item.codigoClientePdf} •
+                Valor {formatCurrency(linkingItem.item.valorLiquidoPdf)} € •
+                Comissão <span className="font-bold">{formatCurrency(linkingItem.item.valorComissaoPdf)} €</span>
+              </p>
+              <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                Ao ligar, o número da fatura será automaticamente adicionado à cobrança selecionada.
+              </p>
+            </div>
+
+            {loadingCobrancas ? (
+              <div className="flex items-center justify-center py-8">
+                <svg className="w-8 h-8 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span className="ml-3 text-muted-foreground">A carregar cobranças...</span>
+              </div>
+            ) : availableCobrancas.length === 0 ? (
+              <div className="text-center py-8">
+                <svg className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-muted-foreground">Nenhuma cobrança disponível para ligar.</p>
+                <p className="text-sm text-muted-foreground mt-1">Verifique se existem cobranças pagas neste mês.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Search filter */}
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Pesquisar por cliente ou fatura..."
+                    value={cobrancaSearch}
+                    onChange={(e) => setCobrancaSearch(e.target.value)}
+                    className="w-full px-4 py-2 pl-10 border-2 border-border rounded-xl bg-card text-foreground focus:border-primary focus:outline-none"
+                  />
+                  <svg className="w-5 h-5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+
+                {/* Suggestions section - top 3 matches */}
+                {(() => {
+                  const suggestions = availableCobrancas
+                    .filter(c => !c.linkedToThisRec)
+                    .slice(0, 3)
+                  if (suggestions.length === 0) return null
+
+                  return (
+                    <div className="bg-yellow-50 dark:bg-yellow-950/20 rounded-xl p-4 border-2 border-yellow-200 dark:border-yellow-800">
+                      <div className="flex items-center gap-2 mb-3">
+                        <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                        <span className="font-bold text-yellow-800 dark:text-yellow-200">Sugestões (cliente + valores mais próximos)</span>
+                      </div>
+                      <div className="space-y-2">
+                        {suggestions.map((cobranca, idx) => {
+                          const comissaoDiff = Number(linkingItem.item.valorComissaoPdf) - Number(cobranca.comissao || 0)
+                          const valorDiff = Number(linkingItem.item.valorLiquidoPdf) - Number(cobranca.valorSemIva || cobranca.valor)
+                          const isMatch = Math.abs(comissaoDiff) <= 0.15
+                          const isClientMatch = cobranca.clientMatch
+                          return (
+                            <div
+                              key={cobranca.id}
+                              className={`border-2 rounded-xl p-3 cursor-pointer transition-all hover:shadow-md ${
+                                isClientMatch && isMatch
+                                  ? "border-green-500 bg-green-100 dark:bg-green-950/40 hover:border-green-600 ring-2 ring-green-500/30"
+                                  : isClientMatch
+                                    ? "border-blue-400 bg-blue-50 dark:bg-blue-950/30 hover:border-blue-500"
+                                    : isMatch
+                                      ? "border-green-400 bg-green-50/50 dark:bg-green-950/20 hover:border-green-500"
+                                      : "border-yellow-300 bg-white dark:bg-card hover:border-yellow-500"
+                              }`}
+                              onClick={() => !linking && handleLinkCobranca(cobranca.id)}
+                            >
+                              <div className="flex items-center justify-between gap-4">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className={`px-2 py-0.5 text-xs font-bold text-white rounded-full ${
+                                      isClientMatch ? "bg-blue-500" : "bg-yellow-500"
+                                    }`}>#{idx + 1}</span>
+                                    <span className="font-bold text-foreground truncate">{cobranca.cliente?.nome || "Sem nome"}</span>
+                                    <span className={`text-xs ${isClientMatch ? "text-blue-600 font-bold" : "text-muted-foreground"}`}>({cobranca.cliente?.codigo})</span>
+                                    {isClientMatch && (
+                                      <span className="px-2 py-0.5 text-xs font-bold bg-blue-500 text-white rounded-full whitespace-nowrap">
+                                        Mesmo cliente!
+                                      </span>
+                                    )}
+                                    {isMatch && (
+                                      <span className="px-2 py-0.5 text-xs font-bold bg-green-500 text-white rounded-full whitespace-nowrap">
+                                        Comissão confere!
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                                    <span>Fatura: {cobranca.fatura || <em className="text-orange-600">Sem nº</em>}</span>
+                                    <span>Pago: {formatDate(cobranca.dataPago)}</span>
+                                  </div>
+                                </div>
+                                <div className="text-right flex-shrink-0">
+                                  <p className="text-xs text-muted-foreground">
+                                    Valor: {formatCurrency(Number(cobranca.valorSemIva || cobranca.valor))} €
+                                    {Math.abs(valorDiff) > 0.01 && (
+                                      <span className={valorDiff > 0 ? "text-orange-600" : "text-red-600"}> ({valorDiff > 0 ? "+" : ""}{formatCurrency(valorDiff)})</span>
+                                    )}
+                                  </p>
+                                  <p className="font-bold text-green-600">
+                                    Com: {formatCurrency(Number(cobranca.comissao || 0))} €
+                                    {!isMatch && (
+                                      <span className={`text-xs ml-1 ${comissaoDiff > 0 ? "text-orange-600" : "text-red-600"}`}>
+                                        ({comissaoDiff > 0 ? "+" : ""}{formatCurrency(comissaoDiff)})
+                                      </span>
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* All cobrancas list */}
+                <div>
+                  <p className="text-sm font-medium text-foreground mb-3">
+                    Todas as cobranças ({availableCobrancas.filter(c =>
+                      !cobrancaSearch ||
+                      c.cliente?.nome?.toLowerCase().includes(cobrancaSearch.toLowerCase()) ||
+                      c.cliente?.codigo?.toLowerCase().includes(cobrancaSearch.toLowerCase()) ||
+                      c.fatura?.toLowerCase().includes(cobrancaSearch.toLowerCase())
+                    ).length} de {availableCobrancas.length}):
+                  </p>
+                  <div className="space-y-2 max-h-[40vh] overflow-y-auto">
+                    {availableCobrancas
+                      .filter(c =>
+                        !cobrancaSearch ||
+                        c.cliente?.nome?.toLowerCase().includes(cobrancaSearch.toLowerCase()) ||
+                        c.cliente?.codigo?.toLowerCase().includes(cobrancaSearch.toLowerCase()) ||
+                        c.fatura?.toLowerCase().includes(cobrancaSearch.toLowerCase())
+                      )
+                      .map((cobranca) => {
+                        const comissaoDiff = Number(linkingItem.item.valorComissaoPdf) - Number(cobranca.comissao || 0)
+                        const isMatch = Math.abs(comissaoDiff) <= 0.15
+                        const isLinked = cobranca.linkedToThisRec || cobranca.linkedToAny
+                        const isClientMatch = cobranca.clientMatch
+                        return (
+                          <div
+                            key={cobranca.id}
+                            className={`border-2 rounded-xl p-3 transition-all ${
+                              cobranca.linkedToThisRec
+                                ? "border-gray-300 bg-gray-100/50 dark:bg-gray-800/30 opacity-60 cursor-not-allowed"
+                                : isClientMatch && isMatch
+                                  ? "border-green-500 bg-green-100 dark:bg-green-950/40 hover:border-green-600 cursor-pointer hover:shadow-md ring-2 ring-green-500/30"
+                                  : isClientMatch
+                                    ? "border-blue-400 bg-blue-50 dark:bg-blue-950/30 hover:border-blue-500 cursor-pointer hover:shadow-md"
+                                    : isMatch
+                                      ? "border-green-300 bg-green-50/50 dark:bg-green-950/20 hover:border-green-500 cursor-pointer hover:shadow-md"
+                                      : "border-border hover:border-primary cursor-pointer hover:shadow-md"
+                            }`}
+                            onClick={() => !linking && !cobranca.linkedToThisRec && handleLinkCobranca(cobranca.id)}
+                          >
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-foreground truncate">{cobranca.cliente?.nome || "Sem nome"}</span>
+                                  <span className={`text-xs ${isClientMatch ? "text-blue-600 font-bold" : "text-muted-foreground"}`}>({cobranca.cliente?.codigo})</span>
+                                  {cobranca.linkedToThisRec && (
+                                    <span className="px-2 py-0.5 text-xs font-bold bg-gray-500 text-white rounded-full whitespace-nowrap">
+                                      Já ligada nesta reconciliação
+                                    </span>
+                                  )}
+                                  {!cobranca.linkedToThisRec && cobranca.linkedToAny && (
+                                    <span className="px-2 py-0.5 text-xs font-bold bg-purple-500 text-white rounded-full whitespace-nowrap">
+                                      Ligada noutra reconciliação
+                                    </span>
+                                  )}
+                                  {isClientMatch && !isLinked && (
+                                    <span className="px-2 py-0.5 text-xs font-bold bg-blue-500 text-white rounded-full whitespace-nowrap">
+                                      Mesmo cliente!
+                                    </span>
+                                  )}
+                                  {isMatch && !isLinked && (
+                                    <span className="px-2 py-0.5 text-xs font-bold bg-green-500 text-white rounded-full whitespace-nowrap">
+                                      Comissão confere!
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                                  <span>Fatura: {cobranca.fatura || <em className="text-orange-600">Sem número</em>}</span>
+                                  <span>Pago: {formatDate(cobranca.dataPago)}</span>
+                                  {cobranca.parcelas && cobranca.parcelas.length > 0 && (
+                                    <span className="text-purple-600">({cobranca.parcelas.length} parcela{cobranca.parcelas.length > 1 ? "s" : ""} paga)</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                <p className="text-sm text-muted-foreground">Valor: {formatCurrency(Number(cobranca.valorSemIva || cobranca.valor))} €</p>
+                                <p className="text-lg font-bold text-green-600">
+                                  Com: {formatCurrency(Number(cobranca.comissao || 0))} €
+                                </p>
+                                {!isMatch && !cobranca.linkedToThisRec && (
+                                  <p className={`text-xs ${comissaoDiff > 0 ? "text-orange-600" : "text-red-600"}`}>
+                                    Dif: {comissaoDiff > 0 ? "+" : ""}{formatCurrency(comissaoDiff)} €
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end mt-6 pt-4 border-t border-border">
+              <button
+                onClick={() => setLinkingItem(null)}
+                disabled={linking}
+                className="px-6 py-3 border-2 border-border rounded-xl font-bold text-foreground hover:bg-secondary transition disabled:opacity-50"
+              >
+                Fechar
+              </button>
             </div>
           </div>
         </div>
@@ -740,6 +1080,22 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
                 {/* Expanded Content */}
                 {isExpanded && (
                   <div className="border-t border-border">
+                    {/* Info Box explaining the comparison */}
+                    <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border-b border-blue-200 dark:border-blue-800">
+                      <div className="flex items-start gap-3">
+                        <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div className="text-sm">
+                          <p className="font-semibold text-blue-800 dark:text-blue-200">Reconciliação de Comissões - {meses[rec.mes]} {rec.ano}</p>
+                          <p className="text-blue-700 dark:text-blue-300 mt-1">
+                            Comparamos a <span className="font-bold text-blue-600">comissão do PDF</span> com a <span className="font-bold text-green-600">comissão no sistema</span> para cada fatura paga neste mês.
+                            Faturas duplicadas no PDF são agregadas automaticamente.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Actions */}
                     <div className="p-4 bg-secondary/30">
                       {/* Tab-style filter buttons */}
@@ -825,124 +1181,153 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
                       <table className="w-full text-sm">
                         <thead className="bg-secondary">
                           <tr>
-                            <th className="px-4 py-3 text-left font-bold text-foreground">Data</th>
+                            <th className="px-4 py-3 text-left font-bold text-foreground">Data Pag.</th>
                             <th className="px-4 py-3 text-left font-bold text-foreground">Cliente</th>
                             <th className="px-4 py-3 text-left font-bold text-foreground">Fatura</th>
                             <th className="px-4 py-3 text-center font-bold text-foreground">Tipo</th>
-                            <th className="px-4 py-3 text-center font-bold text-foreground">Parcela</th>
-                            <th className="px-4 py-3 text-right font-bold text-foreground">Valor PDF</th>
-                            <th className="px-4 py-3 text-right font-bold text-foreground">Valor Sistema</th>
-                            <th className="px-4 py-3 text-right font-bold text-primary">Comissão PDF</th>
-                            <th className="px-4 py-3 text-right font-bold text-foreground">Comissão Sist.</th>
+                            <th className="px-4 py-3 text-right font-bold text-foreground">Valor Liq.</th>
+                            <th className="px-4 py-3 text-center font-bold text-foreground" colSpan={2}>
+                              <div className="flex items-center justify-center gap-2">
+                                <span className="text-primary">⬅ COMISSÃO</span>
+                                <span className="text-xs text-muted-foreground">(PDF vs Sistema)</span>
+                              </div>
+                            </th>
+                            <th className="px-4 py-3 text-center font-bold text-foreground">Diferença</th>
                             <th className="px-4 py-3 text-center font-bold text-foreground">Estado</th>
                             <th className="px-4 py-3 text-center font-bold text-foreground">Ações</th>
+                          </tr>
+                          <tr className="bg-secondary/50 text-xs">
+                            <th className="px-4 py-1"></th>
+                            <th className="px-4 py-1"></th>
+                            <th className="px-4 py-1"></th>
+                            <th className="px-4 py-1"></th>
+                            <th className="px-4 py-1"></th>
+                            <th className="px-4 py-1 text-right text-blue-600 font-semibold">PDF</th>
+                            <th className="px-4 py-1 text-right text-green-600 font-semibold">Sistema</th>
+                            <th className="px-4 py-1"></th>
+                            <th className="px-4 py-1"></th>
+                            <th className="px-4 py-1"></th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
                           {itensToShow.map((item) => {
                             const isCI = item.tipoDocPdf?.toUpperCase() === "CI" || item.tipoDocPdf?.toUpperCase() === "C.I."
+                            const comissaoDiff = (item.diferencaComissao !== null && item.diferencaComissao !== 0) ? item.diferencaComissao : null
                             return (
                             <tr
                               key={item.id}
                               className={`${
                                 item.corresponde || item.resolvido
-                                  ? "bg-green-500/5"
-                                  : "bg-red-500/5"
-                              } ${isCI ? "border-l-4 border-l-orange-400" : ""}`}
+                                  ? "bg-green-500/5 hover:bg-green-500/10"
+                                  : "bg-red-500/5 hover:bg-red-500/10"
+                              } ${isCI ? "border-l-4 border-l-orange-400" : "border-l-4 border-l-blue-400"} transition`}
                             >
-                              <td className="px-4 py-3 text-foreground">{formatDate(item.dataPagamentoPdf)}</td>
+                              <td className="px-4 py-3 text-foreground text-xs">{formatDate(item.dataPagamentoPdf)}</td>
                               <td className="px-4 py-3">
                                 {item.clienteId ? (
-                                  <Link href={`/clientes/${item.clienteId}`} className="text-primary hover:underline font-medium">
+                                  <Link href={`/clientes/${item.clienteId}`} className="text-primary hover:underline font-medium text-sm">
                                     {item.nomeClientePdf || item.codigoClientePdf}
                                   </Link>
                                 ) : (
-                                  <span className="text-foreground">{item.codigoClientePdf}</span>
+                                  <span className="text-foreground text-sm">{item.codigoClientePdf}</span>
                                 )}
-                                <span className="text-muted-foreground text-xs ml-2">({item.codigoClientePdf})</span>
                               </td>
                               <td className="px-4 py-3 text-foreground">
-                                <span className="text-muted-foreground text-xs">{item.seriePdf}/</span>
-                                {item.numeroPdf}
+                                <span className="font-mono text-sm">{item.seriePdf}/{item.numeroPdf}</span>
                               </td>
                               <td className="px-4 py-3 text-center">
-                                <span className={`px-2 py-1 text-xs font-bold rounded ${
-                                  item.tipoDocPdf?.toUpperCase() === "CI" || item.tipoDocPdf?.toUpperCase() === "C.I."
-                                    ? "bg-orange-500/10 text-orange-600"
-                                    : "bg-blue-500/10 text-blue-600"
-                                }`}>
-                                  {item.tipoDocPdf?.toUpperCase() === "CI" || item.tipoDocPdf?.toUpperCase() === "C.I." ? "C.I." : item.tipoDocPdf || "FA"}
+                                <span className={`px-2 py-1 text-xs font-bold rounded ${isCI ? "bg-orange-500/10 text-orange-600" : "bg-blue-500/10 text-blue-600"}`}>
+                                  {isCI ? "C.I." : item.tipoDocPdf || "FA"}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-right text-sm text-muted-foreground">{formatCurrency(item.valorLiquidoPdf)} €</td>
+                              {/* COMMISSION COMPARISON - MAIN FOCUS */}
+                              <td className="px-4 py-3 text-right">
+                                <span className="font-bold text-blue-600 text-base">{formatCurrency(item.valorComissaoPdf)} €</span>
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <span className={`font-bold text-base ${item.comissaoSistema !== null ? "text-green-600" : "text-muted-foreground"}`}>
+                                  {item.comissaoSistema !== null ? `${formatCurrency(item.comissaoSistema)} €` : "-"}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-center">
-                                <span className="bg-secondary px-2 py-1 rounded font-medium">{item.parcelaPdf}</span>
-                              </td>
-                              <td className="px-4 py-3 text-right font-medium text-foreground">{formatCurrency(item.valorLiquidoPdf)} €</td>
-                              <td className="px-4 py-3 text-right text-foreground">
-                                {item.valorSistema !== null ? `${formatCurrency(item.valorSistema)} €` : "-"}
-                                {item.diferencaValor !== null && item.diferencaValor !== 0 && (
-                                  <span className={`ml-1 text-xs ${item.diferencaValor > 0 ? "text-green-600" : "text-red-600"}`}>
-                                    ({item.diferencaValor > 0 ? "+" : ""}{formatCurrency(item.diferencaValor)})
+                                {comissaoDiff !== null ? (
+                                  <span className={`px-2 py-1 rounded-full text-xs font-bold ${comissaoDiff > 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                                    {comissaoDiff > 0 ? "+" : ""}{formatCurrency(comissaoDiff)} €
                                   </span>
+                                ) : item.corresponde || item.resolvido ? (
+                                  <span className="text-green-600 text-xs">✓ OK</span>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">-</span>
                                 )}
-                              </td>
-                              <td className="px-4 py-3 text-right font-bold text-primary">{formatCurrency(item.valorComissaoPdf)} €</td>
-                              <td className="px-4 py-3 text-right text-foreground">
-                                {item.comissaoSistema !== null ? `${formatCurrency(item.comissaoSistema)} €` : "-"}
                               </td>
                               <td className="px-4 py-3 text-center">
                                 <div className="flex flex-col items-center gap-1">
                                   {item.corresponde ? (
-                                    <span className="text-green-600 flex items-center justify-center gap-1">
-                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 flex items-center gap-1">
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                       </svg>
-                                      OK
+                                      Confere
                                     </span>
                                   ) : item.resolvido ? (
-                                    <span className="text-blue-600 flex items-center justify-center gap-1">
-                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    <span className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 flex items-center gap-1">
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" />
                                       </svg>
                                       Resolvido
                                     </span>
                                   ) : (
-                                    <span className="text-red-600 text-xs font-medium">
+                                    <span className="px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
                                       {item.tipoDiscrepancia ? discrepanciaLabels[item.tipoDiscrepancia] : "Problema"}
-                                    </span>
-                                  )}
-                                  {item.editadoManualmente && (
-                                    <span className="px-2 py-0.5 text-xs font-medium bg-purple-500/10 text-purple-600 rounded-full">
-                                      Editado
                                     </span>
                                   )}
                                 </div>
                               </td>
                               <td className="px-4 py-3 text-center">
                                 <div className="flex items-center justify-center gap-1">
+                                  {/* Link button - shown for items without matching cobranca */}
+                                  {!item.corresponde && !item.resolvido && (item.tipoDiscrepancia === "PAGAMENTO_EXTRA_PDF" || item.tipoDiscrepancia === "COBRANCA_NAO_EXISTE") && (
+                                    <button
+                                      onClick={() => openLinkModal(rec.id, item)}
+                                      className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition flex items-center gap-1 font-medium"
+                                      title="Ligar a uma cobrança existente"
+                                    >
+                                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                      </svg>
+                                      Ligar
+                                    </button>
+                                  )}
                                   <button
                                     onClick={() => openEditModal(rec.id, item)}
-                                    className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+                                    className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition"
                                     title="Editar valores"
                                   >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                     </svg>
                                   </button>
-                                  {!item.corresponde && !item.resolvido && (
+                                  {!item.corresponde && !item.resolvido && item.tipoDiscrepancia !== "PAGAMENTO_EXTRA_PDF" && item.tipoDiscrepancia !== "COBRANCA_NAO_EXISTE" && (
                                     <button
                                       onClick={() => handleResolveWithNote(rec.id, item)}
-                                      className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition"
+                                      className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-lg transition"
+                                      title="Resolver"
                                     >
-                                      Resolver
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                      </svg>
                                     </button>
                                   )}
                                   {item.resolvido && item.notaResolucao && (
                                     <button
                                       onClick={() => Swal.fire({ title: "Nota de Resolução", text: item.notaResolucao || "", confirmButtonColor: "#b8860b" })}
-                                      className="px-2 py-1 text-xs bg-secondary text-foreground rounded-lg hover:bg-muted transition"
+                                      className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition"
+                                      title="Ver nota"
                                     >
-                                      Nota
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                                      </svg>
                                     </button>
                                   )}
                                 </div>
