@@ -271,8 +271,8 @@ export async function POST(
           itensComProblema,
           totalSistema: Math.round(totalSistema * 100) / 100,
           totalComissaoSistema: Math.round(totalComissaoSistema * 100) / 100,
-          diferenca: Math.round((reconciliacao.totalLiquidoPdf - totalSistema) * 100) / 100,
-          diferencaComissao: Math.round((reconciliacao.totalComissaoPdf - totalComissaoSistema) * 100) / 100,
+          diferenca: Math.round((Number(reconciliacao.totalLiquidoPdf) - totalSistema) * 100) / 100,
+          diferencaComissao: Math.round((Number(reconciliacao.totalComissaoPdf) - totalComissaoSistema) * 100) / 100,
           estado
         }
       })
