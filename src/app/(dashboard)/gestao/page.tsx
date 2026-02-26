@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { isAdminOrHigher } from "@/lib/permissions"
 import { formatCurrency } from "@/lib/utils"
+import TeamMoods from "@/components/TeamMoods"
 
 const MESES = [
   "", "Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho",
@@ -278,6 +279,9 @@ export default function GestaoPage() {
           </div>
         </div>
       )}
+
+      {/* Team Moods Section */}
+      <TeamMoods />
 
       {/* View Toggle */}
       <div className="flex items-center gap-2">
