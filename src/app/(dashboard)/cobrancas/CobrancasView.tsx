@@ -1,7 +1,7 @@
 "use client"
 import CobrancaAIRisk from "@/components/CobrancaAIRisk"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, Fragment } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Swal from "sweetalert2"
@@ -1225,9 +1225,8 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
     const isExpanded = expandedRows.has(cobranca.id)
 
     return (
-      <>
+      <Fragment key={cobranca.id}>
         <tr
-          key={cobranca.id}
           className={`hover:bg-table-row-hover transition ${
             cobranca.pago
               ? "bg-green-500/10"
@@ -1484,7 +1483,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
             </tr>
           )
         })}
-      </>
+      </Fragment>
     )
   }
 
