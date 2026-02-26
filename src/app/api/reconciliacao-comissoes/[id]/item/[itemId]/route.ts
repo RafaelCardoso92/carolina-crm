@@ -1,14 +1,31 @@
 import { NextRequest, NextResponse } from "next/server"
+import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getEffectiveUserId } from "@/lib/permissions"
 import type { UpdateItemComissaoRequest } from "@/types/reconciliacao-comissoes"
 
-// PATCH - Update item resolution status or edit values
+// PATCH - Update item resolution status or edit values (ALWAYS user-scoped - personal data)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
   try {
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json({ success: false, error: "Não autorizado" }, { status: 401 })
+    }
+
     const { id, itemId } = await params
+    const userId = getEffectiveUserId(session)
+
+    // Verify reconciliation belongs to user
+    const existingRec = await prisma.reconciliacaoComissoes.findFirst({
+      where: { id, userId }
+    })
+    if (!existingRec) {
+      return NextResponse.json({ success: false, error: "Reconciliação não encontrada" }, { status: 404 })
+    }
+
     const data: UpdateItemComissaoRequest = await request.json()
 
     const updateData: Record<string, unknown> = {}

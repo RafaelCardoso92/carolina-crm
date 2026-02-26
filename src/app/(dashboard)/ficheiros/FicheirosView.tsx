@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { useSearchParams } from "next/navigation"
 import Swal from "sweetalert2"
 
 type UserFile = {
@@ -84,8 +83,6 @@ function TextPreview({ fileId }: { fileId: string }) {
 }
 
 export default function FicheirosView() {
-  const searchParams = useSearchParams()
-  const seller = searchParams.get("seller")
   const [files, setFiles] = useState<UserFile[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
@@ -97,7 +94,7 @@ export default function FicheirosView() {
 
   const fetchFiles = useCallback(async () => {
     try {
-      const res = await fetch("/api/files" + (seller ? "?seller=" + seller : ""))
+      const res = await fetch("/api/files")
       if (res.ok) {
         const data = await res.json()
         setFiles(data.files || [])
@@ -107,7 +104,7 @@ export default function FicheirosView() {
     } finally {
       setLoading(false)
     }
-  }, [seller])
+  }, [])
 
   useEffect(() => { fetchFiles() }, [fetchFiles])
 
@@ -133,6 +130,9 @@ export default function FicheirosView() {
   }
 
   const uploadFiles = async (filesToUpload: File[], overwrite = false) => {
+    // Guard against double uploads
+    if (uploading) return
+
     setUploading(true)
     try {
       const formData = new FormData()
@@ -140,7 +140,7 @@ export default function FicheirosView() {
       if (overwrite) {
         formData.append("overwrite", "true")
       }
-      
+
       const res = await fetch("/api/files", { method: "POST", body: formData })
       const data = await res.json()
       

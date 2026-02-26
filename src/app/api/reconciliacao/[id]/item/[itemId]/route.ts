@@ -1,15 +1,31 @@
 import { NextRequest, NextResponse } from "next/server"
+import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getEffectiveUserId } from "@/lib/permissions"
 import type { UpdateItemRequest } from "@/types/reconciliacao"
 
-// PUT - Update item resolution
+// PUT - Update item resolution (ALWAYS user-scoped - personal data)
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
   try {
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json({ success: false, error: "Não autorizado" }, { status: 401 })
+    }
+
     const { id, itemId } = await params
+    const userId = getEffectiveUserId(session)
     const body: UpdateItemRequest = await request.json()
+
+    // Verify reconciliation belongs to user
+    const reconciliacao = await prisma.reconciliacaoMensal.findFirst({
+      where: { id, userId }
+    })
+    if (!reconciliacao) {
+      return NextResponse.json({ success: false, error: "Reconciliação não encontrada" }, { status: 404 })
+    }
 
     // Check if item exists and belongs to this reconciliation
     const item = await prisma.itemReconciliacao.findFirst({

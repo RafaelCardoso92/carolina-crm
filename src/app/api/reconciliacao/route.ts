@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getEffectiveUserId } from "@/lib/permissions"
 import { writeFile, mkdir } from "fs/promises"
 import { join } from "path"
 import { randomUUID } from "crypto"
@@ -141,7 +142,7 @@ function parsePortugueseNumber(str: string): number {
   return isNaN(num) ? 0 : num
 }
 
-// GET - List reconciliations
+// GET - List reconciliations (ALWAYS user-scoped - personal data)
 export async function GET(request: NextRequest) {
   try {
   const session = await auth()
@@ -150,9 +151,10 @@ export async function GET(request: NextRequest) {
   }
     const { searchParams } = new URL(request.url)
     const ano = searchParams.get("ano") ? parseInt(searchParams.get("ano")!) : undefined
+    const userId = getEffectiveUserId(session)
 
     const where = {
-      userId: session.user.id,
+      userId,
       ...(ano ? { ano } : {})
     }
 
@@ -194,6 +196,7 @@ export async function POST(request: NextRequest) {
   if (!session?.user) {
     return NextResponse.json<ReconciliacaoResponse>({ success: false, error: "Não autorizado" }, { status: 401 })
   }
+    const userId = getEffectiveUserId(session)
     const formData = await request.formData()
     const file = formData.get("file") as File | null
     const mes = parseInt(formData.get("mes") as string)
@@ -393,7 +396,7 @@ export async function POST(request: NextRequest) {
 
     // Check for existing reconciliation for this user/month/year
     const existing = await prisma.reconciliacaoMensal.findUnique({
-      where: { userId_mes_ano: { userId: session.user.id, mes, ano } }
+      where: { userId_mes_ano: { userId, mes, ano } }
     })
     if (existing) {
       await prisma.reconciliacaoMensal.delete({ where: { id: existing.id } })
@@ -402,7 +405,7 @@ export async function POST(request: NextRequest) {
     // Create reconciliation with items
     const reconciliacao = await prisma.reconciliacaoMensal.create({
       data: {
-        userId: session.user.id,
+        userId,
         mes,
         ano,
         nomeArquivo: file.name,

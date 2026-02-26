@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getEffectiveUserId } from "@/lib/permissions"
 import { readFile, unlink } from "fs/promises"
 import { existsSync } from "fs"
 import path from "path"
@@ -21,11 +22,12 @@ export async function GET(
     const { id } = await params
     const { searchParams } = new URL(request.url)
     const preview = searchParams.get("preview") === "true"
+    const userId = getEffectiveUserId(session)
 
     const file = await prisma.userFile.findFirst({
       where: {
         id,
-        userId: session.user.id
+        userId
       }
     })
 
@@ -70,11 +72,12 @@ export async function DELETE(
     }
 
     const { id } = await params
+    const userId = getEffectiveUserId(session)
 
     const file = await prisma.userFile.findFirst({
       where: {
         id,
-        userId: session.user.id
+        userId
       }
     })
 

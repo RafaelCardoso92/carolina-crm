@@ -1,20 +1,11 @@
 "use client"
 
 import { Suspense } from "react"
-import { useSession } from "next-auth/react"
 import FicheirosView from "./FicheirosView"
-import SellerTabs from "@/components/SellerTabs"
 
+// Files are personal storage - each user sees only their own files
 function FicheirosContent() {
-  const { data: session } = useSession()
-  const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "MASTERADMIN"
-
-  return (
-    <>
-      {isAdmin && <SellerTabs />}
-      <FicheirosView />
-    </>
-  )
+  return <FicheirosView />
 }
 
 export default function FicheirosPage() {

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getEffectiveUserId } from "@/lib/permissions"
 
-// GET - Get ALL cobrancas paid in the selected month for linking
+// GET - Get ALL cobrancas paid in the selected month for linking (ALWAYS user-scoped)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; itemId: string }> }
@@ -14,10 +15,11 @@ export async function GET(
 
   try {
     const { id, itemId } = await params
+    const userId = getEffectiveUserId(session)
 
-    // Get the reconciliation to know the month/year
-    const reconciliacao = await prisma.reconciliacaoComissoes.findUnique({
-      where: { id }
+    // Get the reconciliation to know the month/year - verify ownership
+    const reconciliacao = await prisma.reconciliacaoComissoes.findFirst({
+      where: { id, userId }
     })
 
     if (!reconciliacao) {
@@ -165,7 +167,7 @@ export async function GET(
   }
 }
 
-// POST - Link item to a cobranca and update invoice number
+// POST - Link item to a cobranca and update invoice number (ALWAYS user-scoped)
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; itemId: string }> }
@@ -177,10 +179,19 @@ export async function POST(
 
   try {
     const { id, itemId } = await params
+    const userId = getEffectiveUserId(session)
     const { cobrancaId } = await request.json()
 
     if (!cobrancaId) {
       return NextResponse.json({ success: false, error: "ID da cobrança é obrigatório" }, { status: 400 })
+    }
+
+    // Verify reconciliation belongs to user
+    const existingRec = await prisma.reconciliacaoComissoes.findFirst({
+      where: { id, userId }
+    })
+    if (!existingRec) {
+      return NextResponse.json({ success: false, error: "Reconciliação não encontrada" }, { status: 404 })
     }
 
     // Get the item

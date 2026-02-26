@@ -1,21 +1,29 @@
 import { NextRequest, NextResponse } from "next/server"
+import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getEffectiveUserId } from "@/lib/permissions"
 import { unlink } from "fs/promises"
 import { join } from "path"
 import type { ReconciliacaoResponse, UpdateReconciliacaoRequest } from "@/types/reconciliacao"
 
 const UPLOADS_DIR = process.env.UPLOADS_DIR || "/app/uploads"
 
-// GET - Get single reconciliation with full details
+// GET - Get single reconciliation with full details (ALWAYS user-scoped - personal data)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json<ReconciliacaoResponse>({ success: false, error: "Não autorizado" }, { status: 401 })
+    }
 
-    const reconciliacao = await prisma.reconciliacaoMensal.findUnique({
-      where: { id },
+    const { id } = await params
+    const userId = getEffectiveUserId(session)
+
+    const reconciliacao = await prisma.reconciliacaoMensal.findFirst({
+      where: { id, userId },
       include: {
         itens: {
           include: {
@@ -55,18 +63,24 @@ export async function GET(
   }
 }
 
-// PUT - Update reconciliation (status, notes)
+// PUT - Update reconciliation (status, notes) (ALWAYS user-scoped - personal data)
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json<ReconciliacaoResponse>({ success: false, error: "Não autorizado" }, { status: 401 })
+    }
+
     const { id } = await params
+    const userId = getEffectiveUserId(session)
     const body: UpdateReconciliacaoRequest = await request.json()
 
-    // Check if exists
-    const existing = await prisma.reconciliacaoMensal.findUnique({
-      where: { id }
+    // Check if exists and belongs to user
+    const existing = await prisma.reconciliacaoMensal.findFirst({
+      where: { id, userId }
     })
 
     if (!existing) {
@@ -125,17 +139,23 @@ export async function PUT(
   }
 }
 
-// DELETE - Delete reconciliation and cleanup file
+// DELETE - Delete reconciliation and cleanup file (ALWAYS user-scoped - personal data)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json<ReconciliacaoResponse>({ success: false, error: "Não autorizado" }, { status: 401 })
+    }
 
-    // Fetch with file path
-    const reconciliacao = await prisma.reconciliacaoMensal.findUnique({
-      where: { id }
+    const { id } = await params
+    const userId = getEffectiveUserId(session)
+
+    // Fetch with file path, verify ownership
+    const reconciliacao = await prisma.reconciliacaoMensal.findFirst({
+      where: { id, userId }
     })
 
     if (!reconciliacao) {

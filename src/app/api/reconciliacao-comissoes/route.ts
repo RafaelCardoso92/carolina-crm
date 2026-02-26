@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getEffectiveUserId } from "@/lib/permissions"
 import { writeFile, mkdir } from "fs/promises"
 import { join } from "path"
 import { randomUUID } from "crypto"
@@ -123,10 +124,11 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const ano = searchParams.get("ano") ? parseInt(searchParams.get("ano")!) : undefined
-    
+    const userId = getEffectiveUserId(session)
+
     const reconciliacoes = await prisma.reconciliacaoComissoes.findMany({
       where: {
-        userId: session.user.id,
+        userId,
         ...(ano ? { ano } : {})
       },
       include: {
@@ -159,6 +161,7 @@ export async function POST(request: NextRequest) {
     console.log("[ComissoesPDF] Unauthorized - no session")
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
   }
+  const userId = getEffectiveUserId(session)
   console.log("[ComissoesPDF] User authenticated:", session.user.email)
 
   try {
@@ -187,7 +190,7 @@ export async function POST(request: NextRequest) {
     }
     
     const existing = await prisma.reconciliacaoComissoes.findUnique({
-      where: { userId_mes_ano: { userId: session.user.id, mes, ano } }
+      where: { userId_mes_ano: { userId, mes, ano } }
     })
     if (existing) {
       await prisma.reconciliacaoComissoes.delete({ where: { id: existing.id } })
@@ -406,7 +409,7 @@ export async function POST(request: NextRequest) {
     
     const reconciliacao = await prisma.reconciliacaoComissoes.create({
       data: {
-        userId: session.user.id,
+        userId,
         mes, ano,
         nomeArquivo: file.name,
         caminhoArquivo: relativePath,

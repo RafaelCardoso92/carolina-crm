@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { userScopedWhere, getEffectiveUserId } from "@/lib/permissions"
+import { getEffectiveUserId } from "@/lib/permissions"
 import { writeFile, mkdir, unlink } from "fs/promises"
 import { existsSync } from "fs"
 import path from "path"
@@ -16,7 +16,7 @@ async function ensureUploadDir() {
   }
 }
 
-// GET - List files
+// GET - List files (ALWAYS user-scoped - ficheiros is personal storage)
 export async function GET(request: NextRequest) {
   try {
     const session = await auth()
@@ -24,12 +24,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { searchParams } = new URL(request.url)
-    const seller = searchParams.get("seller")
-    const userFilter = userScopedWhere(session, seller)
+    // Files are ALWAYS scoped to the effective user (personal storage)
+    // Even admins only see their own files here
+    const userId = getEffectiveUserId(session)
 
     const files = await prisma.userFile.findMany({
-      where: userFilter,
+      where: { userId },
       orderBy: { createdAt: "desc" }
     })
 
