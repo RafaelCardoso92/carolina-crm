@@ -23,14 +23,41 @@ export async function GET(request: Request) {
         ...(ano && { ano })
       },
       include: {
-        cliente: true,
+        cliente: {
+          select: {
+            id: true,
+            nome: true,
+            codigo: true,
+            saldoCredito: true
+          }
+        },
         objetivoVario: true,
         cobranca: {
           select: {
             id: true,
             valor: true,
-            pago: true
+            pago: true,
+            estado: true
           }
+        },
+        incidencias: {
+          select: {
+            id: true,
+            valor: true,
+            motivo: true,
+            notas: true,
+            dataRegisto: true,
+            aplicadoACredito: true,
+            cobranca: {
+              select: {
+                id: true,
+                fatura: true,
+                valor: true,
+                estado: true
+              }
+            }
+          },
+          orderBy: { dataRegisto: "desc" }
         },
         campanhas: {
           include: {
@@ -187,6 +214,7 @@ export async function POST(request: Request) {
           data: {
             clienteId: data.clienteId,
             vendaId: newVenda.id,
+            fatura: data.cobranca.fatura || null,
             valor: cobrancaValorComIva, // Total + objetivo vario COM IVA
             valorSemIva: cobrancaValorSemIva,
             dataEmissao,
@@ -223,14 +251,41 @@ export async function POST(request: Request) {
       return tx.venda.findUnique({
         where: { id: newVenda.id },
         include: {
-          cliente: true,
+          cliente: {
+            select: {
+              id: true,
+              nome: true,
+              codigo: true,
+              saldoCredito: true
+            }
+          },
           objetivoVario: true,
           cobranca: {
             select: {
               id: true,
               valor: true,
-              pago: true
+              pago: true,
+              estado: true
             }
+          },
+          incidencias: {
+            select: {
+              id: true,
+              valor: true,
+              motivo: true,
+              notas: true,
+              dataRegisto: true,
+              aplicadoACredito: true,
+              cobranca: {
+                select: {
+                  id: true,
+                  fatura: true,
+                  valor: true,
+                  estado: true
+                }
+              }
+            },
+            orderBy: { dataRegisto: "desc" }
           },
           campanhas: {
             include: {

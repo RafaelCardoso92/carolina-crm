@@ -18,7 +18,14 @@ export async function GET(request: Request) {
     const cobrancas = await prisma.cobranca.findMany({
       where: userFilter,
       include: {
-        cliente: true,
+        cliente: {
+          select: {
+            id: true,
+            nome: true,
+            codigo: true,
+            saldoCredito: true
+          }
+        },
         parcelas: {
           orderBy: { numero: "asc" }
         }
@@ -133,7 +140,14 @@ export async function POST(request: Request) {
       return tx.cobranca.findUnique({
         where: { id: newCobranca.id },
         include: {
-          cliente: true,
+          cliente: {
+            select: {
+              id: true,
+              nome: true,
+              codigo: true,
+              saldoCredito: true
+            }
+          },
           parcelas: {
             orderBy: { numero: "asc" }
           }

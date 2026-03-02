@@ -39,6 +39,7 @@ type Cobranca = {
     id: string
     nome: string
     codigo: string | null
+    saldoCredito?: number | null
   }
   parcelas: Parcela[]
 }
@@ -534,8 +535,19 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
     const valorRestante = valorCobranca - currentValorPago
     const today = new Date().toISOString().split("T")[0]
 
+    // Check client credit balance
+    const clienteCredito = cobranca?.cliente?.saldoCredito ? Number(cobranca.cliente.saldoCredito) : 0
+    const hasCredit = clienteCredito > 0
+
     // If partial payment, show action selection menu
     if (isPartialPayment) {
+      const creditButtonHtml = hasCredit ? `
+        <button type="button" id="action-credit" style="width: 100%; padding: 14px 20px; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; border: none; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: transform 0.1s;">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Usar Credito (${formatCurrency(clienteCredito)} € disponivel)
+        </button>
+      ` : ''
+
       const actionResult = await Swal.fire({
         title: "",
         html: `
@@ -549,6 +561,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
             <p style="font-size: 0.875rem; color: #6b7280; margin: 0 0 16px 0;">Ja pago: <strong>${formatCurrency(currentValorPago)} €</strong> de ${formatCurrency(valorCobranca)} €</p>
 
             <div style="display: flex; flex-direction: column; gap: 10px;">
+              ${creditButtonHtml}
               <button type="button" id="action-add" style="width: 100%; padding: 14px 20px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: transform 0.1s;">
                 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
                 Adicionar Pagamento
@@ -574,16 +587,134 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
           const addBtn = document.getElementById('action-add')
           const editBtn = document.getElementById('action-edit')
           const removeBtn = document.getElementById('action-remove')
+          const creditBtn = document.getElementById('action-credit')
 
           addBtn?.addEventListener('click', () => Swal.close({ isConfirmed: true, value: 'add' } as any))
           editBtn?.addEventListener('click', () => Swal.close({ isConfirmed: true, value: 'edit' } as any))
           removeBtn?.addEventListener('click', () => Swal.close({ isConfirmed: true, value: 'remove' } as any))
+          creditBtn?.addEventListener('click', () => Swal.close({ isConfirmed: true, value: 'credit' } as any))
         }
       })
 
       if (!actionResult.isConfirmed) return
 
       const action = (actionResult as any).value
+
+      // Handle credit action
+      if (action === 'credit' && cobranca) {
+        const maxCredit = Math.min(clienteCredito, valorRestante)
+        const creditResult = await Swal.fire({
+          title: "",
+          html: `
+            <div style="text-align: left; padding: 0;">
+              <div style="text-align: center; margin-bottom: 20px;">
+                <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+                  <svg width="32" height="32" fill="none" stroke="white" viewBox="0 0 24 24" style="stroke-width: 2.5;">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                </div>
+                <h2 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin: 0;">Aplicar Credito</h2>
+              </div>
+
+              <div style="background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid #c4b5fd;">
+                <p style="font-size: 0.875rem; color: #5b21b6; margin: 0 0 4px 0; font-weight: 500;">Saldo de credito disponivel</p>
+                <p style="font-size: 1.75rem; font-weight: 700; color: #7c3aed; margin: 0;">${formatCurrency(clienteCredito)} €</p>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                <div style="background: #fef3c7; border-radius: 10px; padding: 12px; border: 1px solid #fde68a;">
+                  <p style="font-size: 0.75rem; color: #92400e; margin: 0 0 2px 0; font-weight: 500;">Ja pago</p>
+                  <p style="font-size: 1.25rem; font-weight: 700; color: #b45309; margin: 0;">${formatCurrency(currentValorPago)} €</p>
+                </div>
+                <div style="background: #fef2f2; border-radius: 10px; padding: 12px; border: 1px solid #fecaca;">
+                  <p style="font-size: 0.75rem; color: #dc2626; margin: 0 0 2px 0; font-weight: 500;">Em falta</p>
+                  <p style="font-size: 1.25rem; font-weight: 700; color: #dc2626; margin: 0;">${formatCurrency(valorRestante)} €</p>
+                </div>
+              </div>
+
+              <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 8px;">
+                  Valor a aplicar do credito
+                </label>
+                <div style="position: relative;">
+                  <input type="number" step="0.01" id="valorCredito" value="${maxCredit.toFixed(2)}" min="0.01" max="${maxCredit.toFixed(2)}"
+                    style="width: 100%; padding: 14px 40px 14px 16px; font-size: 1.125rem; font-weight: 600; border: 2px solid #e5e7eb; border-radius: 12px; outline: none; transition: border-color 0.2s; box-sizing: border-box;"
+                    onfocus="this.style.borderColor='#8b5cf6'" onblur="this.style.borderColor='#e5e7eb'">
+                  <span style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 1.125rem; font-weight: 600; color: #6b7280;">€</span>
+                </div>
+              </div>
+
+              <div style="background: #f0f9ff; border-radius: 8px; padding: 12px; display: flex; align-items: flex-start; gap: 10px;">
+                <svg width="20" height="20" fill="none" stroke="#0284c7" viewBox="0 0 24 24" style="flex-shrink: 0; margin-top: 1px;">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <p style="font-size: 0.8125rem; color: #0369a1; margin: 0; line-height: 1.4;">
+                  O valor sera <strong>deduzido do saldo de credito</strong> do cliente e aplicado a esta cobranca.
+                </p>
+              </div>
+            </div>
+          `,
+          showCancelButton: true,
+          confirmButtonColor: "#8b5cf6",
+          cancelButtonColor: "#6b7280",
+          confirmButtonText: '<span style="display: flex; align-items: center; gap: 8px; padding: 4px 8px;"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Aplicar Credito</span>',
+          cancelButtonText: "Cancelar",
+          width: '400px',
+          padding: '24px',
+          preConfirm: () => {
+            const valorInput = document.getElementById("valorCredito") as HTMLInputElement
+            const valor = parseFloat(valorInput.value)
+            if (!valorInput.value || valor <= 0) {
+              Swal.showValidationMessage("Por favor insira um valor valido")
+              return false
+            }
+            if (valor > clienteCredito) {
+              Swal.showValidationMessage("Valor superior ao credito disponivel")
+              return false
+            }
+            if (valor > valorRestante) {
+              Swal.showValidationMessage("Valor superior ao valor em falta")
+              return false
+            }
+            return { valorCredito: valor }
+          }
+        })
+
+        if (!creditResult.isConfirmed || !creditResult.value) return
+
+        try {
+          const res = await fetch('/api/credito/aplicar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              clienteId: cobranca.cliente.id,
+              cobrancaId: id,
+              valorAplicar: creditResult.value.valorCredito
+            })
+          })
+
+          if (res.ok) {
+            const result = await res.json()
+            Swal.fire({
+              icon: "success",
+              title: "Credito Aplicado",
+              html: `
+                <p>Foram aplicados <strong>${formatCurrency(result.valorAplicado)} €</strong> de credito.</p>
+                <p style="color: #6b7280; font-size: 0.875rem; margin-top: 8px;">Saldo restante: ${formatCurrency(result.saldoRestante)} €</p>
+              `,
+              confirmButtonColor: "#8b5cf6",
+              timer: 3000
+            })
+            router.refresh()
+          } else {
+            const error = await res.json()
+            Swal.fire({ icon: "error", title: "Erro", text: error.error || "Erro ao aplicar credito", confirmButtonColor: "#b8860b" })
+          }
+        } catch {
+          Swal.fire({ icon: "error", title: "Erro", text: "Erro ao aplicar credito", confirmButtonColor: "#b8860b" })
+        }
+        return
+      }
 
       // Handle remove action
       if (action === 'remove') {

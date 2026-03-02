@@ -91,6 +91,7 @@ model Cliente {
   codigoPostal       String?
   latitude           Float?
   longitude          Float?
+  saldoCredito       Decimal?            @default(0) @db.Decimal(10, 2)
   user               User?               @relation(fields: [userId], references: [id])
   amostras           Amostra[]
   insights           ClienteInsight[]
@@ -103,6 +104,8 @@ model Cliente {
   vendas             Venda[]
   acordosParceria    AcordoParceria[]
   visitas            Visita[]
+  incidencias        Incidencia[]
+  movimentosCredito  MovimentoCredito[]
 
   @@index([userId])
   @@index([ativo])
@@ -160,11 +163,13 @@ model Cobranca {
   prazoVencimentoDias  Int?
   dataVencimento       DateTime?
   valorPago            Decimal?  @db.Decimal(10, 2)
+  creditoAplicado      Decimal?  @db.Decimal(10, 2)
   estado               EstadoCobranca @default(PENDENTE)
   tipoDocumento        TipoDocumento  @default(FATURA)
   cliente              Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   venda                Venda?    @relation(fields: [vendaId], references: [id], onDelete: Cascade)
   parcelas             Parcela[]
+  incidencias          Incidencia[]
 
   @@index([clienteId])
   @@index([pago])
@@ -1116,17 +1121,24 @@ enum TipoDespesa {
 }
 
 model Incidencia {
-  id          String   @id @default(cuid())
-  vendaId     String
-  valor       Decimal  @db.Decimal(10, 2)
-  motivo      String
-  notas       String?
-  dataRegisto DateTime @default(now())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  venda       Venda    @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  id               String    @id @default(cuid())
+  vendaId          String
+  clienteId        String
+  cobrancaId       String?
+  valor            Decimal   @db.Decimal(10, 2)
+  motivo           String
+  notas            String?
+  dataRegisto      DateTime  @default(now())
+  aplicadoACredito Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  venda            Venda     @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  cliente          Cliente   @relation(fields: [clienteId], references: [id])
+  cobranca         Cobranca? @relation(fields: [cobrancaId], references: [id])
 
   @@index([vendaId])
+  @@index([clienteId])
+  @@index([cobrancaId])
 }
 
 // ===========================================
@@ -1371,4 +1383,32 @@ model HistoricoIVA {
 
   @@index([dataInicio])
   @@index([dataFim])
+}
+
+// ===========================================
+// Credit Notes (Notas de Crédito) System
+// ===========================================
+
+enum TipoMovimentoCredito {
+  CREDITO_ADICIONADO
+  CREDITO_APLICADO
+  CREDITO_ESTORNADO
+}
+
+model MovimentoCredito {
+  id            String               @id @default(cuid())
+  clienteId     String
+  tipo          TipoMovimentoCredito
+  valor         Decimal              @db.Decimal(10, 2)
+  saldoAnterior Decimal              @db.Decimal(10, 2)
+  saldoNovo     Decimal              @db.Decimal(10, 2)
+  incidenciaId  String?
+  cobrancaId    String?
+  parcelaId     String?
+  descricao     String?
+  createdAt     DateTime             @default(now())
+  cliente       Cliente              @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  @@index([clienteId])
+  @@index([createdAt])
 }

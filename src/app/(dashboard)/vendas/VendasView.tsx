@@ -60,6 +60,7 @@ type Venda = {
     id: string
     nome: string
     codigo: string | null
+    saldoCredito?: number | null
   }
   objetivoVario?: {
     id: string
@@ -81,11 +82,22 @@ type Venda = {
     motivo: string
     notas: string | null
     dataRegisto: string
+    aplicadoACredito?: boolean
+    cobranca?: {
+      id: string
+      fatura: string | null
+      valor: number
+      estado: string
+    } | null
   }[]
   cobranca?: {
     id: string
+    fatura: string | null
     valor: number
+    valorPago: number | null
     pago: boolean
+    estado: string
+    numeroParcelas: number
   } | null
 }
 
@@ -187,6 +199,8 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
   const [criarCobranca, setCriarCobranca] = useState(true)
   const [cobrancaParcelas, setCobrancaParcelas] = useState("1")
   const [cobrancaDataEmissao, setCobrancaDataEmissao] = useState("")
+  const [cobrancaFatura, setCobrancaFatura] = useState("")
+  const [editarCobranca, setEditarCobranca] = useState(false)
 
   // Returns state
   const [showDevolucaoForm, setShowDevolucaoForm] = useState(false)
@@ -199,6 +213,8 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
   const [incidenciaValor, setIncidenciaValor] = useState("")
   const [incidenciaMotivo, setIncidenciaMotivo] = useState("")
   const [incidenciaNotas, setIncidenciaNotas] = useState("")
+  const [incidenciaAplicarCredito, setIncidenciaAplicarCredito] = useState(true)
+  const [incidenciaAjustarCobranca, setIncidenciaAjustarCobranca] = useState(false)
 
   // Calculate total liquido (accounting for returns)
   const totalLiquido = useMemo(() => {
@@ -306,6 +322,8 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
     setCriarCobranca(true)
     setCobrancaParcelas("1")
     setCobrancaDataEmissao("")
+    setCobrancaFatura("")
+    setEditarCobranca(false)
     setEditingId(null)
   }
 
@@ -328,6 +346,17 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
     setSelectedCampanhas(venda.campanhas?.map(c => ({ id: c.campanha.id, quantidade: c.quantidade || 1 })) || [])
     setNotas(venda.notas || "")
     setTipoDocumento(venda.tipoDocumento || "FATURA")
+
+    // Populate cobranca fields if exists
+    if (venda.cobranca) {
+      setCobrancaFatura(venda.cobranca.fatura || "")
+      setCobrancaParcelas(String(venda.cobranca.numeroParcelas || 1))
+      setEditarCobranca(false)
+    } else {
+      setCobrancaFatura("")
+      setCobrancaParcelas("1")
+      setCriarCobranca(true)
+    }
 
     if (venda.itens && venda.itens.length > 0) {
       setUseItems(true)
@@ -405,6 +434,8 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
         precoUnit: parseFloat(item.precoUnit)
       })) : []
 
+    const existingCobranca = editingId ? vendas.find(v => v.id === editingId)?.cobranca : null
+
     const data = {
       clienteId: selectedClienteId,
       tipoDocumento,
@@ -418,11 +449,17 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
       mes,
       ano,
       // Cobranca data - for new vendas or editing vendas without cobranca
-      criarCobranca: criarCobranca && (!editingId || !vendas.find(v => v.id === editingId)?.cobranca),
-      cobranca: criarCobranca && (!editingId || !vendas.find(v => v.id === editingId)?.cobranca) ? {
+      criarCobranca: criarCobranca && !existingCobranca,
+      cobranca: criarCobranca && !existingCobranca ? {
         numeroParcelas: parseInt(cobrancaParcelas) || 1,
         dataEmissao: cobrancaDataEmissao || null,
+        fatura: cobrancaFatura || null,
         incluirObjetivoVario: selectedObjetivoVarioId && objetivoVarioValor ? true : false
+      } : null,
+      // Update existing cobranca when editing
+      atualizarCobranca: editingId && existingCobranca && editarCobranca ? {
+        id: existingCobranca.id,
+        fatura: cobrancaFatura || null
       } : null
     }
 
@@ -544,6 +581,8 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
     setIncidenciaValor("")
     setIncidenciaMotivo("")
     setIncidenciaNotas("")
+    setIncidenciaAplicarCredito(true)
+    setIncidenciaAjustarCobranca(false)
   }
 
   async function handleIncidenciaSubmit(e: React.FormEvent) {
@@ -558,7 +597,10 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
           vendaId: selectedVendaForIncidencia.id,
           valor: parseFloat(incidenciaValor),
           motivo: incidenciaMotivo,
-          notas: incidenciaNotas || null
+          notas: incidenciaNotas || null,
+          cobrancaId: selectedVendaForIncidencia.cobranca?.id || null,
+          aplicadoACredito: incidenciaAplicarCredito,
+          ajustarCobranca: incidenciaAjustarCobranca
         })
       })
 
@@ -566,12 +608,20 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
 
       closeIncidenciaForm()
       refetchVendas()
+
+      const creditoMsg = incidenciaAplicarCredito
+        ? " O valor foi adicionado ao saldo de credito do cliente."
+        : ""
+      const cobrancaMsg = incidenciaAjustarCobranca && selectedVendaForIncidencia.cobranca
+        ? " O valor da cobranca foi ajustado."
+        : ""
+
       Swal.fire({
         icon: "success",
-        title: "Incidencia registada",
-        text: "A incidencia foi registada com sucesso.",
+        title: "Nota de Credito Registada",
+        text: `A nota de credito foi registada com sucesso.${creditoMsg}${cobrancaMsg}`,
         confirmButtonColor: "#b8860b",
-        timer: 2000,
+        timer: 3000,
         showConfirmButton: false
       })
     } catch (error) {
@@ -579,7 +629,7 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
       Swal.fire({
         icon: "error",
         title: "Erro",
-        text: "Nao foi possivel registar a incidencia.",
+        text: "Nao foi possivel registar a nota de credito.",
         confirmButtonColor: "#b8860b"
       })
     }
@@ -1717,29 +1767,69 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
 
                   {/* Show existing cobranca when editing */}
                   {editingId && vendas.find(v => v.id === editingId)?.cobranca ? (
-                    <div className="bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-700 rounded-xl p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-blue-800 dark:text-blue-100">
-                            Cobranca existente
-                          </p>
-                          <p className="text-lg font-bold text-blue-900 dark:text-blue-50">
-                            {formatCurrency(Number(vendas.find(v => v.id === editingId)?.cobranca?.valor || 0))} EUR
-                          </p>
+                    <div className="space-y-4">
+                      <div className="bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-700 rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <p className="text-sm font-medium text-blue-800 dark:text-blue-100">
+                              Cobranca existente
+                            </p>
+                            <p className="text-lg font-bold text-blue-900 dark:text-blue-50">
+                              {formatCurrency(Number(vendas.find(v => v.id === editingId)?.cobranca?.valor || 0))} EUR
+                            </p>
+                            {vendas.find(v => v.id === editingId)?.cobranca?.fatura && (
+                              <p className="text-sm text-blue-600 dark:text-blue-300">
+                                Fatura: {vendas.find(v => v.id === editingId)?.cobranca?.fatura}
+                              </p>
+                            )}
+                          </div>
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                            vendas.find(v => v.id === editingId)?.cobranca?.pago
+                              ? "bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-50"
+                              : "bg-orange-100 text-orange-800 dark:bg-orange-800 dark:text-orange-50"
+                          }`}>
+                            {vendas.find(v => v.id === editingId)?.cobranca?.pago ? "Paga" : "Pendente"}
+                          </span>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                          vendas.find(v => v.id === editingId)?.cobranca?.pago
-                            ? "bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-50"
-                            : "bg-orange-100 text-orange-800 dark:bg-orange-800 dark:text-orange-50"
-                        }`}>
-                          {vendas.find(v => v.id === editingId)?.cobranca?.pago ? "Paga" : "Pendente"}
-                        </span>
+
+                        {/* Edit cobranca toggle */}
+                        <label className="flex items-center gap-3 cursor-pointer py-2 border-t border-blue-200 dark:border-blue-600">
+                          <input
+                            type="checkbox"
+                            checked={editarCobranca}
+                            onChange={(e) => setEditarCobranca(e.target.checked)}
+                            className="w-5 h-5 text-blue-600 rounded border-blue-300 focus:ring-blue-500"
+                          />
+                          <span className="text-sm font-medium text-blue-800 dark:text-blue-100">Editar dados da cobranca</span>
+                        </label>
                       </div>
+
+                      {/* Edit cobranca fields */}
+                      {editarCobranca && (
+                        <div className="grid grid-cols-2 gap-4 p-4 bg-secondary/50 rounded-xl">
+                          <div className="col-span-2">
+                            <label className="block text-sm font-medium text-foreground mb-2">Numero da Fatura</label>
+                            <input
+                              type="text"
+                              value={cobrancaFatura}
+                              onChange={(e) => setCobrancaFatura(e.target.value)}
+                              className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
+                              placeholder="Ex: FT 2024/001"
+                            />
+                          </div>
+                          <div className="col-span-2 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-600 rounded-lg p-3">
+                            <p className="text-sm text-amber-700 dark:text-amber-100">
+                              <span className="font-medium">Nota:</span> O valor da cobranca sera atualizado automaticamente com base no novo total da venda.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
                       <Link
                         href="/cobrancas"
-                        className="mt-3 inline-flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                        className="inline-flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"
                       >
-                        Ver detalhes da cobranca
+                        Ver detalhes completos da cobranca
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
@@ -1773,6 +1863,16 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
 
                       {criarCobranca && (
                         <div className="grid grid-cols-2 gap-4 p-4 bg-secondary/50 rounded-xl">
+                          <div className="col-span-2">
+                            <label className="block text-sm font-medium text-foreground mb-2">Numero da Fatura</label>
+                            <input
+                              type="text"
+                              value={cobrancaFatura}
+                              onChange={(e) => setCobrancaFatura(e.target.value)}
+                              className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
+                              placeholder="Ex: FT 2024/001 (opcional)"
+                            />
+                          </div>
                           <div>
                             <label className="block text-sm font-medium text-foreground mb-2">Parcelas</label>
                             <select
@@ -1820,6 +1920,16 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
 
                       {criarCobranca && (
                         <div className="mt-4 grid grid-cols-2 gap-4 p-4 bg-secondary/50 rounded-xl">
+                          <div className="col-span-2">
+                            <label className="block text-sm font-medium text-foreground mb-2">Numero da Fatura</label>
+                            <input
+                              type="text"
+                              value={cobrancaFatura}
+                              onChange={(e) => setCobrancaFatura(e.target.value)}
+                              className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
+                              placeholder="Ex: FT 2024/001 (opcional)"
+                            />
+                          </div>
                           <div>
                             <label className="block text-sm font-medium text-foreground mb-2">Parcelas</label>
                             <select
@@ -1909,13 +2019,13 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
         </div>
       )}
 
-      {/* Incidencia Form Modal */}
+      {/* Incidencia (Nota de Credito) Form Modal */}
       {showIncidenciaForm && selectedVendaForIncidencia && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-card rounded-xl shadow-xl max-w-md w-full">
-            <div className="p-4 border-b border-border flex items-center justify-between">
+          <div className="bg-card rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-4 border-b border-border flex items-center justify-between sticky top-0 bg-card z-10">
               <div>
-                <h2 className="text-lg font-bold text-foreground">Nova Incidencia</h2>
+                <h2 className="text-lg font-bold text-foreground">Nova Nota de Credito</h2>
                 <p className="text-sm text-muted-foreground">{selectedVendaForIncidencia.cliente.nome}</p>
               </div>
               <button
@@ -1928,6 +2038,42 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
               </button>
             </div>
             <form onSubmit={handleIncidenciaSubmit} className="p-4 space-y-4">
+              {/* Cobranca Info Section */}
+              {selectedVendaForIncidencia.cobranca && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span className="text-sm font-medium text-blue-800 dark:text-blue-200">Cobranca Associada</span>
+                  </div>
+                  <div className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+                    <p>Valor: <span className="font-semibold">{formatCurrency(selectedVendaForIncidencia.cobranca.valor)}</span></p>
+                    <p>Estado: <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
+                      selectedVendaForIncidencia.cobranca.pago
+                        ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                        : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
+                    }`}>
+                      {selectedVendaForIncidencia.cobranca.pago ? "Pago" : "Pendente"}
+                    </span></p>
+                  </div>
+                </div>
+              )}
+
+              {/* Client Credit Balance */}
+              {selectedVendaForIncidencia.cliente.saldoCredito !== undefined && selectedVendaForIncidencia.cliente.saldoCredito !== null && Number(selectedVendaForIncidencia.cliente.saldoCredito) > 0 && (
+                <div className="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-sm font-medium text-green-800 dark:text-green-200">
+                      Saldo de Credito Atual: <span className="font-bold">{formatCurrency(Number(selectedVendaForIncidencia.cliente.saldoCredito))}</span>
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Valor (EUR) *</label>
                 <input
@@ -1941,17 +2087,36 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                   required
                 />
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Motivo *</label>
-                <input
-                  type="text"
+                <select
                   value={incidenciaMotivo}
                   onChange={(e) => setIncidenciaMotivo(e.target.value)}
                   className="w-full px-3 py-2 border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Ex: Produto danificado, Desconto comercial..."
                   required
-                />
+                >
+                  <option value="">Selecione um motivo...</option>
+                  <option value="Produto danificado">Produto danificado</option>
+                  <option value="Erro de faturacao">Erro de faturacao</option>
+                  <option value="Desconto comercial">Desconto comercial</option>
+                  <option value="Quebra de preco">Quebra de preco</option>
+                  <option value="Produto expirado">Produto expirado</option>
+                  <option value="Produto fora de especificacao">Produto fora de especificacao</option>
+                  <option value="Reclamacao de cliente">Reclamacao de cliente</option>
+                  <option value="Acordo comercial">Acordo comercial</option>
+                  <option value="Outro">Outro</option>
+                </select>
+                {incidenciaMotivo === "Outro" && (
+                  <input
+                    type="text"
+                    className="w-full mt-2 px-3 py-2 border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Especifique o motivo..."
+                    onChange={(e) => setIncidenciaMotivo(e.target.value)}
+                  />
+                )}
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Notas (opcional)</label>
                 <textarea
@@ -1959,9 +2124,41 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                   onChange={(e) => setIncidenciaNotas(e.target.value)}
                   className="w-full px-3 py-2 border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="Detalhes adicionais..."
-                  rows={3}
+                  rows={2}
                 />
               </div>
+
+              {/* Credit Options */}
+              <div className="space-y-3 pt-2 border-t border-border">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={incidenciaAplicarCredito}
+                    onChange={(e) => setIncidenciaAplicarCredito(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-foreground">Adicionar ao saldo de credito</span>
+                    <p className="text-xs text-muted-foreground">O valor sera adicionado ao saldo do cliente para uso futuro</p>
+                  </div>
+                </label>
+
+                {selectedVendaForIncidencia.cobranca && !selectedVendaForIncidencia.cobranca.pago && (
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={incidenciaAjustarCobranca}
+                      onChange={(e) => setIncidenciaAjustarCobranca(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-foreground">Ajustar valor da cobranca</span>
+                      <p className="text-xs text-muted-foreground">O valor da cobranca sera reduzido automaticamente</p>
+                    </div>
+                  </label>
+                )}
+              </div>
+
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
@@ -1974,7 +2171,7 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                   type="submit"
                   className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium"
                 >
-                  Registar Incidencia
+                  Registar Nota de Credito
                 </button>
               </div>
             </form>

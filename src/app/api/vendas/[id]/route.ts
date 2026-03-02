@@ -53,21 +53,43 @@ export async function GET(
     const venda = await prisma.venda.findUnique({
       where: { id },
       include: {
-        cliente: true,
+        cliente: {
+          select: {
+            id: true,
+            nome: true,
+            codigo: true,
+            saldoCredito: true
+          }
+        },
         objetivoVario: true,
         cobranca: {
           select: {
             id: true,
+            fatura: true,
             valor: true,
-            pago: true
+            valorPago: true,
+            pago: true,
+            estado: true,
+            numeroParcelas: true
           }
         },
         campanhas: {
           include: { campanha: true }
         },
         itens: {
-          include: { produto: true },
+          include: { produto: true, devolucoes: true },
           orderBy: { createdAt: "asc" }
+        },
+        incidencias: {
+          select: {
+            id: true,
+            valor: true,
+            motivo: true,
+            notas: true,
+            dataRegisto: true,
+            aplicadoACredito: true
+          },
+          orderBy: { dataRegisto: "desc" }
         }
       }
     })
@@ -216,6 +238,7 @@ export async function PUT(
           data: {
             clienteId: data.clienteId,
             vendaId: id,
+            fatura: data.cobranca.fatura || null,
             valor: cobrancaValor,
             valorSemIva: cobrancaValor,
             dataEmissao,
@@ -247,25 +270,81 @@ export async function PUT(
         }
       }
 
+      // Update existing cobrança if requested
+      if (data.atualizarCobranca && existingCobranca) {
+        // Calculate new cobranca value based on new sale total
+        const IVA_RATE = 0.23
+        const objetivoVarioValor = data.objetivoVarioValor ? parseFloat(data.objetivoVarioValor) : 0
+        const cobrancaValorSemIva = total + objetivoVarioValor
+        const cobrancaValorComIva = cobrancaValorSemIva * (1 + IVA_RATE)
+
+        await tx.cobranca.update({
+          where: { id: existingCobranca.id },
+          data: {
+            fatura: data.atualizarCobranca.fatura !== undefined ? data.atualizarCobranca.fatura : existingCobranca.fatura,
+            valor: cobrancaValorComIva,
+            valorSemIva: cobrancaValorSemIva,
+            clienteId: data.clienteId // Update client if changed
+          }
+        })
+
+        // Update parcelas values if they exist
+        const parcelas = await tx.parcela.findMany({
+          where: { cobrancaId: existingCobranca.id }
+        })
+
+        if (parcelas.length > 0) {
+          const valorParcela = cobrancaValorComIva / parcelas.length
+          for (const parcela of parcelas) {
+            await tx.parcela.update({
+              where: { id: parcela.id },
+              data: { valor: valorParcela }
+            })
+          }
+        }
+      }
+
       // Return venda with items, client, objetivoVario, campanhas, and cobranca
       return tx.venda.findUnique({
         where: { id },
         include: {
-          cliente: true,
+          cliente: {
+            select: {
+              id: true,
+              nome: true,
+              codigo: true,
+              saldoCredito: true
+            }
+          },
           objetivoVario: true,
           cobranca: {
             select: {
               id: true,
+              fatura: true,
               valor: true,
-              pago: true
+              valorPago: true,
+              pago: true,
+              estado: true,
+              numeroParcelas: true
             }
           },
           campanhas: {
             include: { campanha: true }
           },
           itens: {
-            include: { produto: true },
+            include: { produto: true, devolucoes: true },
             orderBy: { createdAt: "asc" }
+          },
+          incidencias: {
+            select: {
+              id: true,
+              valor: true,
+              motivo: true,
+              notas: true,
+              dataRegisto: true,
+              aplicadoACredito: true
+            },
+            orderBy: { dataRegisto: "desc" }
           }
         }
       })
