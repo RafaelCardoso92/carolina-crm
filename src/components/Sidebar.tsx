@@ -287,7 +287,7 @@ export default function Sidebar() {
       <div className="flex-shrink-0 px-5 py-5 border-b border-white/10">
         <Link href="/" className="block">
           <span className="text-xl font-bold text-white tracking-tight block">Baborette</span>
-          <p className="text-[10px] text-white/50 font-medium mt-0.5">CRM Professional v2.5</p>
+          <p className="text-[10px] text-white/50 font-medium mt-0.5">CRM Professional v2.6</p>
         </Link>
       </div>
 

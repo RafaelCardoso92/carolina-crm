@@ -11,7 +11,7 @@ import {
   PendingAction,
   toolToOpenAIFunction,
 } from "@/lib/baborella";
-import { buildEnhancedContext } from "@/lib/baborella/context";
+import { buildEnhancedContext, buildGlobalCRMContext } from "@/lib/baborella/context";
 import { getOrCreateSession, addMessageToSession, SessionMessage } from "@/lib/baborella/session";
 import { checkTokens, getTokenBalance } from "@/lib/ai";
 
@@ -54,7 +54,7 @@ async function trackTokenUsage(userId: string, tokensUsed: number): Promise<void
       inputTokens: tokensUsed,
       outputTokens: 0,
       totalTokens: tokensUsed,
-      costEur: tokensUsed * 0.000001,
+      costEur: tokensUsed * 0.000005,
     },
   });
 }
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
       };
     };
 
-    const tokenCheck = await checkTokens(session.user.id, 100);
+    const tokenCheck = await checkTokens(session.user.id, 3000);
     if (!tokenCheck.allowed) {
       return NextResponse.json(
         { error: "Tokens insuficientes", tokensRemaining: tokenCheck.remaining },
@@ -103,17 +103,18 @@ export async function POST(req: NextRequest) {
       context.entityId
     );
 
-    const enhancedContext = await buildEnhancedContext(
-      session.user.id,
-      context.page || "dashboard",
-      context.entityType,
-      context.entityId
-    );
+    const [enhancedContext, globalContext] = await Promise.all([
+      buildEnhancedContext(
+        session.user.id,
+        context.page || "dashboard",
+        context.entityType,
+        context.entityId
+      ),
+      buildGlobalCRMContext(session.user.id),
+    ]);
 
-    const contextualTools = toolRegistry.getContextualTools({
-      page: context.page,
-      entityType: context.entityType,
-    });
+    // Provide ALL tools so Baborella can do everything from any page
+    const contextualTools = toolRegistry.getAll();
 
     let entityContextStr = "";
     if (enhancedContext.entity) {
@@ -131,11 +132,12 @@ export async function POST(req: NextRequest) {
       entityId: enhancedContext.entity?.id,
       entityName: enhancedContext.entity?.name,
       availableTools: contextualTools.map((t) => t.name + ": " + t.descriptionPt),
+      globalContext,
     }) + entityContextStr;
 
     // Build messages from history (excluding last 10 to avoid too much context)
     const historyMessages: ChatMessage[] = persistentSession.messages
-      .slice(-10)
+      .slice(-20)
       .map((m) => ({
         role: m.role as "user" | "assistant",
         content: m.content,
@@ -152,12 +154,12 @@ export async function POST(req: NextRequest) {
     let totalTokensUsed = 0;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5.1",
       messages: messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
       tools: openAITools.length > 0 ? openAITools : undefined,
       tool_choice: openAITools.length > 0 ? "auto" : undefined,
       temperature: 0.7,
-      max_tokens: 1000,
+      max_completion_tokens: 1000,
       parallel_tool_calls: true,
     });
 
@@ -268,10 +270,10 @@ export async function POST(req: NextRequest) {
         ];
 
         const followUp = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: "gpt-5.1",
           messages: followUpMessages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
           temperature: 0.7,
-          max_tokens: 500,
+          max_completion_tokens: 500,
         });
 
         totalTokensUsed += followUp.usage?.total_tokens || 0;

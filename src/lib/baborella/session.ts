@@ -24,25 +24,32 @@ export async function getOrCreateSession(
   entityType?: string,
   entityId?: string
 ): Promise<SessionData> {
+  // Use a single global session per user (not per-page)
   const existing = await prisma.baborellaSession.findFirst({
     where: {
       userId,
-      context,
-      entityType: entityType || null,
-      entityId: entityId || null,
+      context: "global",
       expiresAt: { gt: new Date() },
     },
     orderBy: { updatedAt: "desc" },
   });
 
   if (existing) {
+    // Update metadata to reflect current page context
+    await prisma.baborellaSession.update({
+      where: { id: existing.id },
+      data: {
+        metadata: { currentPage: context, entityType, entityId } as unknown as Prisma.InputJsonValue,
+      },
+    });
+
     const messages = existing.messages as unknown as SessionMessage[] || [];
     return {
       id: existing.id,
       messages,
-      context: existing.context,
-      entityType: existing.entityType || undefined,
-      entityId: existing.entityId || undefined,
+      context: "global",
+      entityType,
+      entityId,
       updatedAt: existing.updatedAt,
     };
   }
@@ -53,9 +60,8 @@ export async function getOrCreateSession(
   const newSession = await prisma.baborellaSession.create({
     data: {
       userId,
-      context,
-      entityType,
-      entityId,
+      context: "global",
+      metadata: { currentPage: context, entityType, entityId } as unknown as Prisma.InputJsonValue,
       messages: [],
       expiresAt,
     },
@@ -64,9 +70,9 @@ export async function getOrCreateSession(
   return {
     id: newSession.id,
     messages: [],
-    context: newSession.context,
-    entityType: newSession.entityType || undefined,
-    entityId: newSession.entityId || undefined,
+    context: "global",
+    entityType,
+    entityId,
     updatedAt: newSession.updatedAt,
   };
 }
@@ -84,7 +90,7 @@ export async function addMessageToSession(
   const messages = (session.messages as unknown as SessionMessage[]) || [];
   messages.push(message);
 
-  const trimmedMessages = messages.slice(-50);
+  const trimmedMessages = messages.slice(-100);
 
   await prisma.baborellaSession.update({
     where: { id: sessionId },

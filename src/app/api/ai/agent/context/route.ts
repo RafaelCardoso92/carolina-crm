@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const page = searchParams.get("page") || "dashboard";
+    const page = searchParams.get("context") || searchParams.get("page") || "dashboard";
     const entityType = searchParams.get("entityType") || undefined;
     const entityId = searchParams.get("entityId") || undefined;
 

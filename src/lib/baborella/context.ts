@@ -241,6 +241,189 @@ export async function buildEnhancedContext(
   };
 }
 
+export async function buildGlobalCRMContext(userId: string): Promise<string> {
+  try {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+    const currentQuarter = Math.ceil(currentMonth / 3);
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const startOfMonth = new Date(currentYear, now.getMonth(), 1);
+    const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+    const prevMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+    const todayStart = new Date(currentYear, now.getMonth(), now.getDate());
+    const todayEnd = new Date(currentYear, now.getMonth(), now.getDate() + 1);
+
+    const [
+      vendasMesAtual,
+      vendasMesAnterior,
+      vendasAnoAtual,
+      objetivoMensal,
+      objetivoTrimestral,
+      objetivoAnual,
+      clientesTotal,
+      clientesAtivos,
+      clientesSemContacto,
+      prospectosAtivos,
+      prospectosPorEstado,
+      tarefasPendentes,
+      tarefasUrgentes,
+      tarefasVencidas,
+      cobrancasPendentes,
+      cobrancasPagasMes,
+      rotasPendentes,
+      visitasHoje,
+    ] = await Promise.all([
+      // Sales this month
+      prisma.venda.aggregate({
+        where: { cliente: { userId }, mes: currentMonth, ano: currentYear },
+        _sum: { total: true },
+        _count: true,
+      }),
+      // Sales previous month
+      prisma.venda.aggregate({
+        where: { cliente: { userId }, mes: prevMonth, ano: prevMonthYear },
+        _sum: { total: true },
+        _count: true,
+      }),
+      // Sales this year
+      prisma.venda.aggregate({
+        where: { cliente: { userId }, ano: currentYear },
+        _sum: { total: true },
+        _count: true,
+      }),
+      // Monthly target
+      prisma.objetivoMensal.findUnique({
+        where: { mes_ano: { mes: currentMonth, ano: currentYear } },
+      }).catch(() => null),
+      // Quarterly target
+      prisma.objetivoTrimestral.findUnique({
+        where: { trimestre_ano: { trimestre: currentQuarter, ano: currentYear } },
+      }).catch(() => null),
+      // Annual target
+      prisma.objetivoAnual.findUnique({
+        where: { ano: currentYear },
+      }).catch(() => null),
+      // Total clients
+      prisma.cliente.count({ where: { userId } }),
+      // Active clients
+      prisma.cliente.count({ where: { userId, ativo: true } }),
+      // Clients without contact 30+ days
+      prisma.cliente.count({
+        where: {
+          userId,
+          ativo: true,
+          OR: [
+            { ultimoContacto: { lt: thirtyDaysAgo } },
+            { ultimoContacto: null },
+          ],
+        },
+      }),
+      // Active prospects
+      prisma.prospecto.count({ where: { userId, ativo: true } }),
+      // Prospects by pipeline stage
+      prisma.prospecto.groupBy({
+        by: ["estado"],
+        where: { userId, ativo: true },
+        _count: true,
+      }),
+      // Pending tasks
+      prisma.tarefa.count({ where: { userId, estado: "PENDENTE" } }),
+      // Urgent tasks
+      prisma.tarefa.count({ where: { userId, estado: "PENDENTE", prioridade: "URGENTE" } }),
+      // Overdue tasks
+      prisma.tarefa.count({
+        where: {
+          userId,
+          estado: { in: ["PENDENTE", "EM_PROGRESSO"] },
+          dataVencimento: { lt: now },
+        },
+      }),
+      // Pending collections
+      prisma.cobranca.aggregate({
+        where: { cliente: { userId }, pago: false },
+        _sum: { valor: true },
+        _count: true,
+      }),
+      // Paid this month
+      prisma.cobranca.aggregate({
+        where: { cliente: { userId }, pago: true, dataPago: { gte: startOfMonth } },
+        _sum: { valor: true },
+      }),
+      // Pending routes
+      prisma.rotaSalva.count({ where: { userId, concluida: false } }).catch(() => 0),
+      // Visits today
+      prisma.visita.count({
+        where: {
+          userId,
+          dataAgendada: { gte: todayStart, lt: todayEnd },
+          estado: "AGENDADA",
+        },
+      }).catch(() => 0),
+    ]);
+
+    const vendasMes = Number(vendasMesAtual._sum.total || 0);
+    const vendasMesAnt = Number(vendasMesAnterior._sum.total || 0);
+    const vendasAno = Number(vendasAnoAtual._sum.total || 0);
+    const objMes = objetivoMensal ? Number(objetivoMensal.objetivo) : null;
+    const objTri = objetivoTrimestral ? Number(objetivoTrimestral.objetivo) : null;
+    const objAno = objetivoAnual ? Number(objetivoAnual.objetivo) : null;
+    const cobPendVal = Number(cobrancasPendentes._sum.valor || 0);
+    const cobPagasMesVal = Number(cobrancasPagasMes._sum.valor || 0);
+
+    const fmt = (n: number) => n.toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const pipelineStr = prospectosPorEstado
+      .map((p) => `${p.estado}: ${p._count}`)
+      .join(", ") || "nenhum";
+
+    const lines: string[] = [
+      `=== CONTEXTO CRM (${now.toLocaleDateString("pt-PT")} ${now.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}) ===`,
+      ``,
+      `VENDAS:`,
+      `- Este mes: ${fmt(vendasMes)} EUR (${vendasMesAtual._count} vendas)${objMes ? ` | Objetivo: ${fmt(objMes)} EUR [${Math.round((vendasMes / objMes) * 100)}%]` : ""}`,
+      `- Mes anterior: ${fmt(vendasMesAnt)} EUR (${vendasMesAnterior._count} vendas)`,
+      `- Este ano: ${fmt(vendasAno)} EUR (${vendasAnoAtual._count} vendas)${objAno ? ` | Objetivo: ${fmt(objAno)} EUR [${Math.round((vendasAno / objAno) * 100)}%]` : ""}`,
+    ];
+
+    if (objTri) {
+      lines.push(`- Objetivo trimestral (Q${currentQuarter}): ${fmt(objTri)} EUR`);
+    }
+
+    lines.push(
+      ``,
+      `CLIENTES:`,
+      `- Total: ${clientesTotal} (${clientesAtivos} ativos)`,
+      `- Sem contacto ha 30+ dias: ${clientesSemContacto}`,
+      ``,
+      `PROSPECTOS: ${prospectosAtivos} ativos`,
+      `- Pipeline: ${pipelineStr}`,
+      ``,
+      `TAREFAS:`,
+      `- Pendentes: ${tarefasPendentes}${tarefasUrgentes > 0 ? ` (${tarefasUrgentes} URGENTES)` : ""}`,
+      `- Vencidas: ${tarefasVencidas}`,
+      ``,
+      `COBRANCAS:`,
+      `- Pendentes: ${fmt(cobPendVal)} EUR (${cobrancasPendentes._count} faturas)`,
+      `- Pagas este mes: ${fmt(cobPagasMesVal)} EUR`,
+    );
+
+    if (rotasPendentes > 0) {
+      lines.push(``, `ROTAS: ${rotasPendentes} pendentes`);
+    }
+
+    if (visitasHoje > 0) {
+      lines.push(``, `VISITAS HOJE: ${visitasHoje}`);
+    }
+
+    return lines.join("\n");
+  } catch (error) {
+    console.error("[Context] Error building global CRM context:", error);
+    return "Contexto CRM indisponivel";
+  }
+}
+
 function getPageTitle(page: string): string {
   const titles: Record<string, string> = {
     dashboard: "Dashboard",
