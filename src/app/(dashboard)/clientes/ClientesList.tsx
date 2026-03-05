@@ -14,6 +14,7 @@ type Cliente = {
   email: string | null
   cidade: string | null
   ativo: boolean
+  saldoCredito: number
   _count: {
     vendas: number
     cobrancas: number
@@ -189,6 +190,7 @@ export default function ClientesList({ clientes, showSeller = false }: { cliente
               {showSeller && <th className="px-4 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Vendedor</th>}
               <th className="px-4 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider hidden xl:table-cell">Contacto</th>
               <th className="px-4 py-4 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">Vendas</th>
+              <th className="px-4 py-4 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Credito</th>
               <th className="px-4 py-4 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">Estado</th>
               <th className="px-4 py-4 text-right text-xs font-bold text-muted-foreground uppercase tracking-wider">Ações</th>
             </tr>
@@ -210,6 +212,15 @@ export default function ClientesList({ clientes, showSeller = false }: { cliente
                   {cliente.telefone || cliente.email || "-"}
                 </td>
                 <td className="px-4 py-4 text-center text-muted-foreground">{cliente._count.vendas}</td>
+                <td className="px-4 py-4 text-center hidden lg:table-cell">
+                  {cliente.saldoCredito > 0 ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                      {cliente.saldoCredito.toFixed(2)} €
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground/40 text-xs">-</span>
+                  )}
+                </td>
                 <td className="px-4 py-4 text-center">
                   <button
                     onClick={() => handleToggleActive(cliente.id, cliente.ativo)}
@@ -299,8 +310,13 @@ export default function ClientesList({ clientes, showSeller = false }: { cliente
             </div>
 
             <div className="flex items-center justify-between pt-2 border-t border-border">
-              <div className="text-sm text-muted-foreground">
-                <span className="font-medium">{cliente._count.vendas}</span> vendas
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <span><span className="font-medium">{cliente._count.vendas}</span> vendas</span>
+                {cliente.saldoCredito > 0 && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                    {cliente.saldoCredito.toFixed(2)} €
+                  </span>
+                )}
               </div>
               <div className="flex gap-1">
                 <Link

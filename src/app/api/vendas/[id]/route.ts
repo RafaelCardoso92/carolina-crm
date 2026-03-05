@@ -70,7 +70,8 @@ export async function GET(
             valorPago: true,
             pago: true,
             estado: true,
-            numeroParcelas: true
+            numeroParcelas: true,
+            creditoAplicado: true
           }
         },
         campanhas: {

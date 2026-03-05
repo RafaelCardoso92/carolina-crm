@@ -35,9 +35,13 @@ export async function GET(request: Request) {
         cobranca: {
           select: {
             id: true,
+            fatura: true,
             valor: true,
+            valorPago: true,
             pago: true,
-            estado: true
+            estado: true,
+            numeroParcelas: true,
+            creditoAplicado: true
           }
         },
         incidencias: {
@@ -263,9 +267,13 @@ export async function POST(request: Request) {
           cobranca: {
             select: {
               id: true,
+              fatura: true,
               valor: true,
+              valorPago: true,
               pago: true,
-              estado: true
+              estado: true,
+              numeroParcelas: true,
+              creditoAplicado: true
             }
           },
           incidencias: {

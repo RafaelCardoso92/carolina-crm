@@ -50,10 +50,17 @@ async function getCobrancasData(ano: number | null, userFilter: { userId?: strin
     valor: serializeDecimal(c.valor),
     valorSemIva: serializeDecimal(c.valorSemIva),
     comissao: serializeDecimal(c.comissao),
+    valorPago: serializeDecimal(c.valorPago),
+    creditoAplicado: serializeDecimal(c.creditoAplicado),
     tipoDocumento: c.tipoDocumento || "FATURA",
+    cliente: {
+      ...c.cliente,
+      saldoCredito: serializeDecimal(c.cliente.saldoCredito)
+    },
     parcelas: c.parcelas.map(p => ({
       ...p,
-      valor: serializeDecimal(p.valor)
+      valor: serializeDecimal(p.valor),
+      valorPago: serializeDecimal(p.valorPago)
     }))
   }))
 

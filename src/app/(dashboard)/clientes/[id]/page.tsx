@@ -74,6 +74,7 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
   const totalVendas = cliente.vendas.reduce((sum, v) => sum + Number(v.total), 0)
   const totalCobrancas = cliente.cobrancas.reduce((sum, c) => sum + Number(c.valor), 0)
   const pendentes = cliente.cobrancas.filter(c => !c.pago).reduce((sum, c) => sum + Number(c.valor), 0)
+  const saldoCredito = Number(cliente.saldoCredito || 0)
 
   return (
     <div>
@@ -101,18 +102,22 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-card rounded-xl shadow-sm p-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8">
+        <div className="bg-card rounded-xl shadow-sm p-4 md:p-6">
           <h3 className="text-sm font-medium text-muted-foreground">Total Vendas</h3>
-          <p className="text-2xl font-bold text-foreground mt-2">{formatCurrency(totalVendas)} EUR</p>
+          <p className="text-xl md:text-2xl font-bold text-foreground mt-2">{formatCurrency(totalVendas)} EUR</p>
         </div>
-        <div className="bg-card rounded-xl shadow-sm p-6">
+        <div className="bg-card rounded-xl shadow-sm p-4 md:p-6">
           <h3 className="text-sm font-medium text-muted-foreground">Total Faturado</h3>
-          <p className="text-2xl font-bold text-foreground mt-2">{formatCurrency(totalCobrancas)} EUR</p>
+          <p className="text-xl md:text-2xl font-bold text-foreground mt-2">{formatCurrency(totalCobrancas)} EUR</p>
         </div>
-        <div className="bg-card rounded-xl shadow-sm p-6">
+        <div className="bg-card rounded-xl shadow-sm p-4 md:p-6">
           <h3 className="text-sm font-medium text-muted-foreground">Por Receber</h3>
-          <p className="text-2xl font-bold text-orange-600 mt-2">{formatCurrency(pendentes)} EUR</p>
+          <p className="text-xl md:text-2xl font-bold text-orange-600 mt-2">{formatCurrency(pendentes)} EUR</p>
+        </div>
+        <div className="bg-card rounded-xl shadow-sm p-4 md:p-6">
+          <h3 className="text-sm font-medium text-muted-foreground">Credito Disponivel</h3>
+          <p className={`text-xl md:text-2xl font-bold mt-2 ${saldoCredito > 0 ? 'text-purple-600 dark:text-purple-400' : 'text-muted-foreground/40'}`}>{formatCurrency(saldoCredito)} EUR</p>
         </div>
       </div>
 

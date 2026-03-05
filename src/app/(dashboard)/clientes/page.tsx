@@ -24,7 +24,7 @@ export default async function ClientesPage({
   const selectedSeller = params.seller || null
   const showSellerTabs = isAdminOrHigher(session.user.role)
 
-  const clientes = await prisma.cliente.findMany({
+  const clientesRaw = await prisma.cliente.findMany({
     where: userScopedWhere(session, selectedSeller),
     orderBy: { nome: "asc" },
     select: {
@@ -41,11 +41,17 @@ export default async function ClientesPage({
           select: { id: true, name: true, email: true }
         }
       } : {}),
+      saldoCredito: true,
       _count: {
         select: { vendas: true, cobrancas: true }
       }
     }
   })
+
+  const clientes = clientesRaw.map(c => ({
+    ...c,
+    saldoCredito: c.saldoCredito ? Number(c.saldoCredito) : 0
+  }))
 
   return (
     <div>

@@ -830,6 +830,8 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       // If action is 'add', continue to add payment flow below
     }
 
+    // Fall through to combined payment form (credit + payment in one dialog)
+
     const result = await Swal.fire({
       title: "",
       html: `
@@ -861,6 +863,39 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
           </div>
           ` : ''}
 
+          <div id="credit-section" style="background: linear-gradient(135deg, ${hasCredit ? '#f5f3ff' : '#f9fafb'} 0%, ${hasCredit ? '#ede9fe' : '#f3f4f6'} 100%); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; border: 1px solid ${hasCredit ? '#c4b5fd' : '#e5e7eb'};">
+            <div style="display: flex; align-items: center; justify-content: space-between;${hasCredit ? ' margin-bottom: 12px;' : ''}">
+              <div>
+                <p style="font-size: 0.8rem; color: ${hasCredit ? '#5b21b6' : '#6b7280'}; margin: 0 0 2px 0; font-weight: 500;">Credito disponivel</p>
+                <p style="font-size: 1.35rem; font-weight: 700; color: ${hasCredit ? '#7c3aed' : '#9ca3af'}; margin: 0;">${formatCurrency(clienteCredito)} €</p>
+              </div>
+              ${hasCredit ? `
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                <span style="font-size: 0.8rem; font-weight: 600; color: #5b21b6;">Usar</span>
+                <div style="position: relative; width: 44px; height: 24px;">
+                  <input type="checkbox" id="usarCredito" style="opacity: 0; width: 0; height: 0; position: absolute;">
+                  <div id="creditToggle" style="width: 44px; height: 24px; background: #d1d5db; border-radius: 12px; transition: background 0.2s; cursor: pointer; position: relative;">
+                    <div id="creditToggleKnob" style="width: 20px; height: 20px; background: white; border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"></div>
+                  </div>
+                </div>
+              </label>
+              ` : ''}
+            </div>
+            ${hasCredit ? `
+            <div id="creditAmountSection" style="display: none;">
+              <label style="display: block; font-size: 0.8rem; font-weight: 600; color: #5b21b6; margin-bottom: 6px;">
+                Valor de credito a aplicar
+              </label>
+              <div style="position: relative;">
+                <input type="number" step="0.01" id="valorCredito" value="${Math.min(clienteCredito, valorRestante).toFixed(2)}" min="0.01" max="${Math.min(clienteCredito, valorRestante).toFixed(2)}"
+                  style="width: 100%; padding: 10px 36px 10px 12px; font-size: 1rem; font-weight: 600; border: 2px solid #c4b5fd; border-radius: 10px; outline: none; transition: border-color 0.2s; box-sizing: border-box; background: white;"
+                  onfocus="this.style.borderColor='#8b5cf6'" onblur="this.style.borderColor='#c4b5fd'">
+                <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 1rem; font-weight: 600; color: #6b7280;">€</span>
+              </div>
+            </div>
+            ` : ''}
+          </div>
+
           <div style="margin-bottom: 16px;">
             <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 8px;">
               ${isPartialPayment ? 'Valor a adicionar' : 'Valor efetivamente pago'}
@@ -871,6 +906,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                 onfocus="this.style.borderColor='#10b981'" onblur="this.style.borderColor='#e5e7eb'">
               <span style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 1.125rem; font-weight: 600; color: #6b7280;">€</span>
             </div>
+            <p id="valorPagoHint" style="font-size: 0.75rem; color: #6b7280; margin: 6px 0 0 0; display: none;"></p>
           </div>
 
           <div style="margin-bottom: 20px;">
@@ -889,7 +925,9 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
             <p style="font-size: 0.8125rem; color: #0369a1; margin: 0; line-height: 1.4;">
               ${isPartialPayment
                 ? 'Este valor sera <strong>adicionado</strong> ao pagamento ja efetuado.'
-                : 'Se o valor pago for inferior ao total, sera marcado como <strong>pagamento parcial</strong>.'}
+                : hasCredit
+                  ? 'Pode usar o <strong>credito disponivel</strong> e/ou registar pagamento. Se o total for inferior ao valor em falta, sera marcado como <strong>pagamento parcial</strong>.'
+                  : 'Se o valor pago for inferior ao total, sera marcado como <strong>pagamento parcial</strong>.'}
             </p>
           </div>
         </div>
@@ -899,12 +937,81 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       cancelButtonColor: "#6b7280",
       confirmButtonText: '<span style="display: flex; align-items: center; gap: 8px; padding: 4px 8px;"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Confirmar</span>',
       cancelButtonText: "Cancelar",
-      width: '400px',
+      width: '420px',
       padding: '24px',
+      didOpen: () => {
+        const toggle = document.getElementById('creditToggle')
+        const toggleKnob = document.getElementById('creditToggleKnob')
+        const checkbox = document.getElementById('usarCredito') as HTMLInputElement
+        const amountSection = document.getElementById('creditAmountSection')
+        const valorPagoInput = document.getElementById('valorPago') as HTMLInputElement
+        const valorCreditoInput = document.getElementById('valorCredito') as HTMLInputElement
+        const hint = document.getElementById('valorPagoHint')
+
+        if (toggle && toggleKnob && checkbox && amountSection) {
+          const fullAmount = valorRestante
+
+          const updatePaymentValue = () => {
+            if (checkbox.checked && valorCreditoInput) {
+              const creditVal = parseFloat(valorCreditoInput.value) || 0
+              const remaining = Math.max(0, fullAmount - creditVal)
+              valorPagoInput.value = remaining.toFixed(2)
+              if (hint) {
+                if (creditVal > 0) {
+                  hint.style.display = 'block'
+                  hint.textContent = 'Valor ajustado: ' + creditVal.toFixed(2) + ' € credito + ' + remaining.toFixed(2) + ' € pagamento'
+                } else {
+                  hint.style.display = 'none'
+                }
+              }
+            } else {
+              valorPagoInput.value = fullAmount.toFixed(2)
+              if (hint) hint.style.display = 'none'
+            }
+          }
+
+          toggle.addEventListener('click', () => {
+            checkbox.checked = !checkbox.checked
+            if (checkbox.checked) {
+              toggle.style.background = '#8b5cf6'
+              toggleKnob.style.transform = 'translateX(20px)'
+              amountSection.style.display = 'block'
+            } else {
+              toggle.style.background = '#d1d5db'
+              toggleKnob.style.transform = 'translateX(0)'
+              amountSection.style.display = 'none'
+            }
+            updatePaymentValue()
+          })
+
+          if (valorCreditoInput) {
+            valorCreditoInput.addEventListener('input', updatePaymentValue)
+          }
+        }
+      },
       preConfirm: () => {
         const valorInput = document.getElementById("valorPago") as HTMLInputElement
         const dateInput = document.getElementById("dataPago") as HTMLInputElement
-        if (!valorInput.value || parseFloat(valorInput.value) <= 0) {
+        const creditCheckbox = document.getElementById("usarCredito") as HTMLInputElement
+        const creditInput = document.getElementById("valorCredito") as HTMLInputElement
+        const useCredit = creditCheckbox?.checked && creditInput
+        const creditAmount = useCredit ? parseFloat(creditInput.value) : 0
+
+        if (useCredit && creditAmount > 0) {
+          if (creditAmount > clienteCredito) {
+            Swal.showValidationMessage("Valor de credito superior ao disponivel")
+            return false
+          }
+          if (creditAmount > valorRestante) {
+            Swal.showValidationMessage("Valor de credito superior ao valor em falta")
+            return false
+          }
+        }
+
+        const paymentAmount = parseFloat(valorInput.value) || 0
+        const totalWithCredit = creditAmount + paymentAmount
+
+        if (totalWithCredit <= 0) {
           Swal.showValidationMessage("Por favor insira um valor valido")
           return false
         }
@@ -912,7 +1019,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
           Swal.showValidationMessage("Por favor selecione uma data")
           return false
         }
-        return { valorPago: parseFloat(valorInput.value), dataPago: dateInput.value }
+        return { valorPago: paymentAmount, dataPago: dateInput.value, creditoAplicar: creditAmount }
       }
     })
 
@@ -920,7 +1027,33 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
 
     const novoPagamento = result.value.valorPago
     const dataPago = result.value.dataPago
-    const totalPago = isPartialPayment ? currentValorPago + novoPagamento : novoPagamento
+    const creditoAplicar = result.value.creditoAplicar || 0
+
+    // Apply credit first if requested
+    if (creditoAplicar > 0 && cobranca) {
+      try {
+        const creditRes = await fetch('/api/credito/aplicar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clienteId: cobranca.cliente.id,
+            cobrancaId: id,
+            valorAplicar: creditoAplicar
+          })
+        })
+        if (!creditRes.ok) {
+          const error = await creditRes.json()
+          Swal.fire({ icon: "error", title: "Erro", text: error.error || "Erro ao aplicar credito", confirmButtonColor: "#b8860b" })
+          return
+        }
+      } catch {
+        Swal.fire({ icon: "error", title: "Erro", text: "Erro ao aplicar credito", confirmButtonColor: "#b8860b" })
+        return
+      }
+    }
+
+    // Register payment (credit amount is already tracked via /api/credito/aplicar)
+    const totalPago = (isPartialPayment ? currentValorPago : 0) + novoPagamento + creditoAplicar
     const isParcial = totalPago < valorCobranca
     const estado = isParcial ? "PARCIAL" : "PAGO"
 
@@ -930,7 +1063,22 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pago: !isParcial, valorPago: totalPago, dataPago, estado })
       })
-      if (res.ok) router.refresh()
+      if (res.ok) {
+        if (creditoAplicar > 0) {
+          Swal.fire({
+            icon: "success",
+            title: "Pagamento Registado",
+            html: `
+              <p>Credito aplicado: <strong>${formatCurrency(creditoAplicar)} €</strong></p>
+              ${novoPagamento > 0 ? `<p>Pagamento: <strong>${formatCurrency(novoPagamento)} €</strong></p>` : ''}
+              <p style="color: #6b7280; font-size: 0.875rem; margin-top: 8px;">Total: ${formatCurrency(totalPago)} € de ${formatCurrency(valorCobranca)} €</p>
+            `,
+            confirmButtonColor: "#10b981",
+            timer: 3000
+          })
+        }
+        router.refresh()
+      }
     } catch {
       Swal.fire({ icon: "error", title: "Erro", text: "Erro ao atualizar cobranca", confirmButtonColor: "#b8860b" })
     }

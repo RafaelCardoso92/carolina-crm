@@ -98,6 +98,7 @@ type Venda = {
     pago: boolean
     estado: string
     numeroParcelas: number
+    creditoAplicado: number | null
   } | null
 }
 
@@ -105,6 +106,7 @@ type Cliente = {
   id: string
   nome: string
   codigo: string | null
+  saldoCredito?: number | null
 }
 
 type ProdutoItem = {
@@ -456,8 +458,8 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
         fatura: cobrancaFatura || null,
         incluirObjetivoVario: selectedObjetivoVarioId && objetivoVarioValor ? true : false
       } : null,
-      // Update existing cobranca when editing
-      atualizarCobranca: editingId && existingCobranca && editarCobranca ? {
+      // Update existing cobranca when editing (always send fatura update)
+      atualizarCobranca: editingId && existingCobranca ? {
         id: existingCobranca.id,
         fatura: cobrancaFatura || null
       } : null
@@ -925,6 +927,11 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                         {hasDevolucoes && (
                           <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-warning/10 text-warning rounded">
                             {venda.devolucoes!.length} dev.
+                          </span>
+                        )}
+                        {Number(venda.cliente.saldoCredito || 0) > 0 && (
+                          <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded">
+                            {formatCurrency(Number(venda.cliente.saldoCredito))}€ crédito
                           </span>
                         )}
                         {venda.tipoDocumento === "CONSUMO_INTERNO" && (
@@ -1435,6 +1442,23 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                 </div>
                 {/* Hidden required input for form validation */}
                 <input type="hidden" required value={selectedClienteId} />
+
+                {/* Credit balance display */}
+                {selectedClienteId && (() => {
+                  const selectedCliente = clientes.find(c => c.id === selectedClienteId)
+                  const credito = Number(selectedCliente?.saldoCredito || 0)
+                  if (credito <= 0) return null
+                  return (
+                    <div className="mt-3 flex items-center gap-2 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-700 rounded-lg px-3 py-2">
+                      <svg className="w-4 h-4 text-purple-600 dark:text-purple-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      </svg>
+                      <span className="text-sm font-semibold text-purple-700 dark:text-purple-300">
+                        Credito disponivel: {formatCurrency(credito)} EUR
+                      </span>
+                    </div>
+                  )
+                })()}
               </div>
 
               {/* Document Type Selection */}
@@ -1777,9 +1801,14 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                             <p className="text-lg font-bold text-blue-900 dark:text-blue-50">
                               {formatCurrency(Number(vendas.find(v => v.id === editingId)?.cobranca?.valor || 0))} EUR
                             </p>
-                            {vendas.find(v => v.id === editingId)?.cobranca?.fatura && (
+                            {Number(vendas.find(v => v.id === editingId)?.cobranca?.creditoAplicado || 0) > 0 && (
+                              <p className="text-sm text-purple-600 dark:text-purple-400 font-medium">
+                                Credito aplicado: {formatCurrency(Number(vendas.find(v => v.id === editingId)?.cobranca?.creditoAplicado || 0))} EUR
+                              </p>
+                            )}
+                            {Number(vendas.find(v => v.id === editingId)?.cobranca?.valorPago || 0) > 0 && !vendas.find(v => v.id === editingId)?.cobranca?.pago && (
                               <p className="text-sm text-blue-600 dark:text-blue-300">
-                                Fatura: {vendas.find(v => v.id === editingId)?.cobranca?.fatura}
+                                Pago: {formatCurrency(Number(vendas.find(v => v.id === editingId)?.cobranca?.valorPago || 0))} EUR | Em falta: {formatCurrency(Number(vendas.find(v => v.id === editingId)?.cobranca?.valor || 0) - Number(vendas.find(v => v.id === editingId)?.cobranca?.valorPago || 0))} EUR
                               </p>
                             )}
                           </div>
@@ -1788,42 +1817,152 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                               ? "bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-50"
                               : "bg-orange-100 text-orange-800 dark:bg-orange-800 dark:text-orange-50"
                           }`}>
-                            {vendas.find(v => v.id === editingId)?.cobranca?.pago ? "Paga" : "Pendente"}
+                            {vendas.find(v => v.id === editingId)?.cobranca?.pago ? "Paga" : vendas.find(v => v.id === editingId)?.cobranca?.estado === "PARCIAL" ? "Parcial" : "Pendente"}
                           </span>
                         </div>
 
-                        {/* Edit cobranca toggle */}
-                        <label className="flex items-center gap-3 cursor-pointer py-2 border-t border-blue-200 dark:border-blue-600">
-                          <input
-                            type="checkbox"
-                            checked={editarCobranca}
-                            onChange={(e) => setEditarCobranca(e.target.checked)}
-                            className="w-5 h-5 text-blue-600 rounded border-blue-300 focus:ring-blue-500"
-                          />
-                          <span className="text-sm font-medium text-blue-800 dark:text-blue-100">Editar dados da cobranca</span>
-                        </label>
-                      </div>
+                        {/* Apply credit button */}
+                        {Number(clientes.find(c => c.id === selectedClienteId)?.saldoCredito || 0) > 0 && !vendas.find(v => v.id === editingId)?.cobranca?.pago && (Number(vendas.find(v => v.id === editingId)?.cobranca?.valor || 0) - Number(vendas.find(v => v.id === editingId)?.cobranca?.valorPago || 0)) > 0 && (
+                          <div className="pt-3 border-t border-blue-200 dark:border-blue-600 mb-3">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const currentCobranca = vendas.find(v => v.id === editingId)?.cobranca
+                                const cValor = Number(currentCobranca?.valor || 0)
+                                const cValorPago = Number(currentCobranca?.valorPago || 0)
+                                const cRestante = cValor - cValorPago
+                                const cClienteCredito = Number(clientes.find(c => c.id === selectedClienteId)?.saldoCredito || 0)
+                                const maxCredit = Math.min(cClienteCredito, cRestante)
+                                const creditResult = await Swal.fire({
+                                  title: "",
+                                  html: `
+                                    <div style="text-align: left; padding: 0;">
+                                      <div style="text-align: center; margin-bottom: 20px;">
+                                        <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+                                          <svg width="32" height="32" fill="none" stroke="white" viewBox="0 0 24 24" style="stroke-width: 2.5;">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                          </svg>
+                                        </div>
+                                        <h2 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin: 0;">Aplicar Credito</h2>
+                                      </div>
+                                      <div style="background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid #c4b5fd;">
+                                        <p style="font-size: 0.875rem; color: #5b21b6; margin: 0 0 4px 0; font-weight: 500;">Saldo de credito disponivel</p>
+                                        <p style="font-size: 1.75rem; font-weight: 700; color: #7c3aed; margin: 0;">${formatCurrency(cClienteCredito)} €</p>
+                                      </div>
+                                      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                                        <div style="background: #fef3c7; border-radius: 10px; padding: 12px; border: 1px solid #fde68a;">
+                                          <p style="font-size: 0.75rem; color: #92400e; margin: 0 0 2px 0; font-weight: 500;">Ja pago</p>
+                                          <p style="font-size: 1.25rem; font-weight: 700; color: #b45309; margin: 0;">${formatCurrency(cValorPago)} €</p>
+                                        </div>
+                                        <div style="background: #fef2f2; border-radius: 10px; padding: 12px; border: 1px solid #fecaca;">
+                                          <p style="font-size: 0.75rem; color: #dc2626; margin: 0 0 2px 0; font-weight: 500;">Em falta</p>
+                                          <p style="font-size: 1.25rem; font-weight: 700; color: #dc2626; margin: 0;">${formatCurrency(cRestante)} €</p>
+                                        </div>
+                                      </div>
+                                      <div style="margin-bottom: 16px;">
+                                        <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 8px;">
+                                          Valor a aplicar do credito
+                                        </label>
+                                        <div style="position: relative;">
+                                          <input type="number" step="0.01" id="valorCredito" value="${maxCredit.toFixed(2)}" min="0.01" max="${maxCredit.toFixed(2)}"
+                                            style="width: 100%; padding: 14px 40px 14px 16px; font-size: 1.125rem; font-weight: 600; border: 2px solid #e5e7eb; border-radius: 12px; outline: none; transition: border-color 0.2s; box-sizing: border-box;"
+                                            onfocus="this.style.borderColor='#8b5cf6'" onblur="this.style.borderColor='#e5e7eb'">
+                                          <span style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 1.125rem; font-weight: 600; color: #6b7280;">€</span>
+                                        </div>
+                                      </div>
+                                      <div style="background: #f0f9ff; border-radius: 8px; padding: 12px; display: flex; align-items: flex-start; gap: 10px;">
+                                        <svg width="20" height="20" fill="none" stroke="#0284c7" viewBox="0 0 24 24" style="flex-shrink: 0; margin-top: 1px;">
+                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        <p style="font-size: 0.8125rem; color: #0369a1; margin: 0; line-height: 1.4;">
+                                          O valor sera <strong>deduzido do saldo de credito</strong> do cliente e aplicado a esta cobranca.
+                                        </p>
+                                      </div>
+                                    </div>
+                                  `,
+                                  showCancelButton: true,
+                                  confirmButtonColor: "#8b5cf6",
+                                  cancelButtonColor: "#6b7280",
+                                  confirmButtonText: "Aplicar Credito",
+                                  cancelButtonText: "Cancelar",
+                                  width: '400px',
+                                  padding: '24px',
+                                  preConfirm: () => {
+                                    const valorInput = document.getElementById("valorCredito") as HTMLInputElement
+                                    const valor = parseFloat(valorInput.value)
+                                    if (!valorInput.value || valor <= 0) {
+                                      Swal.showValidationMessage("Por favor insira um valor valido")
+                                      return false
+                                    }
+                                    if (valor > cClienteCredito) {
+                                      Swal.showValidationMessage("Valor superior ao credito disponivel")
+                                      return false
+                                    }
+                                    if (valor > cRestante) {
+                                      Swal.showValidationMessage("Valor superior ao valor em falta")
+                                      return false
+                                    }
+                                    return { valorCredito: valor }
+                                  }
+                                })
 
-                      {/* Edit cobranca fields */}
-                      {editarCobranca && (
-                        <div className="grid grid-cols-2 gap-4 p-4 bg-secondary/50 rounded-xl">
-                          <div className="col-span-2">
-                            <label className="block text-sm font-medium text-foreground mb-2">Numero da Fatura</label>
-                            <input
-                              type="text"
-                              value={cobrancaFatura}
-                              onChange={(e) => setCobrancaFatura(e.target.value)}
-                              className="w-full px-4 py-3 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground font-medium bg-card"
-                              placeholder="Ex: FT 2024/001"
-                            />
+                                if (!creditResult.isConfirmed || !creditResult.value) return
+
+                                try {
+                                  const res = await fetch('/api/credito/aplicar', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      clienteId: selectedClienteId,
+                                      cobrancaId: currentCobranca!.id,
+                                      valorAplicar: creditResult.value.valorCredito
+                                    })
+                                  })
+
+                                  if (res.ok) {
+                                    const result = await res.json()
+                                    Swal.fire({
+                                      icon: "success",
+                                      title: "Credito Aplicado",
+                                      html: `
+                                        <p>Foram aplicados <strong>${formatCurrency(result.valorAplicado)} €</strong> de credito.</p>
+                                        <p style="color: #6b7280; font-size: 0.875rem; margin-top: 8px;">Saldo restante: ${formatCurrency(result.saldoRestante)} €</p>
+                                      `,
+                                      confirmButtonColor: "#8b5cf6",
+                                      timer: 3000
+                                    })
+                                    closeModal()
+                                    router.refresh()
+                                  } else {
+                                    const error = await res.json()
+                                    Swal.fire({ icon: "error", title: "Erro", text: error.error || "Erro ao aplicar credito", confirmButtonColor: "#b8860b" })
+                                  }
+                                } catch {
+                                  Swal.fire({ icon: "error", title: "Erro", text: "Erro ao aplicar credito", confirmButtonColor: "#b8860b" })
+                                }
+                              }}
+                              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-xl transition"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                              </svg>
+                              Aplicar Credito ({formatCurrency(Number(clientes.find(c => c.id === selectedClienteId)?.saldoCredito || 0))} EUR disponivel)
+                            </button>
                           </div>
-                          <div className="col-span-2 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-600 rounded-lg p-3">
-                            <p className="text-sm text-amber-700 dark:text-amber-100">
-                              <span className="font-medium">Nota:</span> O valor da cobranca sera atualizado automaticamente com base no novo total da venda.
-                            </p>
-                          </div>
+                        )}
+
+                        {/* Fatura number - always visible */}
+                        <div className="pt-3 border-t border-blue-200 dark:border-blue-600">
+                          <label className="block text-sm font-medium text-blue-800 dark:text-blue-100 mb-2">Numero da Fatura</label>
+                          <input
+                            type="text"
+                            value={cobrancaFatura}
+                            onChange={(e) => setCobrancaFatura(e.target.value)}
+                            className="w-full px-4 py-3 border-2 border-blue-200 dark:border-blue-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-foreground font-medium bg-card"
+                            placeholder="Ex: FT 2024/001"
+                          />
                         </div>
-                      )}
+                      </div>
 
                       <Link
                         href="/cobrancas"

@@ -31,6 +31,8 @@ function serializeVendas(vendas: Awaited<ReturnType<typeof fetchVendas>>) {
       valor: serializeDecimal(v.cobranca.valor),
       valorSemIva: serializeDecimal(v.cobranca.valorSemIva),
       comissao: serializeDecimal(v.cobranca.comissao),
+      creditoAplicado: serializeDecimal(v.cobranca.creditoAplicado),
+      valorPago: serializeDecimal(v.cobranca.valorPago),
     } : null,
     itens: v.itens?.map(item => ({
       ...item,
@@ -203,7 +205,7 @@ export default async function VendasPage({
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <VendasView
         vendas={data.vendas as any}
-        clientes={data.clientes}
+        clientes={data.clientes.map(c => ({ id: c.id, nome: c.nome, codigo: c.codigo, saldoCredito: c.saldoCredito ? Number(c.saldoCredito) : 0 }))}
         produtos={data.produtos.map(p => ({
           ...p,
           preco: p.preco ? String(p.preco) : null

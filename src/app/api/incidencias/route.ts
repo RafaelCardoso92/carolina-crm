@@ -86,6 +86,8 @@ export async function POST(request: NextRequest) {
       ? saldoAnterior.plus(valorDecimal)
       : saldoAnterior
 
+    console.log("[INCIDENCIA] Creating:", { clienteId, valor, aplicadoACredito, saldoAnterior: saldoAnterior.toString(), saldoNovo: saldoNovo.toString() })
+
     // Use a transaction to ensure atomicity
     const result = await prisma.$transaction(async (tx) => {
       // Create incidencia
@@ -102,7 +104,9 @@ export async function POST(request: NextRequest) {
       })
 
       // Update client credit balance if aplicadoACredito
+      console.log("[INCIDENCIA] aplicadoACredito:", aplicadoACredito, typeof aplicadoACredito)
       if (aplicadoACredito) {
+        console.log("[INCIDENCIA] Updating client credit:", { clienteId, saldoNovo: saldoNovo.toString() })
         await tx.cliente.update({
           where: { id: clienteId },
           data: { saldoCredito: saldoNovo }
