@@ -212,6 +212,7 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
   // Incidencias state
   const [showIncidenciaForm, setShowIncidenciaForm] = useState(false)
   const [selectedVendaForIncidencia, setSelectedVendaForIncidencia] = useState<Venda | null>(null)
+  const [editingIncidenciaId, setEditingIncidenciaId] = useState<string | null>(null)
   const [incidenciaValor, setIncidenciaValor] = useState("")
   const [incidenciaMotivo, setIncidenciaMotivo] = useState("")
   const [incidenciaNotas, setIncidenciaNotas] = useState("")
@@ -580,6 +581,7 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
   function closeIncidenciaForm() {
     setSelectedVendaForIncidencia(null)
     setShowIncidenciaForm(false)
+    setEditingIncidenciaId(null)
     setIncidenciaValor("")
     setIncidenciaMotivo("")
     setIncidenciaNotas("")
@@ -587,51 +589,91 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
     setIncidenciaAjustarCobranca(false)
   }
 
+  function openEditIncidencia(venda: Venda, inc: NonNullable<Venda["incidencias"]>[number]) {
+    setSelectedVendaForIncidencia(venda)
+    setEditingIncidenciaId(inc.id)
+    setIncidenciaValor(String(inc.valor))
+    setIncidenciaMotivo(inc.motivo)
+    setIncidenciaNotas(inc.notas || "")
+    setIncidenciaAplicarCredito(inc.aplicadoACredito ?? true)
+    setIncidenciaAjustarCobranca(false)
+    setShowIncidenciaForm(true)
+  }
+
   async function handleIncidenciaSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!selectedVendaForIncidencia) return
 
     try {
-      const res = await fetch("/api/incidencias", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          vendaId: selectedVendaForIncidencia.id,
-          valor: parseFloat(incidenciaValor),
-          motivo: incidenciaMotivo,
-          notas: incidenciaNotas || null,
-          cobrancaId: selectedVendaForIncidencia.cobranca?.id || null,
-          aplicadoACredito: incidenciaAplicarCredito,
-          ajustarCobranca: incidenciaAjustarCobranca
+      if (editingIncidenciaId) {
+        // Update existing
+        const res = await fetch(`/api/incidencias/${editingIncidenciaId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            valor: parseFloat(incidenciaValor),
+            motivo: incidenciaMotivo,
+            notas: incidenciaNotas || null,
+          })
         })
-      })
+        if (!res.ok) throw new Error("Falha ao atualizar incidencia")
 
-      if (!res.ok) throw new Error("Falha ao criar incidencia")
+        closeIncidenciaForm()
+        refetchVendas()
 
-      closeIncidenciaForm()
-      refetchVendas()
+        Swal.fire({
+          icon: "success",
+          title: "Nota de Credito Atualizada",
+          text: "A nota de credito foi atualizada com sucesso.",
+          confirmButtonColor: "#b8860b",
+          timer: 2000,
+          showConfirmButton: false
+        })
+      } else {
+        // Create new
+        const res = await fetch("/api/incidencias", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            vendaId: selectedVendaForIncidencia.id,
+            valor: parseFloat(incidenciaValor),
+            motivo: incidenciaMotivo,
+            notas: incidenciaNotas || null,
+            cobrancaId: selectedVendaForIncidencia.cobranca?.id || null,
+            aplicadoACredito: incidenciaAplicarCredito,
+            ajustarCobranca: incidenciaAjustarCobranca
+          })
+        })
 
-      const creditoMsg = incidenciaAplicarCredito
-        ? " O valor foi adicionado ao saldo de credito do cliente."
-        : ""
-      const cobrancaMsg = incidenciaAjustarCobranca && selectedVendaForIncidencia.cobranca
-        ? " O valor da cobranca foi ajustado."
-        : ""
+        if (!res.ok) throw new Error("Falha ao criar incidencia")
 
-      Swal.fire({
-        icon: "success",
-        title: "Nota de Credito Registada",
-        text: `A nota de credito foi registada com sucesso.${creditoMsg}${cobrancaMsg}`,
-        confirmButtonColor: "#b8860b",
-        timer: 3000,
-        showConfirmButton: false
-      })
+        closeIncidenciaForm()
+        refetchVendas()
+
+        const creditoMsg = incidenciaAplicarCredito
+          ? " O valor foi adicionado ao saldo de credito do cliente."
+          : ""
+        const cobrancaMsg = incidenciaAjustarCobranca && selectedVendaForIncidencia.cobranca
+          ? " O valor da cobranca foi ajustado."
+          : ""
+
+        Swal.fire({
+          icon: "success",
+          title: "Nota de Credito Registada",
+          text: `A nota de credito foi registada com sucesso.${creditoMsg}${cobrancaMsg}`,
+          confirmButtonColor: "#b8860b",
+          timer: 3000,
+          showConfirmButton: false
+        })
+      }
     } catch (error) {
-      console.error("Error creating incidencia:", error)
+      console.error("Error saving incidencia:", error)
       Swal.fire({
         icon: "error",
         title: "Erro",
-        text: "Nao foi possivel registar a nota de credito.",
+        text: editingIncidenciaId
+          ? "Nao foi possivel atualizar a nota de credito."
+          : "Nao foi possivel registar a nota de credito.",
         confirmButtonColor: "#b8860b"
       })
     }
@@ -1084,11 +1126,21 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                                     {inc.notas && <p className="text-sm text-gray-500">{inc.notas}</p>}
                                     <p className="text-xs text-gray-400">{new Date(inc.dataRegisto).toLocaleDateString("pt-PT")}</p>
                                   </div>
-                                  <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-2">
                                     <span className="font-bold text-purple-600 dark:text-purple-400">-{formatCurrency(Number(inc.valor))} EUR</span>
+                                    <button
+                                      onClick={() => openEditIncidencia(venda, inc)}
+                                      className="p-1 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded"
+                                      title="Editar"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                      </svg>
+                                    </button>
                                     <button
                                       onClick={() => handleDeleteIncidencia(inc.id)}
                                       className="p-1 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
+                                      title="Eliminar"
                                     >
                                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -1320,11 +1372,21 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                           {inc.notas && <p className="text-sm text-gray-500">{inc.notas}</p>}
                           <p className="text-xs text-gray-400">{new Date(inc.dataRegisto).toLocaleDateString("pt-PT")}</p>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                           <span className="font-bold text-purple-600 dark:text-purple-400">-{formatCurrency(Number(inc.valor))} EUR</span>
+                          <button
+                            onClick={() => openEditIncidencia(venda, inc)}
+                            className="p-1 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded"
+                            title="Editar"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
                           <button
                             onClick={() => handleDeleteIncidencia(inc.id)}
                             className="p-1 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
+                            title="Eliminar"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -2164,7 +2226,7 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
           <div className="bg-card rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="p-4 border-b border-border flex items-center justify-between sticky top-0 bg-card z-10">
               <div>
-                <h2 className="text-lg font-bold text-foreground">Nova Nota de Credito</h2>
+                <h2 className="text-lg font-bold text-foreground">{editingIncidenciaId ? "Editar Nota de Credito" : "Nova Nota de Credito"}</h2>
                 <p className="text-sm text-muted-foreground">{selectedVendaForIncidencia.cliente.nome}</p>
               </div>
               <button
@@ -2267,36 +2329,38 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                 />
               </div>
 
-              {/* Credit Options */}
-              <div className="space-y-3 pt-2 border-t border-border">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={incidenciaAplicarCredito}
-                    onChange={(e) => setIncidenciaAplicarCredito(e.target.checked)}
-                    className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                  />
-                  <div>
-                    <span className="text-sm font-medium text-foreground">Adicionar ao saldo de credito</span>
-                    <p className="text-xs text-muted-foreground">O valor sera adicionado ao saldo do cliente para uso futuro</p>
-                  </div>
-                </label>
-
-                {selectedVendaForIncidencia.cobranca && !selectedVendaForIncidencia.cobranca.pago && (
+              {/* Credit Options - only for new credit notes */}
+              {!editingIncidenciaId && (
+                <div className="space-y-3 pt-2 border-t border-border">
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={incidenciaAjustarCobranca}
-                      onChange={(e) => setIncidenciaAjustarCobranca(e.target.checked)}
-                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      checked={incidenciaAplicarCredito}
+                      onChange={(e) => setIncidenciaAplicarCredito(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                     />
                     <div>
-                      <span className="text-sm font-medium text-foreground">Ajustar valor da cobranca</span>
-                      <p className="text-xs text-muted-foreground">O valor da cobranca sera reduzido automaticamente</p>
+                      <span className="text-sm font-medium text-foreground">Adicionar ao saldo de credito</span>
+                      <p className="text-xs text-muted-foreground">O valor sera adicionado ao saldo do cliente para uso futuro</p>
                     </div>
                   </label>
-                )}
-              </div>
+
+                  {selectedVendaForIncidencia.cobranca && !selectedVendaForIncidencia.cobranca.pago && (
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={incidenciaAjustarCobranca}
+                        onChange={(e) => setIncidenciaAjustarCobranca(e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <div>
+                        <span className="text-sm font-medium text-foreground">Ajustar valor da cobranca</span>
+                        <p className="text-xs text-muted-foreground">O valor da cobranca sera reduzido automaticamente</p>
+                      </div>
+                    </label>
+                  )}
+                </div>
+              )}
 
               <div className="flex gap-3 pt-2">
                 <button
@@ -2310,7 +2374,7 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                   type="submit"
                   className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium"
                 >
-                  Registar Nota de Credito
+                  {editingIncidenciaId ? "Guardar Alteracoes" : "Registar Nota de Credito"}
                 </button>
               </div>
             </form>

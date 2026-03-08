@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
+import { Decimal } from "@prisma/client/runtime/library"
 
-// DELETE - Remove incidencia
+// DELETE - Remove incidencia and revert credit if needed
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -15,7 +16,40 @@ export async function DELETE(
 
     const { id } = await params
 
-    await prisma.incidencia.delete({ where: { id } })
+    const incidencia = await prisma.incidencia.findUnique({
+      where: { id },
+      include: { cliente: true }
+    })
+
+    if (!incidencia) {
+      return NextResponse.json({ error: "Incidencia not found" }, { status: 404 })
+    }
+
+    await prisma.$transaction(async (tx) => {
+      if (incidencia.aplicadoACredito) {
+        const saldoAnterior = incidencia.cliente.saldoCredito || new Decimal(0)
+        const saldoNovo = saldoAnterior.minus(incidencia.valor)
+
+        await tx.cliente.update({
+          where: { id: incidencia.clienteId },
+          data: { saldoCredito: saldoNovo.greaterThan(0) ? saldoNovo : new Decimal(0) }
+        })
+
+        await tx.movimentoCredito.create({
+          data: {
+            clienteId: incidencia.clienteId,
+            tipo: "CREDITO_ESTORNADO",
+            valor: incidencia.valor,
+            saldoAnterior,
+            saldoNovo: saldoNovo.greaterThan(0) ? saldoNovo : new Decimal(0),
+            incidenciaId: incidencia.id,
+            descricao: `Estorno de nota de crédito: ${incidencia.motivo}`
+          }
+        })
+      }
+
+      await tx.incidencia.delete({ where: { id } })
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {
