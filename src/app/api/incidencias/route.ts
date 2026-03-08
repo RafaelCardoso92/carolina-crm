@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { Decimal } from "@prisma/client/runtime/library"
+import { getEffectiveUserId, canViewAllData } from "@/lib/permissions"
 
 // GET - List incidencias for a venda
 export async function GET(request: NextRequest) {
@@ -18,8 +19,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "vendaId is required" }, { status: 400 })
     }
 
+    // Scope by user ownership through venda → cliente relationship
+    const effectiveUserId = getEffectiveUserId(session)
+    const canViewAll = canViewAllData(session.user.role) && !session.user.impersonating
+    const userFilter = canViewAll ? {} : { venda: { cliente: { userId: effectiveUserId } } }
+
     const incidencias = await prisma.incidencia.findMany({
-      where: { vendaId },
+      where: { vendaId, ...userFilter },
       orderBy: { dataRegisto: "desc" },
       include: {
         cliente: {
@@ -68,6 +74,13 @@ export async function POST(request: NextRequest) {
     })
     if (!venda) {
       return NextResponse.json({ error: "Venda not found" }, { status: 404 })
+    }
+
+    // Verify ownership
+    const effectiveUserId = getEffectiveUserId(session)
+    const canViewAll = canViewAllData(session.user.role) && !session.user.impersonating
+    if (!canViewAll && venda.cliente.userId !== effectiveUserId) {
+      return NextResponse.json({ error: "Sem permissão para esta venda" }, { status: 403 })
     }
 
     // Verify cobranca if provided
@@ -176,7 +189,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "id is required" }, { status: 400 })
     }
 
-    // Find the incidencia
+    // Find the incidencia with ownership check
     const incidencia = await prisma.incidencia.findUnique({
       where: { id },
       include: { cliente: true }
@@ -184,6 +197,13 @@ export async function DELETE(request: NextRequest) {
 
     if (!incidencia) {
       return NextResponse.json({ error: "Incidencia not found" }, { status: 404 })
+    }
+
+    // Verify ownership
+    const effectiveUserId = getEffectiveUserId(session)
+    const canViewAll = canViewAllData(session.user.role) && !session.user.impersonating
+    if (!canViewAll && incidencia.cliente.userId !== effectiveUserId) {
+      return NextResponse.json({ error: "Sem permissão" }, { status: 403 })
     }
 
     // Use a transaction to revert credit if it was applied

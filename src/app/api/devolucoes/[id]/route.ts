@@ -1,10 +1,28 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
+import { getEffectiveUserId, canViewAllData } from "@/lib/permissions"
 import { unlink } from "fs/promises"
 import { join } from "path"
 import type { UpdateDevolucaoRequest, DevolucaoResponse } from "@/types/devolucao"
 
 const UPLOADS_DIR = process.env.UPLOADS_DIR || "/app/uploads"
+
+async function checkDevolucaoAccess(devolucaoId: string, session: Parameters<typeof getEffectiveUserId>[0]) {
+  const devolucao = await prisma.devolucao.findUnique({
+    where: { id: devolucaoId },
+    include: {
+      venda: { include: { cliente: { select: { userId: true } } } }
+    }
+  })
+
+  if (!devolucao) return false
+
+  const effectiveUserId = getEffectiveUserId(session)
+  const canViewAll = canViewAllData(session.user.role as Parameters<typeof canViewAllData>[0]) && !session.user.impersonating
+
+  return canViewAll || devolucao.venda.cliente.userId === effectiveUserId
+}
 
 // GET - Get single return with full details
 export async function GET(
@@ -12,23 +30,31 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json<DevolucaoResponse>(
+        { success: false, error: "Não autorizado" },
+        { status: 401 }
+      )
+    }
+
     const { id } = await params
+
+    const authorized = await checkDevolucaoAccess(id, session)
+    if (!authorized) {
+      return NextResponse.json<DevolucaoResponse>(
+        { success: false, error: "Devolução não encontrada" },
+        { status: 404 }
+      )
+    }
 
     const devolucao = await prisma.devolucao.findUnique({
       where: { id },
       include: {
-        venda: {
-          include: {
-            cliente: true
-          }
-        },
+        venda: { include: { cliente: true } },
         itens: {
           include: {
-            itemVenda: {
-              include: {
-                produto: true
-              }
-            },
+            itemVenda: { include: { produto: true } },
             substituicao: true
           }
         },
@@ -36,16 +62,9 @@ export async function GET(
       }
     })
 
-    if (!devolucao) {
-      return NextResponse.json<DevolucaoResponse>(
-        { success: false, error: "Devolução não encontrada" },
-        { status: 404 }
-      )
-    }
-
     return NextResponse.json<DevolucaoResponse>({
       success: true,
-      devolucao
+      devolucao: devolucao!
     })
   } catch (error) {
     console.error("Error fetching devolucao:", error)
@@ -62,20 +81,25 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json<DevolucaoResponse>(
+        { success: false, error: "Não autorizado" },
+        { status: 401 }
+      )
+    }
+
     const { id } = await params
-    const body: UpdateDevolucaoRequest = await request.json()
 
-    // Check if devolucao exists
-    const existing = await prisma.devolucao.findUnique({
-      where: { id }
-    })
-
-    if (!existing) {
+    const authorized = await checkDevolucaoAccess(id, session)
+    if (!authorized) {
       return NextResponse.json<DevolucaoResponse>(
         { success: false, error: "Devolução não encontrada" },
         { status: 404 }
       )
     }
+
+    const body: UpdateDevolucaoRequest = await request.json()
 
     // Update only allowed fields
     const updateData: { motivo?: string; estado?: "PENDENTE" | "PROCESSADA" | "CANCELADA" } = {}
@@ -130,9 +154,24 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json<DevolucaoResponse>(
+        { success: false, error: "Não autorizado" },
+        { status: 401 }
+      )
+    }
+
     const { id } = await params
 
-    // Fetch with images to clean up files
+    const authorized = await checkDevolucaoAccess(id, session)
+    if (!authorized) {
+      return NextResponse.json<DevolucaoResponse>(
+        { success: false, error: "Devolução não encontrada" },
+        { status: 404 }
+      )
+    }
+
     const devolucao = await prisma.devolucao.findUnique({
       where: { id },
       include: { imagens: true }

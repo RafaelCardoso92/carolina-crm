@@ -2,6 +2,25 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { Decimal } from "@prisma/client/runtime/library"
+import { getEffectiveUserId, canViewAllData } from "@/lib/permissions"
+
+async function verifyIncidenciaOwnership(incidenciaId: string, session: { user: { id: string; role: string; impersonating?: { id: string } | null } }) {
+  const incidencia = await prisma.incidencia.findUnique({
+    where: { id: incidenciaId },
+    include: { cliente: true }
+  })
+
+  if (!incidencia) return { incidencia: null, authorized: false }
+
+  const effectiveUserId = getEffectiveUserId(session as Parameters<typeof getEffectiveUserId>[0])
+  const canViewAll = canViewAllData(session.user.role as Parameters<typeof canViewAllData>[0]) && !session.user.impersonating
+
+  if (!canViewAll && incidencia.cliente.userId !== effectiveUserId) {
+    return { incidencia, authorized: false }
+  }
+
+  return { incidencia, authorized: true }
+}
 
 // DELETE - Remove incidencia and revert credit if needed
 export async function DELETE(
@@ -15,14 +34,13 @@ export async function DELETE(
     }
 
     const { id } = await params
-
-    const incidencia = await prisma.incidencia.findUnique({
-      where: { id },
-      include: { cliente: true }
-    })
+    const { incidencia, authorized } = await verifyIncidenciaOwnership(id, session)
 
     if (!incidencia) {
       return NextResponse.json({ error: "Incidencia not found" }, { status: 404 })
+    }
+    if (!authorized) {
+      return NextResponse.json({ error: "Sem permissão" }, { status: 403 })
     }
 
     await prisma.$transaction(async (tx) => {
@@ -70,6 +88,15 @@ export async function PUT(
     }
 
     const { id } = await params
+    const { incidencia: existing, authorized } = await verifyIncidenciaOwnership(id, session)
+
+    if (!existing) {
+      return NextResponse.json({ error: "Incidencia not found" }, { status: 404 })
+    }
+    if (!authorized) {
+      return NextResponse.json({ error: "Sem permissão" }, { status: 403 })
+    }
+
     const body = await request.json()
     const { valor, motivo, notas } = body
 

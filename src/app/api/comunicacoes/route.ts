@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getEffectiveUserId, canViewAllData } from "@/lib/permissions"
 
 // GET - List communications
 export async function GET(request: NextRequest) {
@@ -15,10 +16,21 @@ export async function GET(request: NextRequest) {
     const prospectoId = searchParams.get("prospectoId")
     const limit = parseInt(searchParams.get("limit") || "50")
 
+    const effectiveUserId = getEffectiveUserId(session)
+    const canViewAll = canViewAllData(session.user.role) && !session.user.impersonating
+
     const where: Record<string, unknown> = {}
 
     if (clienteId) where.clienteId = clienteId
     if (prospectoId) where.prospectoId = prospectoId
+
+    // Scope by ownership: filter through cliente/prospecto userId
+    if (!canViewAll) {
+      where.OR = [
+        { cliente: { userId: effectiveUserId } },
+        { prospecto: { userId: effectiveUserId } }
+      ]
+    }
 
     const comunicacoes = await prisma.comunicacao.findMany({
       where,
@@ -52,8 +64,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Cliente ou Prospecto e obrigatorio" }, { status: 400 })
     }
 
+    const effectiveUserId = getEffectiveUserId(session)
+    const canViewAll = canViewAllData(session.user.role) && !session.user.impersonating
+
+    // Verify ownership of the target cliente/prospecto
+    if (!canViewAll) {
+      if (clienteId) {
+        const cliente = await prisma.cliente.findFirst({
+          where: { id: clienteId, userId: effectiveUserId }
+        })
+        if (!cliente) {
+          return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 })
+        }
+      }
+      if (prospectoId) {
+        const prospecto = await prisma.prospecto.findFirst({
+          where: { id: prospectoId, userId: effectiveUserId }
+        })
+        if (!prospecto) {
+          return NextResponse.json({ error: "Prospecto não encontrado" }, { status: 404 })
+        }
+      }
+    }
+
     const comunicacao = await prisma.comunicacao.create({
       data: {
+        userId: effectiveUserId,
         clienteId: clienteId || null,
         prospectoId: prospectoId || null,
         tipo,

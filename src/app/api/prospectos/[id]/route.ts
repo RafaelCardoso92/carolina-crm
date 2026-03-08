@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
+import { userScopedWhere } from "@/lib/permissions"
 
 // GET - Get single prospect
 export async function GET(
@@ -7,10 +9,15 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const { id } = await params
 
-    const prospecto = await prisma.prospecto.findUnique({
-      where: { id },
+    const prospecto = await prisma.prospecto.findFirst({
+      where: { id, ...userScopedWhere(session) },
     })
 
     if (!prospecto) {
@@ -36,7 +43,24 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const { id } = await params
+
+    // Verify ownership
+    const existing = await prisma.prospecto.findFirst({
+      where: { id, ...userScopedWhere(session) },
+    })
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Prospecto não encontrado" },
+        { status: 404 }
+      )
+    }
+
     const data = await request.json()
 
     const prospecto = await prisma.prospecto.update({
@@ -81,7 +105,23 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const { id } = await params
+
+    // Verify ownership
+    const existing = await prisma.prospecto.findFirst({
+      where: { id, ...userScopedWhere(session) },
+    })
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Prospecto não encontrado" },
+        { status: 404 }
+      )
+    }
 
     await prisma.prospecto.update({
       where: { id },

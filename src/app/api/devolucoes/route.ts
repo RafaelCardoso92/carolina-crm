@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
+import { getEffectiveUserId, canViewAllData } from "@/lib/permissions"
 import type { CreateDevolucaoRequest, DevolucaoListResponse, DevolucaoResponse } from "@/types/devolucao"
 
 // GET - List returns (optionally filtered by vendaId)
@@ -17,7 +18,15 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const vendaId = searchParams.get("vendaId")
 
-    const where = vendaId ? { vendaId } : {}
+    // Scope by user ownership through venda → cliente relationship
+    const effectiveUserId = getEffectiveUserId(session)
+    const canViewAll = canViewAllData(session.user.role) && !session.user.impersonating
+    const userFilter = canViewAll ? {} : { venda: { cliente: { userId: effectiveUserId } } }
+
+    const where = {
+      ...(vendaId ? { vendaId } : {}),
+      ...userFilter
+    }
 
     const devolucoes = await prisma.devolucao.findMany({
       where,
@@ -88,6 +97,7 @@ export async function POST(request: NextRequest) {
     const venda = await prisma.venda.findUnique({
       where: { id: vendaId },
       include: {
+        cliente: { select: { userId: true } },
         itens: {
           include: {
             produto: true,
@@ -101,6 +111,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json<DevolucaoResponse>(
         { success: false, error: "Venda não encontrada" },
         { status: 404 }
+      )
+    }
+
+    // Verify ownership
+    const effectiveUserId = getEffectiveUserId(session)
+    const canViewAll = canViewAllData(session.user.role) && !session.user.impersonating
+    if (!canViewAll && venda.cliente.userId !== effectiveUserId) {
+      return NextResponse.json<DevolucaoResponse>(
+        { success: false, error: "Sem permissão para esta venda" },
+        { status: 403 }
       )
     }
 

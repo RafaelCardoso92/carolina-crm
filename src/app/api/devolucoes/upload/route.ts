@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
+import { getEffectiveUserId, canViewAllData } from "@/lib/permissions"
 import { writeFile, mkdir } from "fs/promises"
 import { join } from "path"
 import { randomUUID } from "crypto"
@@ -12,6 +14,14 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
 // POST - Upload image for a return
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json<ImageUploadResponse>(
+        { success: false, error: "Não autorizado" },
+        { status: 401 }
+      )
+    }
+
     const formData = await request.formData()
     const file = formData.get("file") as File | null
     const devolucaoId = formData.get("devolucaoId") as string | null
@@ -31,16 +41,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check devolucao exists
+    // Check devolucao exists and verify ownership
     const devolucao = await prisma.devolucao.findUnique({
       where: { id: devolucaoId },
-      include: { imagens: true }
+      include: {
+        imagens: true,
+        venda: { include: { cliente: { select: { userId: true } } } }
+      }
     })
 
     if (!devolucao) {
       return NextResponse.json<ImageUploadResponse>(
         { success: false, error: "Devolução não encontrada" },
         { status: 404 }
+      )
+    }
+
+    // Verify ownership
+    const effectiveUserId = getEffectiveUserId(session)
+    const canViewAll = canViewAllData(session.user.role) && !session.user.impersonating
+    if (!canViewAll && devolucao.venda.cliente.userId !== effectiveUserId) {
+      return NextResponse.json<ImageUploadResponse>(
+        { success: false, error: "Sem permissão" },
+        { status: 403 }
       )
     }
 
@@ -110,6 +133,14 @@ export async function POST(request: NextRequest) {
 // DELETE - Delete a specific image
 export async function DELETE(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { success: false, error: "Não autorizado" },
+        { status: 401 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const imagemId = searchParams.get("id")
 
@@ -120,15 +151,32 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Fetch image
+    // Fetch image with ownership check through devolucao → venda → cliente
     const imagem = await prisma.imagemDevolucao.findUnique({
-      where: { id: imagemId }
+      where: { id: imagemId },
+      include: {
+        devolucao: {
+          include: {
+            venda: { include: { cliente: { select: { userId: true } } } }
+          }
+        }
+      }
     })
 
     if (!imagem) {
       return NextResponse.json(
         { success: false, error: "Imagem não encontrada" },
         { status: 404 }
+      )
+    }
+
+    // Verify ownership
+    const effectiveUserId = getEffectiveUserId(session)
+    const canViewAll = canViewAllData(session.user.role) && !session.user.impersonating
+    if (!canViewAll && imagem.devolucao.venda.cliente.userId !== effectiveUserId) {
+      return NextResponse.json(
+        { success: false, error: "Sem permissão" },
+        { status: 403 }
       )
     }
 
