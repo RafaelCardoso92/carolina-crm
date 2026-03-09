@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useCallback, useEffect, useRef } from "react"
-import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Circle, Polyline } from "@react-google-maps/api"
+import React, { useState, useCallback, useEffect, useRef } from "react"
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Circle, Polyline, OverlayView } from "@react-google-maps/api"
 import { GOOGLE_MAPS_CONFIG } from "@/lib/google-maps"
 import Link from "next/link"
 import AddProspectFromSalonModal from "./AddProspectFromSalonModal"
@@ -35,6 +35,7 @@ interface SalonResult {
   phone?: string
   website?: string
   photoUrl?: string
+  types?: string[]
 }
 
 interface MapTask {
@@ -697,9 +698,23 @@ export default function UnifiedMap() {
           ))}
 
           {/* Salon markers */}
-          {salons.map((salon) => (
-            <Marker key={salon.placeId} position={{ lat: salon.latitude, lng: salon.longitude }} icon={salonIcon} onClick={() => setSelectedSalon(salon)} title={salon.name} />
-          ))}
+          {salons.map((salon) => {
+            const nameLC = salon.name.toLowerCase()
+            const typeLC = (salon.types?.[0] || "").toLowerCase()
+            const isBarbershop = nameLC.includes("barber") || nameLC.includes("barbearia") || typeLC.includes("barber") || typeLC.includes("cabeleireiro")
+            return (
+              <React.Fragment key={salon.placeId}>
+                <Marker position={{ lat: salon.latitude, lng: salon.longitude }} icon={salonIcon} onClick={() => setSelectedSalon(salon)} title={salon.name} opacity={isBarbershop ? 0.4 : 1} />
+                <OverlayView position={{ lat: salon.latitude, lng: salon.longitude }} mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}>
+                  <div onClick={() => setSelectedSalon(salon)} style={{ transform: "translate(-50%, -130%)", cursor: "pointer", whiteSpace: "nowrap" }}>
+                    <span style={{ background: isBarbershop ? "rgba(220,38,38,0.85)" : "rgba(30,30,30,0.85)", color: "#fff", padding: "2px 6px", borderRadius: "4px", fontSize: "11px", fontWeight: 500, boxShadow: "0 1px 3px rgba(0,0,0,0.3)" }}>
+                      {salon.name.length > 25 ? salon.name.slice(0, 25) + "…" : salon.name}
+                    </span>
+                  </div>
+                </OverlayView>
+              </React.Fragment>
+            )
+          })}
 
           {/* Location InfoWindow */}
           {selectedLocation && (
@@ -799,13 +814,26 @@ export default function UnifiedMap() {
             <span className="font-semibold">{salons.length} saloes encontrados</span>
             <button onClick={() => { setSalons([]); setSearchPin(null); }} className="text-sm text-gray-500">Limpar</button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-            {salons.slice(0, 8).map((s) => (
-              <button key={s.placeId} onClick={() => { setSelectedSalon(s); map?.panTo({ lat: s.latitude, lng: s.longitude }); }} className="p-2 bg-gray-50 hover:bg-amber-50 border rounded-lg text-left">
-                <div className="font-medium text-sm truncate">{s.name}</div>
-                <div className="text-xs text-gray-500">{(s.distance / 1000).toFixed(1)}km</div>
-              </button>
-            ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {salons.slice(0, 12).map((s) => {
+              const typeLabel = s.types?.[0] || ""
+              const isBarber = typeLabel.toLowerCase().includes("barber") || typeLabel.toLowerCase().includes("cabeleireiro") || s.name.toLowerCase().includes("barber") || s.name.toLowerCase().includes("barbearia")
+              return (
+                <button key={s.placeId} onClick={() => { setSelectedSalon(s); map?.panTo({ lat: s.latitude, lng: s.longitude }); }} className={`p-3 border rounded-lg text-left transition-colors ${isBarber ? "bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800 opacity-60" : "bg-gray-50 dark:bg-gray-800 hover:bg-amber-50 dark:hover:bg-amber-950 border-gray-200 dark:border-gray-700"}`}>
+                  <div className="font-medium text-sm truncate">{s.name}</div>
+                  <div className="text-xs text-gray-500 truncate mt-0.5">{s.address}</div>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <span className="text-xs text-gray-400">{(s.distance / 1000).toFixed(1)}km</span>
+                    {s.rating && <span className="text-xs text-amber-500">★ {s.rating}</span>}
+                    {typeLabel && (
+                      <span className={`text-xs px-1.5 py-0.5 rounded ${isBarber ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300" : "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300"}`}>
+                        {isBarber ? "Barbearia" : typeLabel}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              )
+            })}
           </div>
         </div>
       )}
