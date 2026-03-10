@@ -295,6 +295,28 @@ export default function DashboardView() {
               />
             </div>
 
+            {/* Monthly & Trimester Progress */}
+            {(data.objetivoMensal > 0 || data.objetivoTrimestral > 0) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {data.objetivoMensal > 0 && (
+                  <ProgressCard
+                    title={`Objetivo ${meses[data.currentMonth]}`}
+                    current={data.vendasMes}
+                    target={data.objetivoMensal}
+                    percentage={data.progressoMensal}
+                  />
+                )}
+                {data.objetivoTrimestral > 0 && (
+                  <ProgressCard
+                    title={`Objetivo ${data.currentTrimestre}º Trimestre`}
+                    current={data.vendasTrimestre}
+                    target={data.objetivoTrimestral}
+                    percentage={data.progressoTrimestral}
+                  />
+                )}
+              </div>
+            )}
+
             {/* Quick Stats */}
             <QuickStatsWidget />
 

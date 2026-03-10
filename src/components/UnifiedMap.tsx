@@ -784,7 +784,7 @@ export default function UnifiedMap() {
             <InfoWindow position={{ lat: selectedSalon.latitude, lng: selectedSalon.longitude }} onCloseClick={() => setSelectedSalon(null)}>
               <div className="p-1 min-w-[220px]">
                 <span className="px-2 py-1 rounded text-xs font-semibold text-white bg-amber-500 mb-2 inline-block">Salao</span>
-                <h3 className="font-bold text-gray-900 mb-1">{selectedSalon.name}</h3>
+                <h3 className="font-bold mb-1" style={{ color: "#000" }}>{selectedSalon.name}</h3>
                 <p className="text-sm text-gray-600 mb-2">{selectedSalon.address}</p>
                 <button onClick={() => { setSalonToAdd(selectedSalon); setSelectedSalon(null); }} className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg">Adicionar Prospecto</button>
               </div>

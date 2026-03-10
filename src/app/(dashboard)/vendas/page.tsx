@@ -122,8 +122,20 @@ async function fetchVendas(mes: number, ano: number, userFilter: { userId?: stri
   })
 }
 
+function getTrimestre(mes: number) {
+  return Math.ceil(mes / 3)
+}
+
+function getMesesTrimestre(trimestre: number) {
+  const start = (trimestre - 1) * 3 + 1
+  return [start, start + 1, start + 2]
+}
+
 async function getVendasData(mes: number, ano: number, userFilter: { userId?: string }) {
-  const [vendas, clientes, objetivo, produtos, objetivosVarios, campanhas] = await Promise.all([
+  const trimestre = getTrimestre(mes)
+  const mesesTrim = getMesesTrimestre(trimestre)
+
+  const [vendas, clientes, objetivo, objetivoTrimestral, vendasTrimestre, produtos, objetivosVarios, campanhas] = await Promise.all([
     fetchVendas(mes, ano, userFilter),
     prisma.cliente.findMany({
       where: { ativo: true, ...userFilter },
@@ -131,6 +143,13 @@ async function getVendasData(mes: number, ano: number, userFilter: { userId?: st
     }),
     prisma.objetivoMensal.findUnique({
       where: { mes_ano: { mes, ano } }
+    }),
+    prisma.objetivoTrimestral.findUnique({
+      where: { trimestre_ano: { trimestre, ano } }
+    }),
+    prisma.venda.aggregate({
+      _sum: { total: true },
+      where: { ano, mes: { in: mesesTrim }, ...(userFilter.userId ? { cliente: { userId: userFilter.userId } } : {}) }
     }),
     prisma.produto.findMany({
       where: { ativo: true },
@@ -164,8 +183,10 @@ async function getVendasData(mes: number, ano: number, userFilter: { userId?: st
 
   const total = vendas.reduce((sum, v) => sum + Number(v.total), 0)
   const serializedVendas = serializeVendas(vendas)
+  const totalTrimestre = Number(vendasTrimestre._sum.total || 0)
+  const objTrimestral = objetivoTrimestral ? Number(objetivoTrimestral.objetivo) : null
 
-  return { vendas: serializedVendas, clientes, objetivo, total, produtos, objetivosVarios, campanhas }
+  return { vendas: serializedVendas, clientes, objetivo, total, produtos, objetivosVarios, campanhas, trimestre, objetivoTrimestral: objTrimestral, totalTrimestre }
 }
 
 export default async function VendasPage({
@@ -218,6 +239,9 @@ export default async function VendasPage({
         }))}
         campanhas={data.campanhas}
         objetivo={data.objetivo ? Number(data.objetivo.objetivo) : null}
+        objetivoTrimestral={data.objetivoTrimestral}
+        totalTrimestre={data.totalTrimestre}
+        trimestre={data.trimestre}
         total={data.total}
         mes={mes}
         ano={ano}

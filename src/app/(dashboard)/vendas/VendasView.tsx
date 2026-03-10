@@ -130,6 +130,9 @@ type Props = {
   objetivosVarios: ObjetivoVario[]
   campanhas: Campanha[]
   objetivo: number | null
+  objetivoTrimestral: number | null
+  totalTrimestre: number
+  trimestre: number
   total: number
   mes: number
   ano: number
@@ -157,7 +160,7 @@ function calcularTotalLiquido(venda: Venda): number {
   return vendaTotal - totalDevolvido + totalSubstituido - totalIncidencias
 }
 
-export default function VendasView({ vendas: initialVendas, clientes, produtos, objetivosVarios, campanhas, objetivo, total, mes, ano, meses }: Props) {
+export default function VendasView({ vendas: initialVendas, clientes, produtos, objetivosVarios, campanhas, objetivo, objetivoTrimestral, totalTrimestre, trimestre, total, mes, ano, meses }: Props) {
   const router = useRouter()
   // Local state for vendas to ensure immediate UI updates
   const [vendas, setVendas] = useState(initialVendas)
@@ -226,6 +229,8 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
 
   const progresso = objetivo ? (totalLiquido / objetivo) * 100 : 0
   const falta = objetivo ? objetivo - totalLiquido : 0
+  const progressoTrimestral = objetivoTrimestral ? (totalTrimestre / objetivoTrimestral) * 100 : 0
+  const faltaTrimestral = objetivoTrimestral ? objetivoTrimestral - totalTrimestre : 0
 
   // Calculate totals with VAT (totalLiquido is ex-VAT)
   const { semIVA: totalSemIVA, iva: totalIVA, comIVA: totalComIVA } = calcularIVA(totalLiquido)
@@ -889,22 +894,43 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
           </div>
         </div>
 
-        {/* Progress Bar */}
-        {objetivo && (
-          <div className={`rounded-xl p-4 border bg-white dark:bg-card border-border`}>
-            <div className="flex justify-between text-sm mb-2">
-              <span className="font-medium text-foreground">Objetivo: {formatCurrency(objetivo)} EUR</span>
-              <span className={`font-bold ${progresso >= 100 ? "text-emerald-600" : "text-orange-600"}`}>
-                {progresso >= 100 ? "Objetivo atingido!" : `Falta: ${formatCurrency(falta)} EUR`}
-              </span>
-            </div>
-            <div className="w-full bg-muted/50 rounded-full h-4 overflow-hidden">
-              <div
-                className={`h-4 rounded-full transition-all duration-500 ${progresso >= 100 ? "bg-gradient-to-r from-emerald-500 to-green-500" : "bg-gradient-to-r from-primary to-primary/80"}`}
-                style={{ width: `${Math.min(progresso, 100)}%` }}
-              />
-            </div>
-            <p className="text-center mt-2 text-sm font-semibold text-muted-foreground">{progresso.toFixed(1)}% do objetivo</p>
+        {/* Progress Bars */}
+        {(objetivo || objetivoTrimestral) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {objetivo && (
+              <div className="rounded-xl p-4 border bg-white dark:bg-card border-border">
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="font-medium text-foreground">Objetivo Mensal: {formatCurrency(objetivo)} EUR</span>
+                  <span className={`font-bold ${progresso >= 100 ? "text-emerald-600" : "text-orange-600"}`}>
+                    {progresso >= 100 ? "Atingido!" : `Falta: ${formatCurrency(falta)} EUR`}
+                  </span>
+                </div>
+                <div className="w-full bg-muted/50 rounded-full h-4 overflow-hidden">
+                  <div
+                    className={`h-4 rounded-full transition-all duration-500 ${progresso >= 100 ? "bg-gradient-to-r from-emerald-500 to-green-500" : "bg-gradient-to-r from-primary to-primary/80"}`}
+                    style={{ width: `${Math.min(progresso, 100)}%` }}
+                  />
+                </div>
+                <p className="text-center mt-2 text-sm font-semibold text-muted-foreground">{progresso.toFixed(1)}% do objetivo</p>
+              </div>
+            )}
+            {objetivoTrimestral && (
+              <div className="rounded-xl p-4 border bg-white dark:bg-card border-border">
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="font-medium text-foreground">{trimestre}º Trimestre: {formatCurrency(objetivoTrimestral)} EUR</span>
+                  <span className={`font-bold ${progressoTrimestral >= 100 ? "text-emerald-600" : "text-orange-600"}`}>
+                    {progressoTrimestral >= 100 ? "Atingido!" : `Falta: ${formatCurrency(faltaTrimestral)} EUR`}
+                  </span>
+                </div>
+                <div className="w-full bg-muted/50 rounded-full h-4 overflow-hidden">
+                  <div
+                    className={`h-4 rounded-full transition-all duration-500 ${progressoTrimestral >= 100 ? "bg-gradient-to-r from-emerald-500 to-green-500" : "bg-gradient-to-r from-blue-500 to-blue-400"}`}
+                    style={{ width: `${Math.min(progressoTrimestral, 100)}%` }}
+                  />
+                </div>
+                <p className="text-center mt-2 text-sm font-semibold text-muted-foreground">{formatCurrency(totalTrimestre)} EUR — {progressoTrimestral.toFixed(1)}% do objetivo</p>
+              </div>
+            )}
           </div>
         )}
       </div>
