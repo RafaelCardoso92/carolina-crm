@@ -14,15 +14,21 @@ export async function GET(request: NextRequest) {
     const userFilter = userScopedWhere(session)
 
     // Get client revenue (last 12 months)
-    const twelveMonthsAgo = new Date()
-    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12)
+    // Filter by sale period (mes/ano) instead of createdAt
+    const cutoffDate = new Date()
+    cutoffDate.setMonth(cutoffDate.getMonth() - 12)
+    const cutoffMes = cutoffDate.getMonth() + 1
+    const cutoffAno = cutoffDate.getFullYear()
 
     const clientRevenue = await prisma.venda.groupBy({
       by: ["clienteId"],
       _sum: { total: true },
       where: {
         cliente: userFilter,
-        createdAt: { gte: twelveMonthsAgo },
+        OR: [
+          { ano: { gt: cutoffAno } },
+          { ano: cutoffAno, mes: { gte: cutoffMes } },
+        ],
       },
     })
 

@@ -122,11 +122,12 @@ export async function GET(request: Request) {
           .flatMap(c => c.parcelas)
           .filter(p => !p.pago && new Date(p.dataVencimento) < now).length
 
+        // Sort by sale period (mes/ano), not insertion date
         const ultimaVenda = cliente.vendas.sort((a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          (b.ano * 12 + b.mes) - (a.ano * 12 + a.mes)
         )[0]
         const diasDesdeUltimaVenda = ultimaVenda
-          ? Math.floor((now.getTime() - new Date(ultimaVenda.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+          ? Math.floor((now.getTime() - new Date(ultimaVenda.ano, ultimaVenda.mes - 1, 15).getTime()) / (1000 * 60 * 60 * 24))
           : null
 
         const diasDesdeUltimoContacto = cliente.ultimoContacto
@@ -239,11 +240,12 @@ export async function POST(request: Request) {
         .flatMap(c => c.parcelas)
         .filter(p => !p.pago && new Date(p.dataVencimento) < now).length
 
+      // Sort by sale period (mes/ano), not insertion date
       const ultimaVenda = cliente.vendas.sort((a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        (b.ano * 12 + b.mes) - (a.ano * 12 + a.mes)
       )[0]
       const diasDesdeUltimaVenda = ultimaVenda
-        ? Math.floor((now.getTime() - new Date(ultimaVenda.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+        ? Math.floor((now.getTime() - new Date(ultimaVenda.ano, ultimaVenda.mes - 1, 15).getTime()) / (1000 * 60 * 60 * 24))
         : null
 
       const diasDesdeUltimoContacto = cliente.ultimoContacto

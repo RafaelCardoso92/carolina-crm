@@ -200,6 +200,10 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
   const [valor2, setValor2] = useState("")
   const [tipoDocumento, setTipoDocumento] = useState<"FATURA" | "CONSUMO_INTERNO">("FATURA")
 
+  // Sale month/year (allows creating sales for a different month than the one being viewed)
+  const [formMes, setFormMes] = useState(mes)
+  const [formAno, setFormAno] = useState(ano)
+
   // Cobranca state
   const [criarCobranca, setCriarCobranca] = useState(true)
   const [cobrancaParcelas, setCobrancaParcelas] = useState("1")
@@ -327,6 +331,8 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
     setValor1("")
     setValor2("")
     setTipoDocumento("FATURA")
+    setFormMes(mes)
+    setFormAno(ano)
     setCriarCobranca(true)
     setCobrancaParcelas("1")
     setCobrancaDataEmissao("")
@@ -354,6 +360,8 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
     setSelectedCampanhas(venda.campanhas?.map(c => ({ id: c.campanha.id, quantidade: c.quantidade || 1 })) || [])
     setNotas(venda.notas || "")
     setTipoDocumento(venda.tipoDocumento || "FATURA")
+    setFormMes(venda.mes)
+    setFormAno(venda.ano)
 
     // Populate cobranca fields if exists
     if (venda.cobranca) {
@@ -454,8 +462,8 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
       valor2: null,
       notas: notas || null,
       itens,
-      mes,
-      ano,
+      mes: formMes,
+      ano: formAno,
       // Cobranca data - for new vendas or editing vendas without cobranca
       criarCobranca: criarCobranca && !existingCobranca,
       cobranca: criarCobranca && !existingCobranca ? {
@@ -483,20 +491,30 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
 
       if (res.ok) {
         const updatedVenda = await res.json()
-        // Update local state immediately
+        // Update local state immediately (only if sale belongs to currently viewed month)
         if (editingId) {
-          setVendas(prev => prev.map(v => v.id === editingId ? updatedVenda : v))
+          if (formMes === mes && formAno === ano) {
+            setVendas(prev => prev.map(v => v.id === editingId ? updatedVenda : v))
+          } else {
+            // Sale moved to a different month — remove from current view
+            setVendas(prev => prev.filter(v => v.id !== editingId))
+          }
         } else {
-          setVendas(prev => [...prev, updatedVenda])
+          if (formMes === mes && formAno === ano) {
+            setVendas(prev => [...prev, updatedVenda])
+          }
         }
         closeModal()
         router.refresh() // Backup sync with server
+        const differentMonth = formMes !== mes || formAno !== ano
         Swal.fire({
           icon: "success",
           title: editingId ? "Venda atualizada" : "Venda criada",
-          text: editingId ? "A venda foi atualizada com sucesso." : "A venda foi criada com sucesso.",
+          text: differentMonth
+            ? `Venda registada em ${meses[formMes]} ${formAno}.`
+            : editingId ? "A venda foi atualizada com sucesso." : "A venda foi criada com sucesso.",
           confirmButtonColor: "#b8860b",
-          timer: 2000
+          timer: 2500
         })
       } else {
         const error = await res.json()
@@ -1462,7 +1480,7 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-foreground">{editingId ? "Editar Venda" : "Nova Venda"}</h2>
-                  <p className="text-sm text-muted-foreground">{meses[mes]} {ano}</p>
+                  <p className="text-sm text-muted-foreground">{meses[formMes]} {formAno}</p>
                 </div>
               </div>
               <button
@@ -1547,6 +1565,36 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                     </div>
                   )
                 })()}
+              </div>
+
+              {/* Sale Month/Year Selection */}
+              <div className="flex flex-wrap gap-3 items-center bg-secondary/50 rounded-xl p-4 border border-border">
+                <label className="text-sm font-bold text-foreground">
+                  Mes da venda:
+                </label>
+                <select
+                  value={formMes}
+                  onChange={(e) => setFormMes(parseInt(e.target.value))}
+                  className="px-3 py-2 border-2 border-border rounded-lg font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-card text-foreground"
+                >
+                  {meses.slice(1).map((m, i) => (
+                    <option key={i + 1} value={i + 1}>{m}</option>
+                  ))}
+                </select>
+                <select
+                  value={formAno}
+                  onChange={(e) => setFormAno(parseInt(e.target.value))}
+                  className="px-3 py-2 border-2 border-border rounded-lg font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-card text-foreground"
+                >
+                  {[2023, 2024, 2025, 2026].map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+                {(formMes !== mes || formAno !== ano) && (
+                  <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-1 rounded-lg border border-amber-200 dark:border-amber-700">
+                    Diferente do mes atual ({meses[mes]})
+                  </span>
+                )}
               </div>
 
               {/* Document Type Selection */}

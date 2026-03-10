@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     const vendas = await prisma.venda.findMany({
       where: { ano },
       include: { cliente: true },
-      orderBy: [{ mes: "asc" }, { createdAt: "asc" }]
+      orderBy: [{ mes: "asc" }, { cliente: { nome: "asc" } }]
     })
 
     // Get objectives
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
         const total = Number(v.total)
         const { semIVA, iva } = calcularIVA(total)
         return {
-          "Data": v.createdAt.toLocaleDateString("pt-PT"),
+          "Data": `${meses[v.mes]} ${v.ano}`,
           "Mes": meses[v.mes],
           "Cliente": v.cliente.nome,
           "Codigo Cliente": v.cliente.codigo || "",

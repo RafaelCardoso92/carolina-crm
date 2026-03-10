@@ -114,7 +114,7 @@ export async function POST() {
 
     const returns = await prisma.devolucao.aggregate({
       where: {
-        createdAt: { gte: new Date(currentYear, currentMonth - 1, 1) }
+        venda: { ano: currentYear, mes: currentMonth }
       },
       _sum: { totalDevolvido: true },
       _count: true
