@@ -159,7 +159,7 @@ export async function PUT(
       total = valor1 + valor2
     }
 
-    if (total <= 0) {
+    if (total <= 0 && !data.objetivoVarioId) {
       return NextResponse.json({ error: "O total deve ser maior que zero" }, { status: 400 })
     }
 

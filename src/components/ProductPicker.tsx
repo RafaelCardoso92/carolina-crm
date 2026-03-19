@@ -201,7 +201,7 @@ export default function ProductPicker({
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full min-w-[320px] bg-card border border-border rounded-xl shadow-2xl overflow-hidden">
+        <div className="absolute z-50 mt-1 w-full min-w-0 sm:min-w-[320px] bg-card border border-border rounded-xl shadow-2xl overflow-hidden">
           {/* Search and Category Filter Row */}
           <div className="p-2 border-b border-border bg-secondary/30">
             <div className="flex gap-2">

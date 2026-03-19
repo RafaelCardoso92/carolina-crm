@@ -30,11 +30,19 @@ type ItemVenda = {
   devolucoes?: ItemDevolucaoRef[]
 }
 
+type CampanhaOuVarioProduto = {
+  produtoId: string | null
+  nome: string
+  preco: number
+  quantidade: number
+}
+
 type ObjetivoVario = {
   id: string
   titulo: string
   mes: number
   ano: number
+  produtos: CampanhaOuVarioProduto[]
 }
 
 type Campanha = {
@@ -42,7 +50,10 @@ type Campanha = {
   titulo: string
   mes: number
   ano: number
+  produtos: CampanhaOuVarioProduto[]
 }
+
+type SaleMode = 'normal' | 'campanha' | 'varios'
 
 type Venda = {
   id: string
@@ -195,6 +206,7 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
   const [selectedCampanhas, setSelectedCampanhas] = useState<{ id: string; quantidade: number }[]>([])
   const [formItems, setFormItems] = useState<FormItem[]>([])
   const [useItems, setUseItems] = useState(false) // Default to manual value mode
+  const [saleMode, setSaleMode] = useState<SaleMode>('normal')
   const [notas, setNotas] = useState("")
   const [valor1, setValor1] = useState("")
   const [valor2, setValor2] = useState("")
@@ -327,6 +339,7 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
     setSelectedCampanhas([])
     setFormItems([])
     setUseItems(false)
+    setSaleMode('normal')
     setNotas("")
     setValor1("")
     setValor2("")
@@ -390,6 +403,18 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
       setValor2(venda.valor2 ? String(venda.valor2) : "")
     }
 
+    // Detect sale mode from existing data
+    // If has campanhas and items came from them → campanha mode
+    // If has objetivo vario and items → varios mode
+    // Otherwise → normal mode
+    if (venda.campanhas && venda.campanhas.length > 0 && !venda.valor1 && venda.itens && venda.itens.length > 0) {
+      setSaleMode('campanha')
+    } else if (venda.objetivoVarioId && venda.itens && venda.itens.length > 0 && !venda.valor1) {
+      setSaleMode('varios')
+    } else {
+      setSaleMode('normal')
+    }
+
     setShowModal(true)
   }
 
@@ -420,6 +445,70 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
     }
 
     setFormItems(updated)
+  }
+
+  // Auto-populate formItems from campaign or objetivo vario products
+  function populateItemsFromSource(products: CampanhaOuVarioProduto[], multiplier: number = 1) {
+    const items: FormItem[] = products.map(p => ({
+      produtoId: p.produtoId || "",
+      quantidade: String(p.quantidade * multiplier),
+      precoUnit: String(p.preco)
+    }))
+    setFormItems(items)
+    setUseItems(true)
+  }
+
+  // Handle sale mode change
+  function handleSaleModeChange(mode: SaleMode) {
+    setSaleMode(mode)
+    // Reset items and selections when switching modes
+    setFormItems([])
+    setSelectedCampanhas([])
+    setSelectedObjetivoVarioId("")
+    setObjetivoVarioValor("")
+    setValor1("")
+    setValor2("")
+
+    if (mode === 'normal') {
+      setUseItems(false)
+      setFormItems([{ produtoId: "", quantidade: "1", precoUnit: "" }])
+    } else {
+      setUseItems(true)
+    }
+  }
+
+  // When campanhas selection changes in campanha mode, auto-populate items
+  function handleCampanhaModeSelection(newSelectedCampanhas: { id: string; quantidade: number }[]) {
+    setSelectedCampanhas(newSelectedCampanhas)
+    // Merge all products from selected campaigns with quantity multipliers
+    const allItems: FormItem[] = []
+    newSelectedCampanhas.forEach(sc => {
+      const campanha = campanhas.find(c => c.id === sc.id)
+      if (campanha) {
+        campanha.produtos.forEach(p => {
+          allItems.push({
+            produtoId: p.produtoId || "",
+            quantidade: String(p.quantidade * sc.quantidade),
+            precoUnit: String(p.preco)
+          })
+        })
+      }
+    })
+    setFormItems(allItems)
+  }
+
+  // When objetivo vario selection changes in varios mode, auto-populate items
+  function handleVariosModeSelection(objetivoId: string) {
+    setSelectedObjetivoVarioId(objetivoId)
+    if (!objetivoId) {
+      setFormItems([])
+      setObjetivoVarioValor("")
+      return
+    }
+    const objetivo = objetivosVarios.find(o => o.id === objetivoId)
+    if (objetivo) {
+      populateItemsFromSource(objetivo.produtos)
+    }
   }
 
   function navigateMonth(direction: number) {
@@ -1626,8 +1715,167 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                 </button>
               </div>
 
+              {/* Sale Mode Selector */}
+              <div>
+                <h3 className="text-sm font-bold text-foreground uppercase tracking-wide mb-3">Modo de Venda</h3>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSaleModeChange('normal')}
+                    className={`px-4 py-2 rounded-lg font-medium transition text-sm ${
+                      saleMode === 'normal'
+                        ? "bg-primary text-white"
+                        : "bg-secondary text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    Produtos
+                  </button>
+                  {campanhas.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleSaleModeChange('campanha')}
+                      className={`px-4 py-2 rounded-lg font-medium transition text-sm ${
+                        saleMode === 'campanha'
+                          ? "bg-emerald-500 text-white"
+                          : "bg-secondary text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      Campanha
+                    </button>
+                  )}
+                  {objetivosVarios.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleSaleModeChange('varios')}
+                      className={`px-4 py-2 rounded-lg font-medium transition text-sm ${
+                        saleMode === 'varios'
+                          ? "bg-purple-500 text-white"
+                          : "bg-secondary text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      Varios
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Campanha Mode - Campaign Picker */}
+              {saleMode === 'campanha' && (
+                <div className="bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-xl p-4 border border-emerald-200 dark:border-emerald-800">
+                  <h3 className="text-sm font-bold text-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+                    </svg>
+                    Selecionar Campanhas
+                  </h3>
+                  <div className="space-y-2">
+                    {campanhas.map((c) => {
+                      const selectedCampanha = selectedCampanhas.find(sc => sc.id === c.id)
+                      const isSelected = !!selectedCampanha
+                      return (
+                        <div key={c.id} className="flex flex-col sm:flex-row sm:items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newSelection = isSelected
+                                ? selectedCampanhas.filter(sc => sc.id !== c.id)
+                                : [...selectedCampanhas, { id: c.id, quantidade: 1 }]
+                              handleCampanhaModeSelection(newSelection)
+                            }}
+                            className={`flex-1 px-4 py-3 rounded-xl text-sm font-semibold transition text-left flex items-center gap-2 ${
+                              isSelected
+                                ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30"
+                                : "bg-white dark:bg-card border-2 border-emerald-200 dark:border-emerald-700 text-foreground hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
+                            }`}
+                          >
+                            {isSelected ? (
+                              <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            ) : (
+                              <svg className="w-5 h-5 flex-shrink-0 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                              </svg>
+                            )}
+                            <span>{c.titulo}</span>
+                            {c.produtos.length > 0 && (
+                              <span className="text-xs opacity-75">({c.produtos.length} produtos)</span>
+                            )}
+                          </button>
+                          {isSelected && (
+                            <div className="flex items-center gap-2 bg-emerald-100 dark:bg-emerald-900/50 px-3 py-2 rounded-xl sm:w-auto w-fit">
+                              <label className="text-sm font-medium text-emerald-700 dark:text-emerald-300 whitespace-nowrap">Qtd:</label>
+                              <input
+                                type="number"
+                                min="1"
+                                value={selectedCampanha!.quantidade}
+                                onChange={(e) => {
+                                  const newQtd = Math.max(1, parseInt(e.target.value) || 1)
+                                  const newSelection = selectedCampanhas.map(sc =>
+                                    sc.id === c.id ? { ...sc, quantidade: newQtd } : sc
+                                  )
+                                  handleCampanhaModeSelection(newSelection)
+                                }}
+                                className="w-16 px-2 py-1.5 border-2 border-emerald-300 dark:border-emerald-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-foreground font-bold bg-card text-center"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Varios Mode - Objetivo Vario Picker */}
+              {saleMode === 'varios' && (
+                <div className="bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 rounded-xl p-4 border border-purple-200 dark:border-purple-800">
+                  <h3 className="text-sm font-bold text-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
+                    Selecionar Objetivo Vario
+                  </h3>
+                  <select
+                    value={selectedObjetivoVarioId}
+                    onChange={(e) => handleVariosModeSelection(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-purple-200 dark:border-purple-700 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-medium bg-card"
+                  >
+                    <option value="">Selecionar objetivo...</option>
+                    {objetivosVarios.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.titulo} ({o.produtos.length} produtos)
+                      </option>
+                    ))}
+                  </select>
+                  {selectedObjetivoVarioId && (
+                    <div className="mt-3 flex items-center gap-3 bg-purple-100 dark:bg-purple-900/50 p-3 rounded-xl">
+                      <label className="text-sm font-semibold text-purple-700 dark:text-purple-300 whitespace-nowrap">Valor extra cobranca (EUR):</label>
+                      <div className="relative flex-1">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={objetivoVarioValor}
+                          onChange={(e) => setObjetivoVarioValor(e.target.value)}
+                          placeholder="0.00 (opcional)"
+                          className="w-full px-4 py-2.5 border-2 border-purple-300 dark:border-purple-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-foreground font-bold bg-card"
+                        />
+                      </div>
+                      {objetivoVarioValor && parseFloat(objetivoVarioValor) > 0 && (
+                        <span className="text-sm font-bold text-purple-700 dark:text-purple-300 whitespace-nowrap">
+                          + {formatCurrency(parseFloat(objetivoVarioValor))} na cobranca
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Products Section */}
               <div>
+                {(saleMode === 'normal' || saleMode === 'varios') && (
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">Produtos</h3>
                   <div className="flex items-center gap-2 text-sm">
@@ -1647,6 +1895,13 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                     </button>
                   </div>
                 </div>
+                )}
+
+                {saleMode !== 'normal' && formItems.length > 0 && (
+                  <h3 className="text-sm font-bold text-foreground uppercase tracking-wide mb-3">
+                    Itens da Venda ({formItems.length} produtos)
+                  </h3>
+                )}
 
                 {useItems ? (
                   <div className="space-y-3">
@@ -1780,8 +2035,8 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                 </div>
               </div>
 
-              {/* Campanhas Section */}
-              {campanhas.length > 0 && (
+              {/* Campanhas Section - only show in normal mode */}
+              {saleMode === 'normal' && campanhas.length > 0 && (
                 <div className="bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-xl p-4 border border-emerald-200 dark:border-emerald-800">
                   <h3 className="text-sm font-bold text-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
                     <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1847,8 +2102,8 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                 </div>
               )}
 
-              {/* Objetivos Varios Section - Separate from Campanhas */}
-              {objetivosVarios.length > 0 && (
+              {/* Objetivos Varios Section - only show in normal mode */}
+              {saleMode === 'normal' && objetivosVarios.length > 0 && (
                 <div className="bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 rounded-xl p-4 border border-purple-200 dark:border-purple-800">
                   <h3 className="text-sm font-bold text-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
                     <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2252,7 +2507,7 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                 </button>
                 <button
                   type="submit"
-                  disabled={loading || !selectedClienteId || currentTotal <= 0}
+                  disabled={loading || !selectedClienteId || (currentTotal <= 0 && !selectedObjetivoVarioId)}
                   className="flex-1 bg-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-primary-hover transition disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {loading ? (
