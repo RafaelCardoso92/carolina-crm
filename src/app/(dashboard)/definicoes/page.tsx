@@ -2,6 +2,7 @@
 
 import TokensTab from "@/components/TokensTab"
 import ComissaoHistorico from "@/components/ComissaoHistorico"
+import ComissaoVendedor from "@/components/ComissaoVendedor"
 import IVAHistorico from "@/components/IVAHistorico"
 import { useSearchParams } from "next/navigation"
 import { Suspense } from "react"
@@ -365,6 +366,11 @@ function DefinicoesContent() {
 
           {/* Comissao - Now with date-based history */}
           <ComissaoHistorico />
+
+          {/* Per-seller commission rates */}
+          <div className="md:col-span-2">
+            <ComissaoVendedor />
+          </div>
         </div>
       )}
 
@@ -793,28 +799,46 @@ function ObjetivoForm({
   hint?: string
   compact?: boolean
 }) {
-  const [valor, setValor] = useState(currentValue ? String(currentValue) : "")
-  const displayFallback = !currentValue && fallbackValue
+  const numericCurrent = currentValue ? Number(currentValue) : null
+  const [valor, setValor] = useState(numericCurrent ? String(numericCurrent) : "")
+  const displayFallback = !numericCurrent && fallbackValue
+
+  function handleChange(raw: string) {
+    // Allow digits, dots, commas
+    const cleaned = raw.replace(/[^0-9.,]/g, "")
+    setValor(cleaned)
+  }
+
+  function handleSave() {
+    const parsed = parseFloat(valor.replace(",", "."))
+    if (!isNaN(parsed) && parsed > 0) {
+      onSave(parsed)
+    }
+  }
 
   return (
-    <div className={compact ? "" : ""}>
-      <label className="block text-sm font-bold text-foreground mb-2">{label}</label>
+    <div>
+      <label className="block text-sm font-bold text-foreground mb-1">{label}</label>
+      {numericCurrent !== null && (
+        <p className="text-xs text-primary font-semibold mb-1.5">Atual: {numericCurrent.toLocaleString("pt-PT", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €</p>
+      )}
       <div className="flex gap-2">
         <div className="relative flex-1">
           <input
-            type="number"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             value={valor}
-            onChange={(e) => setValor(e.target.value)}
-            placeholder={displayFallback ? fallbackValue.toFixed(0) : "0.00"}
-            className={`w-full px-3 py-2 border-2 rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none pr-8 ${
+            onChange={(e) => handleChange(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSave()}
+            placeholder={displayFallback ? fallbackValue.toLocaleString("pt-PT", { maximumFractionDigits: 0 }) : "Ex: 17000"}
+            className={`w-full px-3 py-2 border-2 rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none pr-8 text-base ${
               displayFallback ? "border-border bg-muted" : "border-border"
             }`}
           />
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">€</span>
         </div>
         <button
-          onClick={() => valor && onSave(parseFloat(valor))}
+          onClick={handleSave}
           disabled={saving || !valor}
           className="px-3 py-2 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary-hover transition disabled:opacity-50 text-sm"
         >

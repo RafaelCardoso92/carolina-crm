@@ -171,11 +171,10 @@ async function getVendasData(mes: number, ano: number, userFilter: { userId?: st
     }),
     prisma.campanha.findMany({
       where: { ativo: true, ...userFilter },  // Show all active campaigns regardless of month
-      select: {
-        id: true,
-        titulo: true,
-        mes: true,
-        ano: true
+      include: {
+        produtos: {
+          include: { produto: true }
+        }
       },
       orderBy: [{ ano: 'desc' }, { mes: 'desc' }, { titulo: 'asc' }]
     })
@@ -235,9 +234,26 @@ export default async function VendasPage({
           id: o.id,
           titulo: o.titulo,
           mes: o.mes,
-          ano: o.ano
+          ano: o.ano,
+          produtos: o.produtos.map(p => ({
+            produtoId: p.produtoId,
+            nome: p.nome,
+            preco: Number(p.precoSemIva),
+            quantidade: p.quantidade
+          }))
         }))}
-        campanhas={data.campanhas}
+        campanhas={data.campanhas.map(c => ({
+          id: c.id,
+          titulo: c.titulo,
+          mes: c.mes,
+          ano: c.ano,
+          produtos: c.produtos.map(p => ({
+            produtoId: p.produtoId,
+            nome: p.nome,
+            preco: Number(p.precoUnit),
+            quantidade: p.quantidade
+          }))
+        }))}
         objetivo={data.objetivo ? Number(data.objetivo.objetivo) : null}
         objetivoTrimestral={data.objetivoTrimestral}
         totalTrimestre={data.totalTrimestre}

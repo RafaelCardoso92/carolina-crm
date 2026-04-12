@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 import { requirePermission, getEffectiveUserId } from "@/lib/api-auth"
 import { PERMISSIONS, canViewAllData } from "@/lib/permissions"
-import { getComissaoForDate } from "@/lib/comissao"
+import { getComissaoVendedorForDate } from "@/lib/comissao"
 import { getIVAForDate } from "@/lib/iva"
 
 // Helper to check cobranca ownership through cliente
@@ -91,6 +91,7 @@ export async function PUT(
     }
 
     // If changing cliente, verify ownership of new cliente
+    let sellerUserId = cobrancaCheck.cliente.userId
     if (data.clienteId !== cobrancaCheck.clienteId) {
       const newCliente = await prisma.cliente.findUnique({
         where: { id: data.clienteId },
@@ -104,11 +105,13 @@ export async function PUT(
       if (!canViewAll && newCliente.userId !== effectiveUserId) {
         return NextResponse.json({ error: "Sem permissao para este cliente" }, { status: 403 })
       }
+
+      sellerUserId = newCliente.userId
     }
 
     // Calculate commission and IVA using the rates effective on the emission date
     const emissionDate = data.dataEmissao ? new Date(data.dataEmissao) : new Date()
-    const comissaoRate = await getComissaoForDate(emissionDate)
+    const comissaoRate = await getComissaoVendedorForDate(sellerUserId!, emissionDate)
     const ivaRate = await getIVAForDate(emissionDate)
     const valorSemIva = data.valorSemIva || (Number(data.valor) / (1 + ivaRate / 100))
     const calculatedComissao = data.comissao ?? Math.round(valorSemIva * (comissaoRate / 100) * 100) / 100

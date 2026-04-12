@@ -51,13 +51,49 @@ export async function getComissaoAtual(): Promise<number> {
 }
 
 /**
+ * Get the commission rate for a specific seller on a specific date.
+ * Falls back to global rate if no seller-specific rate is found.
+ * @param userId - The seller's user ID
+ * @param date - The date to check
+ * @returns The commission percentage
+ */
+export async function getComissaoVendedorForDate(userId: string, date: Date = new Date()): Promise<number> {
+  try {
+    const rate = await prisma.historicoComissaoVendedor.findFirst({
+      where: {
+        userId,
+        dataInicio: { lte: date },
+        OR: [
+          { dataFim: { gte: date } },
+          { dataFim: null }
+        ]
+      },
+      orderBy: { dataInicio: "desc" }
+    })
+
+    if (rate) {
+      return Number(rate.percentagem)
+    }
+
+    // No seller-specific rate — fall back to global
+    return getComissaoForDate(date)
+  } catch (error) {
+    console.error("Error getting seller commission rate:", error)
+    return getComissaoForDate(date)
+  }
+}
+
+/**
  * Calculate commission amount based on value and the rate active on a specific date
  * @param valorSemIva - The value without IVA
  * @param date - The date to use for rate lookup
+ * @param userId - Optional seller ID for per-seller rate lookup
  * @returns The commission amount
  */
-export async function calcularComissao(valorSemIva: number, date: Date = new Date()): Promise<number> {
-  const rate = await getComissaoForDate(date)
+export async function calcularComissao(valorSemIva: number, date: Date = new Date(), userId?: string): Promise<number> {
+  const rate = userId
+    ? await getComissaoVendedorForDate(userId, date)
+    : await getComissaoForDate(date)
   return Math.round(valorSemIva * (rate / 100) * 100) / 100
 }
 

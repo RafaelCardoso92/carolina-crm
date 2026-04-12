@@ -17,6 +17,7 @@ import WhatsAppButton from "@/components/WhatsAppButton"
 
 import QuickReorder from "./QuickReorder"
 import ClienteActions from "./ClienteActions"
+import CreditoCliente from "@/components/CreditoCliente"
 
 async function getCliente(id: string, session: any) {
   return prisma.cliente.findFirst({
@@ -121,6 +122,11 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
+      {/* Credit History */}
+      <div className="mb-8">
+        <CreditoCliente clienteId={id} />
+      </div>
+
       {/* Contact Info and Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div className="bg-card rounded-xl shadow-sm p-6">
@@ -143,10 +149,17 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
                 </dd>
               </div>
             )}
-            {cliente.morada && (
+            {(cliente.morada || cliente.cidade || cliente.codigoPostal) && (
               <div>
                 <dt className="text-sm text-muted-foreground">Morada</dt>
-                <dd className="text-foreground">{cliente.morada}</dd>
+                <dd className="text-foreground">
+                  {cliente.morada && <span>{cliente.morada}</span>}
+                  {(cliente.cidade || cliente.codigoPostal) && (
+                    <span className={cliente.morada ? " block text-muted-foreground text-sm mt-0.5" : ""}>
+                      {[cliente.cidade, cliente.codigoPostal].filter(Boolean).join(", ")}
+                    </span>
+                  )}
+                </dd>
               </div>
             )}
             {cliente.notas && (
