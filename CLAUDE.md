@@ -2,36 +2,48 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Deployment model — NOT K8s
+## Deployment model — K3s, deploy via `ops`
 
-This project is **Docker Compose**, not Kubernetes. The wider server (`/home/ubuntu/CLAUDE.md`) defaults to `ops deploy`; that workflow does NOT apply here. There is no `k8s.yaml`. Deploy/restart with `docker compose` from the project root.
+Production runs in **K3s on the Germany node** (`apps/carolina-crm` deployment, dedicated DB pod `apps/carolina-crm-db`, both with `nodeSelector: role: production-eu`). Cloudflared routes `carolina.rafaelcardoso.co.uk` to K3s Traefik (`10.43.x.x` cluster IP), which routes via Ingress to the `carolina-crm` service.
 
-- Live at `https://carolina.rafaelcardoso.co.uk` (paid client: Carolina, Portuguese sales rep CRM).
-- Cloudflared tunnel routes the hostname directly to the host port `172.17.0.1:3001` (the `proxy` external Docker network is referenced but inbound traffic does not go through K3s Traefik). See `/home/ubuntu/CLAUDE.md` "carolina pattern" for the tunnel-to-host-port routing.
-- Two services in `docker-compose.yml`: `db` (Postgres 14 on host port `5436`, volume `carolina_data`) and `app` (Next.js standalone, `3001:3000`). Uploads bind-mounted `./uploads → /uploads`.
-- Build args bake `NEXT_PUBLIC_*` into the bundle. The Dockerfile copies `.env` into the builder stage on purpose — client-side env vars (e.g. `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`) must exist in `.env` at build time, not just at runtime.
+Deploy with `ops deploy carolina-crm` (rsync source to ns518337 → buildx → push to `100.122.64.82:5000/carolina-crm:latest` → `kubectl rollout restart`). The `apps/carolina-crm` Deployment was created out-of-band and lives only in the cluster — there is no `k8s.yaml` in the repo.
+
+- Live: `https://carolina.rafaelcardoso.co.uk` (paid client: Carolina Sousa, Portuguese sales rep CRM).
+- Prod DB: `carolina-crm-db.apps.svc.cluster.local:5432` (admin user `carolina`). Connect via `kubectl exec` into the pod for ad-hoc queries.
+- Build args bake `NEXT_PUBLIC_*` into the bundle. `Dockerfile` copies `.env` at build time, and `ops` also passes `--build-arg NEXT_PUBLIC_*` from `.env`.
+
+### `docker-compose.yml` is for local dev only
+
+The repo also has a `docker-compose.yml` that brings up a parallel Postgres on host port `5436` and an app on `3001:3000`. **It is NOT in the production traffic path.** Use it only for fully-isolated local testing (`docker compose up -d db app`). Do not assume a `docker compose build app` ships anything to production — the K8s pod pulls from the registry, untouched by anything on this host.
 
 ## Commands
 
 Run from `~/projects/carolina-crm/`.
 
 ```bash
-# Dev (hot reload, talks to the Dockerized DB on localhost:5436)
+# Dev — local Postgres via docker-compose (port 5436), app via next dev
+docker compose up -d db              # bring up local Postgres only
 npm run dev                          # next dev — http://localhost:3000
 
-# DB schema / data
+# DB schema / data — local
 npx prisma generate                  # regen client after schema.prisma changes
-npx prisma migrate dev --name <msg>  # create+apply migration locally
-npx prisma db push                   # push schema without a migration (use sparingly)
+npx prisma db push                   # push schema (project uses db push, no migrations dir)
 npm run seed                         # tsx prisma/seed.ts — creates default users
 
 # Lint / build
 npm run lint                         # eslint (flat config in eslint.config.mjs)
 npm run build                        # next build (output: standalone)
 
-# Production deploy on this host
-docker compose build app && docker compose up -d app
-docker compose logs -f app
+# Production deploy
+ops deploy carolina-crm              # build remote, push to registry, rollout K8s
+
+# Production DB shell
+kubectl exec -n apps -it deploy/carolina-crm-db -- bash -c \
+  'PGPASSWORD=$POSTGRES_PASSWORD psql -U $POSTGRES_USER -d $POSTGRES_DB'
+
+# Production logs / pod status
+ops logs carolina-crm -f             # follow live logs
+ops status carolina-crm              # pod state + recent events
 docker compose restart app
 
 # DB shell
