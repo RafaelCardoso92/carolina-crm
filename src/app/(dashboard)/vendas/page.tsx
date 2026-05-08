@@ -135,7 +135,7 @@ async function getVendasData(mes: number, ano: number, userFilter: { userId?: st
   const trimestre = getTrimestre(mes)
   const mesesTrim = getMesesTrimestre(trimestre)
 
-  const [vendas, clientes, objetivo, objetivoTrimestral, vendasTrimestre, produtos, objetivosVarios, campanhas] = await Promise.all([
+  const [vendas, clientes, objetivo, objetivoTrimestral, vendasTrimestre, produtos, objetivosVarios, campanhas, variosMetas] = await Promise.all([
     fetchVendas(mes, ano, userFilter),
     prisma.cliente.findMany({
       where: { ativo: true, ...userFilter },
@@ -177,6 +177,11 @@ async function getVendasData(mes: number, ano: number, userFilter: { userId?: st
         }
       },
       orderBy: [{ ano: 'desc' }, { mes: 'desc' }, { titulo: 'asc' }]
+    }),
+    // Metas for the period — one row per (objetivoVarioId, mes, ano). Drives the VariosCard's % bars.
+    prisma.objetivoVarioMeta.findMany({
+      where: { mes, ano },
+      select: { objetivoVarioId: true, objetivo: true }
     })
   ])
 
@@ -185,7 +190,19 @@ async function getVendasData(mes: number, ano: number, userFilter: { userId?: st
   const totalTrimestre = Number(vendasTrimestre._sum.total || 0)
   const objTrimestral = objetivoTrimestral ? Number(objetivoTrimestral.objetivo) : null
 
-  return { vendas: serializedVendas, clientes, objetivo, total, produtos, objetivosVarios, campanhas, trimestre, objetivoTrimestral: objTrimestral, totalTrimestre }
+  // Build varios progress for the period: one row per objetivoVario active in
+  // (mes, ano), summing objetivoVarioValor across this period's vendas.
+  const metaByObjetivoId = new Map(variosMetas.map(m => [m.objetivoVarioId, Number(m.objetivo)]))
+  const variosProgress = objetivosVarios
+    .filter(o => o.mes === mes && o.ano === ano)
+    .map(o => {
+      const linkedVendas = vendas.filter(v => v.objetivoVarioId === o.id)
+      const totalVendido = linkedVendas.reduce((sum, v) => sum + Number(v.objetivoVarioValor || 0), 0)
+      const metaValor = metaByObjetivoId.has(o.id) ? metaByObjetivoId.get(o.id)! : null
+      return { id: o.id, titulo: o.titulo, totalVendido, metaValor, count: linkedVendas.length }
+    })
+
+  return { vendas: serializedVendas, clientes, objetivo, total, produtos, objetivosVarios, campanhas, trimestre, objetivoTrimestral: objTrimestral, totalTrimestre, variosProgress }
 }
 
 export default async function VendasPage({
@@ -259,6 +276,7 @@ export default async function VendasPage({
         totalTrimestre={data.totalTrimestre}
         trimestre={data.trimestre}
         total={data.total}
+        variosProgress={data.variosProgress}
         mes={mes}
         ano={ano}
         meses={meses}

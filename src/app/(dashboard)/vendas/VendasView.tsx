@@ -10,6 +10,7 @@ import DevolucaoForm from "@/components/DevolucaoForm"
 import DevolucaoList from "@/components/DevolucaoList"
 import ProductPicker from "@/components/ProductPicker"
 import type { DevolucaoWithRelations } from "@/types/devolucao"
+import VariosCard, { type VariosProgressItem } from "./VariosCard"
 
 type ItemDevolucaoRef = {
   id: string
@@ -145,6 +146,7 @@ type Props = {
   totalTrimestre: number
   trimestre: number
   total: number
+  variosProgress: VariosProgressItem[]
   mes: number
   ano: number
   meses: string[]
@@ -171,7 +173,7 @@ function calcularTotalLiquido(venda: Venda): number {
   return vendaTotal - totalDevolvido + totalSubstituido - totalIncidencias
 }
 
-export default function VendasView({ vendas: initialVendas, clientes, produtos, objetivosVarios, campanhas, objetivo, objetivoTrimestral, totalTrimestre, trimestre, total, mes, ano, meses }: Props) {
+export default function VendasView({ vendas: initialVendas, clientes, produtos, objetivosVarios, campanhas, objetivo, objetivoTrimestral, totalTrimestre, trimestre, total, variosProgress, mes, ano, meses }: Props) {
   const router = useRouter()
   // Local state for vendas to ensure immediate UI updates
   const [vendas, setVendas] = useState(initialVendas)
@@ -1000,6 +1002,9 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
             <p className="text-base md:text-2xl font-bold text-primary">{formatCurrency(totalComIVA)} EUR</p>
           </div>
         </div>
+
+        {/* Varios summary — hidden when no varios for this period */}
+        <VariosCard items={variosProgress} mes={mes} ano={ano} meses={meses} />
 
         {/* Progress Bars */}
         {(objetivo || objetivoTrimestral) && (
