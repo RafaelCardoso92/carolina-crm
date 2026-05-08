@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 import { requirePermission, getEffectiveUserId } from "@/lib/api-auth"
 import { PERMISSIONS, canViewAllData } from "@/lib/permissions"
+import { calcularValorComIVA } from "@/lib/iva"
 
 type ItemInput = {
   produtoId: string
@@ -230,9 +231,12 @@ export async function PUT(
           ? new Date(data.cobranca.dataEmissao)
           : new Date()
 
-        // Cobranca value includes objetivo vario value (which is NOT part of sale total)
+        // Cobranca value includes objetivo vario value (which is NOT part of sale total).
+        // Sale items + valor1/valor2 are stored s/IVA — apply IVA at the rate active on
+        // the emission date.
         const objetivoVarioValor = data.objetivoVarioValor ? parseFloat(data.objetivoVarioValor) : 0
-        const cobrancaValor = total + objetivoVarioValor
+        const cobrancaValorSemIva = Math.round((total + objetivoVarioValor) * 100) / 100
+        const cobrancaValorComIva = await calcularValorComIVA(cobrancaValorSemIva, dataEmissao)
 
         // Create the cobrança
         const cobranca = await tx.cobranca.create({
@@ -240,8 +244,8 @@ export async function PUT(
             clienteId: data.clienteId,
             vendaId: id,
             fatura: data.cobranca.fatura || null,
-            valor: cobrancaValor,
-            valorSemIva: cobrancaValor,
+            valor: cobrancaValorComIva,
+            valorSemIva: cobrancaValorSemIva,
             dataEmissao,
             dataInicioVencimento: dataEmissao,
             numeroParcelas,
@@ -251,7 +255,7 @@ export async function PUT(
 
         // Create parcelas if more than 1
         if (numeroParcelas > 1) {
-          const valorParcela = cobrancaValor / numeroParcelas
+          const valorParcela = cobrancaValorComIva / numeroParcelas
           const parcelas = []
 
           for (let i = 0; i < numeroParcelas; i++) {
@@ -273,11 +277,12 @@ export async function PUT(
 
       // Update existing cobrança if requested
       if (data.atualizarCobranca && existingCobranca) {
-        // Calculate new cobranca value based on new sale total
-        const IVA_RATE = 0.23
+        // Calculate new cobranca value based on new sale total.
+        // Use the original emission date for IVA-rate lookup so historical rates apply.
+        const ivaDate = existingCobranca.dataEmissao || new Date()
         const objetivoVarioValor = data.objetivoVarioValor ? parseFloat(data.objetivoVarioValor) : 0
-        const cobrancaValorSemIva = total + objetivoVarioValor
-        const cobrancaValorComIva = cobrancaValorSemIva * (1 + IVA_RATE)
+        const cobrancaValorSemIva = Math.round((total + objetivoVarioValor) * 100) / 100
+        const cobrancaValorComIva = await calcularValorComIVA(cobrancaValorSemIva, ivaDate)
 
         await tx.cobranca.update({
           where: { id: existingCobranca.id },

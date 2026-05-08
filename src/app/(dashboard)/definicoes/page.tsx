@@ -1126,7 +1126,7 @@ function ProdutosTable({
               />
             </div>
             <div>
-              <label className="block text-sm font-bold text-foreground mb-1">Preço (c/IVA)</label>
+              <label className="block text-sm font-bold text-foreground mb-1">Preço (s/IVA)</label>
               <div className="relative">
                 <input
                   type="number"
@@ -1767,14 +1767,13 @@ function ObjetivosVariosTable({
     const newProdutos = [...produtosForm]
     newProdutos[index] = { ...newProdutos[index], [field]: value }
 
-    // Auto-fill from product if selected (calculate ex-VAT price from preco which includes VAT)
+    // Auto-fill from product if selected. Produto.preco is stored s/IVA, so copy directly.
     if (field === "produtoId" && value) {
       const produto = produtos.find(p => p.id === value)
       if (produto) {
         newProdutos[index].nome = produto.nome
-        // Calculate price without VAT (23%)
-        const precoComIva = produto.preco ? Number(produto.preco) : 0
-        newProdutos[index].precoSemIva = Number((precoComIva / 1.23).toFixed(2))
+        const precoSemIva = produto.preco ? Number(produto.preco) : 0
+        newProdutos[index].precoSemIva = Number(precoSemIva.toFixed(2))
       }
     }
 

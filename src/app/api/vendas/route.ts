@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { NextResponse } from "next/server"
 import { requirePermission, getEffectiveUserId } from "@/lib/api-auth"
 import { PERMISSIONS, canViewAllData } from "@/lib/permissions"
+import { calcularValorComIVA } from "@/lib/iva"
 
 export async function GET(request: Request) {
   try {
@@ -207,11 +208,12 @@ export async function POST(request: Request) {
           ? new Date(data.cobranca.dataEmissao)
           : new Date()
 
-        // Cobranca value includes objetivo vario value (which is NOT part of sale total)
-        const IVA_RATE = 0.23
+        // Cobranca value includes objetivo vario value (which is NOT part of sale total).
+        // Sale items + valor1/valor2 are stored s/IVA — apply IVA at the rate active on
+        // the emission date (or sale period if no emission date provided).
         const objetivoVarioValor = data.objetivoVarioValor ? parseFloat(data.objetivoVarioValor) : 0
-        const cobrancaValorSemIva = total + objetivoVarioValor
-        const cobrancaValorComIva = cobrancaValorSemIva * (1 + IVA_RATE)
+        const cobrancaValorSemIva = Math.round((total + objetivoVarioValor) * 100) / 100
+        const cobrancaValorComIva = await calcularValorComIVA(cobrancaValorSemIva, dataEmissao)
 
         // Create the cobrança
         const cobranca = await tx.cobranca.create({

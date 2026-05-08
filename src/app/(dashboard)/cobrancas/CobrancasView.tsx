@@ -428,13 +428,12 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
     const formData = new FormData(e.currentTarget)
     const valor = parseFloat(formData.get("valor") as string)
 
-    // Commission is now calculated server-side using date-based rates
+    // valorSemIva and comissao are computed server-side using date-based IVA rate
+    // (see /api/cobrancas POST → getIVAForDate / getComissaoVendedorForDate).
     const data: Record<string, unknown> = {
       clienteId: formData.get("clienteId") as string,
       fatura: formData.get("fatura") as string || null,
       valor,
-      valorSemIva: valor / 1.23,
-      // comissao is calculated server-side based on emission date
       dataEmissao: formData.get("dataEmissao") as string || null,
       notas: formData.get("notas") as string || null
     }
@@ -1732,7 +1731,11 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                       Pago em {formatDate(parcela.dataPago)}
                     </span>
                     <span className="text-xs text-green-600 font-medium">
-                      Comissão: {formatCurrency(Number(parcela.valor) / 1.23 * 0.035)}€
+                      Comissão: {formatCurrency(
+                        cobranca.comissao && Number(cobranca.valor) > 0
+                          ? Number(cobranca.comissao) * (Number(parcela.valor) / Number(cobranca.valor))
+                          : 0
+                      )}€
                     </span>
                   </div>
                 )}

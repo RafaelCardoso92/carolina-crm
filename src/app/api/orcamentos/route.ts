@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { requirePermission, userScopedWhere, getEffectiveUserId } from "@/lib/api-auth"
 import { PERMISSIONS } from "@/lib/permissions"
+import { getIVAForDate } from "@/lib/iva"
 
 // GET - List quotations
 export async function GET(request: NextRequest) {
@@ -59,8 +60,9 @@ export async function POST(request: NextRequest) {
     })
     const numero = `ORC-${year}-${String(count + 1).padStart(3, "0")}`
 
-    // Calculate totals
-    const IVA_RATE = 0.23
+    // Calculate totals — IVA at the rate active on the quote emission date.
+    const dataEmissao = new Date()
+    const ivaRate = await getIVAForDate(dataEmissao)
     let subtotal = 0
     const processedItems = (itens || []).map((item: { produtoId?: string; descricao: string; quantidade: number; precoUnit: number; desconto?: number }, idx: number) => {
       const itemSubtotal = item.quantidade * item.precoUnit - (item.desconto || 0)
@@ -76,8 +78,9 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    const iva = subtotal * IVA_RATE
-    const total = subtotal + iva
+    subtotal = Math.round(subtotal * 100) / 100
+    const iva = Math.round(subtotal * (ivaRate / 100) * 100) / 100
+    const total = Math.round((subtotal + iva) * 100) / 100
     const dataValidade = new Date()
     dataValidade.setDate(dataValidade.getDate() + (validadeDias || 30))
 

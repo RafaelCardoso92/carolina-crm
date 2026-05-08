@@ -22,6 +22,7 @@ interface Props {
   onSuccess?: () => void
 }
 
+// Client-side preview only — server recomputes IVA at the rate active on emission date.
 const IVA_RATE = 0.23
 
 export default function QuotationForm({ prospectoId, clienteId, onSuccess }: Props) {

@@ -1,18 +1,19 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import * as XLSX from "xlsx"
+import { getIVAForMonth } from "@/lib/iva"
 
 const meses = [
   "", "Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho",
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
 ]
 
-const IVA_RATE = 0.23
-
-function calcularIVA(totalComIVA: number) {
-  const semIVA = totalComIVA / (1 + IVA_RATE)
-  const iva = totalComIVA - semIVA
-  return { semIVA, iva }
+// Venda.total is stored s/IVA (net). Add IVA at the rate active for the sale period.
+function calcularIVA(totalSemIVA: number, ivaRate: number) {
+  const semIVA = Math.round(totalSemIVA * 100) / 100
+  const iva = Math.round(semIVA * (ivaRate / 100) * 100) / 100
+  const comIVA = Math.round((semIVA + iva) * 100) / 100
+  return { semIVA, iva, comIVA }
 }
 
 export async function GET(request: Request) {
@@ -22,6 +23,11 @@ export async function GET(request: Request) {
     const tipo = searchParams.get("tipo") || "completo" // completo, mensal, trimestral, clientes
 
     const workbook = XLSX.utils.book_new()
+
+    // Resolve the IVA rate for this report year (uses the rate active on Jan 1 of `ano`).
+    // Mid-year rate changes are rare in Portugal; using a year-anchor keeps aggregates consistent.
+    const ivaRate = await getIVAForMonth(1, ano)
+    const ivaLabel = `IVA (${ivaRate}%)`
 
     // Get all sales for the year with client info
     const vendas = await prisma.venda.findMany({
@@ -46,8 +52,8 @@ export async function GET(request: Request) {
     // ========== SHEET 1: Detailed Sales ==========
     if (tipo === "completo" || tipo === "detalhado") {
       const vendasData = vendas.map(v => {
-        const total = Number(v.total)
-        const { semIVA, iva } = calcularIVA(total)
+        const totalSemIVA = Number(v.total)
+        const { semIVA, iva, comIVA } = calcularIVA(totalSemIVA, ivaRate)
         return {
           "Data": `${meses[v.mes]} ${v.ano}`,
           "Mes": meses[v.mes],
@@ -55,9 +61,9 @@ export async function GET(request: Request) {
           "Codigo Cliente": v.cliente.codigo || "",
           "Valor 1": v.valor1 ? Number(v.valor1).toFixed(2) : "",
           "Valor 2": v.valor2 ? Number(v.valor2).toFixed(2) : "",
-          "Total c/IVA": total.toFixed(2),
           "Sem IVA": semIVA.toFixed(2),
-          "IVA (23%)": iva.toFixed(2),
+          [ivaLabel]: iva.toFixed(2),
+          "Total c/IVA": comIVA.toFixed(2),
           "Notas": v.notas || ""
         }
       })
@@ -86,16 +92,16 @@ export async function GET(request: Request) {
       const resumoMensal = Array.from({ length: 12 }, (_, i) => {
         const mes = i + 1
         const vendasMes = vendas.filter(v => v.mes === mes)
-        const totalMes = vendasMes.reduce((sum, v) => sum + Number(v.total), 0)
-        const { semIVA, iva } = calcularIVA(totalMes)
+        const totalMesSemIVA = vendasMes.reduce((sum, v) => sum + Number(v.total), 0)
+        const { semIVA, iva, comIVA } = calcularIVA(totalMesSemIVA, ivaRate)
         const objetivo = objetivosMensais.find(o => o.mes === mes)
         const objValor = Number(objetivo?.objetivo) || 0
-        const progresso = objValor > 0 ? (totalMes / objValor) * 100 : 0
+        const progresso = objValor > 0 ? (totalMesSemIVA / objValor) * 100 : 0
 
         // Calculate prize
         let premio = 0
         for (const p of premiosMensais) {
-          if (totalMes >= Number(p.minimo)) {
+          if (totalMesSemIVA >= Number(p.minimo)) {
             premio = Number(p.premio)
           }
         }
@@ -103,19 +109,19 @@ export async function GET(request: Request) {
         return {
           "Mes": meses[mes],
           "Nº Vendas": vendasMes.length,
-          "Total c/IVA": totalMes.toFixed(2),
           "Sem IVA": semIVA.toFixed(2),
-          "IVA (23%)": iva.toFixed(2),
+          [ivaLabel]: iva.toFixed(2),
+          "Total c/IVA": comIVA.toFixed(2),
           "Objetivo": objValor > 0 ? objValor.toFixed(2) : "-",
           "Progresso %": objValor > 0 ? progresso.toFixed(1) + "%" : "-",
-          "Diferenca": objValor > 0 ? (totalMes - objValor).toFixed(2) : "-",
+          "Diferenca": objValor > 0 ? (totalMesSemIVA - objValor).toFixed(2) : "-",
           "Premio": premio > 0 ? premio.toFixed(2) + " €" : "-"
         }
       })
 
       // Add totals row
-      const totalAnual = vendas.reduce((sum, v) => sum + Number(v.total), 0)
-      const { semIVA: semIVAAnual, iva: ivaAnual } = calcularIVA(totalAnual)
+      const totalAnualSemIVA = vendas.reduce((sum, v) => sum + Number(v.total), 0)
+      const { semIVA: semIVAAnual, iva: ivaAnual, comIVA: comIVAAnual } = calcularIVA(totalAnualSemIVA, ivaRate)
       const objAnualValor = Number(objetivoAnual?.objetivo) || 0
       const totalPremiosMensais = resumoMensal.reduce((sum, r) => {
         const premio = parseFloat(r["Premio"].replace(" €", "")) || 0
@@ -125,12 +131,12 @@ export async function GET(request: Request) {
       resumoMensal.push({
         "Mes": "TOTAL ANUAL",
         "Nº Vendas": vendas.length,
-        "Total c/IVA": totalAnual.toFixed(2),
         "Sem IVA": semIVAAnual.toFixed(2),
-        "IVA (23%)": ivaAnual.toFixed(2),
+        [ivaLabel]: ivaAnual.toFixed(2),
+        "Total c/IVA": comIVAAnual.toFixed(2),
         "Objetivo": objAnualValor > 0 ? objAnualValor.toFixed(2) : "-",
-        "Progresso %": objAnualValor > 0 ? ((totalAnual / objAnualValor) * 100).toFixed(1) + "%" : "-",
-        "Diferenca": objAnualValor > 0 ? (totalAnual - objAnualValor).toFixed(2) : "-",
+        "Progresso %": objAnualValor > 0 ? ((totalAnualSemIVA / objAnualValor) * 100).toFixed(1) + "%" : "-",
+        "Diferenca": objAnualValor > 0 ? (totalAnualSemIVA - objAnualValor).toFixed(2) : "-",
         "Premio": totalPremiosMensais > 0 ? totalPremiosMensais.toFixed(2) + " €" : "-"
       })
 
@@ -149,16 +155,16 @@ export async function GET(request: Request) {
         const trimestre = i + 1
         const mesesTrimestre = [(trimestre - 1) * 3 + 1, (trimestre - 1) * 3 + 2, (trimestre - 1) * 3 + 3]
         const vendasTrimestre = vendas.filter(v => mesesTrimestre.includes(v.mes))
-        const totalTrimestre = vendasTrimestre.reduce((sum, v) => sum + Number(v.total), 0)
-        const { semIVA, iva } = calcularIVA(totalTrimestre)
+        const totalTrimestreSemIVA = vendasTrimestre.reduce((sum, v) => sum + Number(v.total), 0)
+        const { semIVA, iva, comIVA } = calcularIVA(totalTrimestreSemIVA, ivaRate)
         const objetivo = objetivosTrimestrais.find(o => o.trimestre === trimestre)
         const objValor = Number(objetivo?.objetivo) || 0
-        const progresso = objValor > 0 ? (totalTrimestre / objValor) * 100 : 0
+        const progresso = objValor > 0 ? (totalTrimestreSemIVA / objValor) * 100 : 0
 
         // Calculate prize
         let premio = 0
         for (const p of premiosTrimestrais) {
-          if (totalTrimestre >= Number(p.minimo)) {
+          if (totalTrimestreSemIVA >= Number(p.minimo)) {
             premio = Number(p.premio)
           }
         }
@@ -167,9 +173,9 @@ export async function GET(request: Request) {
           "Trimestre": `${trimestre}º Trimestre`,
           "Meses": `${meses[mesesTrimestre[0]]} - ${meses[mesesTrimestre[2]]}`,
           "Nº Vendas": vendasTrimestre.length,
-          "Total c/IVA": totalTrimestre.toFixed(2),
           "Sem IVA": semIVA.toFixed(2),
-          "IVA (23%)": iva.toFixed(2),
+          [ivaLabel]: iva.toFixed(2),
+          "Total c/IVA": comIVA.toFixed(2),
           "Objetivo": objValor > 0 ? objValor.toFixed(2) : "-",
           "Progresso %": objValor > 0 ? progresso.toFixed(1) + "%" : "-",
           "Premio": premio > 0 ? premio.toFixed(2) + " €" : "-"
@@ -205,15 +211,15 @@ export async function GET(request: Request) {
       const clientesData = Array.from(vendasPorCliente.values())
         .sort((a, b) => b.vendas - a.vendas)
         .map((c, index) => {
-          const { semIVA, iva } = calcularIVA(c.vendas)
+          const { semIVA, iva, comIVA } = calcularIVA(c.vendas, ivaRate)
           return {
             "Ranking": index + 1,
             "Cliente": c.nome,
             "Codigo": c.codigo,
             "Nº Vendas": c.count,
-            "Total c/IVA": c.vendas.toFixed(2),
             "Sem IVA": semIVA.toFixed(2),
-            "IVA (23%)": iva.toFixed(2)
+            [ivaLabel]: iva.toFixed(2),
+            "Total c/IVA": comIVA.toFixed(2)
           }
         })
 
