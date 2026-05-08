@@ -34,8 +34,10 @@ export default function ImpersonationBanner() {
         impersonating: null
       })
 
+      // After stopping, send the user home. /admin/usuarios is gated to admins;
+      // sellers using the managed-account switcher would 403 there.
       router.refresh()
-      router.push("/admin/usuarios")
+      router.push("/")
     } catch (error) {
       console.error("Error stopping impersonation:", error)
     } finally {

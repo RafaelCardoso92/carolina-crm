@@ -38,6 +38,12 @@ model User {
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt
 
+  // Managed-account link: a SELLER whose data is operated by another user
+  // (e.g. a partner who can switch into this account via the sidebar switcher).
+  managedByUserId String?
+  managedBy       User?   @relation("ManagedUsers", fields: [managedByUserId], references: [id], onDelete: SetNull)
+  managedUsers    User[]  @relation("ManagedUsers")
+
   // Owned data relationships
   clientes        Cliente[]
   prospectos      Prospecto[]
@@ -59,6 +65,7 @@ model User {
 
   @@index([role])
   @@index([status])
+  @@index([managedByUserId])
   sentMessages     Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
 }

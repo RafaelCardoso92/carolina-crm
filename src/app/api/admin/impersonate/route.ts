@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { requirePermission, getAuthSession } from "@/lib/api-auth"
-import { PERMISSIONS } from "@/lib/permissions"
+import { requireAuth, getAuthSession } from "@/lib/api-auth"
+import { canImpersonateUser } from "@/lib/permissions"
 
 // POST /api/admin/impersonate - Start impersonating a user
 export async function POST(request: Request) {
   try {
-    const session = await requirePermission(PERMISSIONS.IMPERSONATE)
+    const session = await requireAuth()
 
     const body = await request.json()
     const { userId } = body
@@ -23,6 +23,15 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Não pode impersonar a própria conta" },
         { status: 400 }
+      )
+    }
+
+    // Permission gate: admin path OR managed-account path.
+    const allowed = await canImpersonateUser(session, userId, prisma)
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "Sem permissão para impersonar este utilizador" },
+        { status: 403 }
       )
     }
 

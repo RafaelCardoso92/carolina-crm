@@ -145,6 +145,33 @@ export function isImpersonating(session: Session): boolean {
 }
 
 /**
+ * Can `session` impersonate `targetUserId`?
+ *
+ * Allowed when EITHER:
+ *  - the session role grants the IMPERSONATE permission (admin path), OR
+ *  - the target user has `managedByUserId === session.user.id` (managed-account path).
+ *
+ * Self-impersonation is disallowed; the calling endpoint also rejects it.
+ */
+export async function canImpersonateUser(
+  session: Session,
+  targetUserId: string,
+  prismaClient: { user: { findUnique: (args: { where: { id: string }; select: { managedByUserId: true } }) => Promise<{ managedByUserId: string | null } | null> } }
+): Promise<boolean> {
+  if (!session?.user?.id) return false
+  if (targetUserId === session.user.id) return false
+
+  const role = (session.user.role || "SELLER") as UserRole
+  if (hasPermission(role, PERMISSIONS.IMPERSONATE)) return true
+
+  const target = await prismaClient.user.findUnique({
+    where: { id: targetUserId },
+    select: { managedByUserId: true }
+  })
+  return target?.managedByUserId === session.user.id
+}
+
+/**
  * Build a Prisma where clause scoped to user's data
  * ADMIN/MASTERADMIN see all (or filtered by selectedSellerId), SELLER sees only their own
  * Returns a plain object that can be spread into any Prisma where clause

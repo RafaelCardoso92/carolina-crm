@@ -7,6 +7,7 @@ import { signOut, useSession } from "next-auth/react"
 import { useTheme } from "./ThemeProvider"
 import { UserRole } from "@prisma/client"
 import { useSellerFilter } from "@/contexts/SellerFilterContext"
+import AccountSwitcher from "./AccountSwitcher"
 
 interface MenuItem {
   href: string
@@ -366,6 +367,9 @@ export default function Sidebar() {
             </div>
           </div>
         )}
+
+        {/* Managed-account switcher (renders only if user has managed accounts) */}
+        <AccountSwitcher />
 
         {/* Action buttons */}
         <div className="flex gap-2">
