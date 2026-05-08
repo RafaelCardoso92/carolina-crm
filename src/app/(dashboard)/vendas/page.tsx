@@ -190,17 +190,35 @@ async function getVendasData(mes: number, ano: number, userFilter: { userId?: st
   const totalTrimestre = Number(vendasTrimestre._sum.total || 0)
   const objTrimestral = objetivoTrimestral ? Number(objetivoTrimestral.objetivo) : null
 
-  // Build varios progress for the period: one row per objetivoVario active in
-  // (mes, ano), summing objetivoVarioValor across this period's vendas.
+  // Build varios progress for the period. Show an objetivo on the card when
+  // EITHER (a) at least one venda in this period links to it, OR (b) a meta
+  // has been defined for this period — regardless of the objetivo's own
+  // creation (mes, ano). The objetivo's own period is just bookkeeping; what
+  // matters here is "what is in play this month for the user".
   const metaByObjetivoId = new Map(variosMetas.map(m => [m.objetivoVarioId, Number(m.objetivo)]))
-  const variosProgress = objetivosVarios
-    .filter(o => o.mes === mes && o.ano === ano)
-    .map(o => {
-      const linkedVendas = vendas.filter(v => v.objetivoVarioId === o.id)
-      const totalVendido = linkedVendas.reduce((sum, v) => sum + Number(v.objetivoVarioValor || 0), 0)
-      const metaValor = metaByObjetivoId.has(o.id) ? metaByObjetivoId.get(o.id)! : null
-      return { id: o.id, titulo: o.titulo, totalVendido, metaValor, count: linkedVendas.length }
+
+  const aggByObjetivoId = new Map<string, { count: number; total: number }>()
+  for (const v of vendas) {
+    if (!v.objetivoVarioId) continue
+    const cur = aggByObjetivoId.get(v.objetivoVarioId) || { count: 0, total: 0 }
+    cur.count += 1
+    cur.total += Number(v.objetivoVarioValor || 0)
+    aggByObjetivoId.set(v.objetivoVarioId, cur)
+  }
+
+  const objetivoById = new Map(objetivosVarios.map(o => [o.id, o]))
+  const relevantIds = new Set<string>([...aggByObjetivoId.keys(), ...metaByObjetivoId.keys()])
+
+  const variosProgress = Array.from(relevantIds)
+    .map(id => {
+      const o = objetivoById.get(id)
+      if (!o) return null  // objetivo inactive or out of user scope — skip
+      const agg = aggByObjetivoId.get(id) || { count: 0, total: 0 }
+      const metaValor = metaByObjetivoId.has(id) ? metaByObjetivoId.get(id)! : null
+      return { id, titulo: o.titulo, totalVendido: agg.total, metaValor, count: agg.count }
     })
+    .filter((x): x is NonNullable<typeof x> => x !== null)
+    .sort((a, b) => a.titulo.localeCompare(b.titulo))
 
   return { vendas: serializedVendas, clientes, objetivo, total, produtos, objetivosVarios, campanhas, trimestre, objetivoTrimestral: objTrimestral, totalTrimestre, variosProgress }
 }
