@@ -13,7 +13,7 @@ import {
 } from "@/lib/baborella";
 import { buildEnhancedContext, buildGlobalCRMContext } from "@/lib/baborella/context";
 import { getOrCreateSession, addMessageToSession, SessionMessage } from "@/lib/baborella/session";
-import { checkTokens, getTokenBalance } from "@/lib/ai";
+import { checkTokens, getTokenBalance, BABORELLA_MODEL } from "@/lib/ai";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
     let totalTokensUsed = 0;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.1",
+      model: BABORELLA_MODEL,
       messages: messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
       tools: openAITools.length > 0 ? openAITools : undefined,
       tool_choice: openAITools.length > 0 ? "auto" : undefined,
@@ -270,7 +270,7 @@ export async function POST(req: NextRequest) {
         ];
 
         const followUp = await openai.chat.completions.create({
-          model: "gpt-5.1",
+          model: BABORELLA_MODEL,
           messages: followUpMessages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
           temperature: 0.7,
           max_completion_tokens: 500,

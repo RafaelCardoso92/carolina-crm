@@ -5,6 +5,11 @@ const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   : null
 
+// Model used by every Baborella code path. Override per-environment via env;
+// defaults to the cheaper mini variant. Switch back to "gpt-5.1" only if a
+// specific feature regresses noticeably.
+export const BABORELLA_MODEL = process.env.BABORELLA_MODEL || "gpt-5.1-mini"
+
 export type AIProvider = "openai"
 
 const TOKENS_PER_EUR = 200000
@@ -153,7 +158,7 @@ export async function generateAIResponse(
   }
 
   const response = await openai.chat.completions.create({
-    model: "gpt-5.1",
+    model: BABORELLA_MODEL,
     messages: [{ role: "user", content: prompt }],
     temperature: 0.7,
   })

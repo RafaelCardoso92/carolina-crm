@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import OpenAI from "openai"
-import { getTokenBalance, checkTokens } from "@/lib/ai"
+import { getTokenBalance, checkTokens, BABORELLA_MODEL } from "@/lib/ai"
 
 const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -135,14 +135,14 @@ INSTRUCOES:
     // Call OpenAI
     let response
     try {
-      console.log("Calling GPT-5.1...")
+      console.log(`Calling ${BABORELLA_MODEL}...`)
       response = await openai.chat.completions.create({
-        model: "gpt-5.1",
+        model: BABORELLA_MODEL,
         messages: openaiMessages,
         temperature: 0.8,
         max_completion_tokens: 1000
       })
-      console.log("GPT-5.1 response:", JSON.stringify(response, null, 2))
+      console.log(`${BABORELLA_MODEL} response:`, JSON.stringify(response, null, 2))
     } catch (openaiError: unknown) {
       console.error("OpenAI API error:", openaiError)
       const errorMessage = openaiError instanceof Error ? openaiError.message : "Unknown error"

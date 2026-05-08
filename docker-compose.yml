@@ -35,6 +35,7 @@ services:
       GOOGLE_MAPS_API_KEY: AIzaSyC74qsElBk6kl0ssmdSsjEcjcb2KzV7ktU
       GEMINI_API_KEY: AIzaSyCtDqjnzpnT11Yu0HBZkVJ0wWhCrDq5Qrs
       UPLOADS_DIR: /uploads
+      BABORELLA_MODEL: ${BABORELLA_MODEL:-gpt-5.1-mini}
     volumes:
       - ./uploads:/uploads
     ports:
