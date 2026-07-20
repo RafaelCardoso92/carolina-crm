@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { requirePermission, getEffectiveUserId } from "@/lib/api-auth"
+import { PERMISSIONS, canViewAllData } from "@/lib/permissions"
 
 // POST - Repeat/duplicate a sale for quick re-order
 export async function POST(request: NextRequest) {
   try {
+    const session = await requirePermission(PERMISSIONS.VENDAS_WRITE)
     const body = await request.json()
     const { vendaId, mes, ano } = body
 
@@ -15,6 +18,7 @@ export async function POST(request: NextRequest) {
     const vendaOriginal = await prisma.venda.findUnique({
       where: { id: vendaId },
       include: {
+        cliente: { select: { userId: true } },
         itens: {
           include: { produto: true }
         }
@@ -23,6 +27,13 @@ export async function POST(request: NextRequest) {
 
     if (!vendaOriginal) {
       return NextResponse.json({ error: "Venda não encontrada" }, { status: 404 })
+    }
+
+    // Ownership check (sellers can only repeat sales of their own clients)
+    if (!canViewAllData(session.user.role) || session.user.impersonating) {
+      if (vendaOriginal.cliente.userId !== getEffectiveUserId(session)) {
+        return NextResponse.json({ error: "Sem permissão para esta venda" }, { status: 403 })
+      }
     }
 
     const now = new Date()
@@ -56,6 +67,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(novaVenda, { status: 201 })
   } catch (error) {
+    if (error instanceof Response) return error
     console.error("Error repeating venda:", error)
     return NextResponse.json({ error: "Erro ao repetir venda" }, { status: 500 })
   }

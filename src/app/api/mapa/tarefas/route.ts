@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
+import { getEffectiveUserId } from "@/lib/api-auth"
 
 // Get today's tasks with location data
 export async function GET(request: NextRequest) {
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
     // Get tasks for today with client/prospect location
     const tarefas = await prisma.tarefa.findMany({
       where: {
-        userId: session.user.id,
+        userId: getEffectiveUserId(session),
         estado: { not: "CONCLUIDA" },
         dataVencimento: {
           gte: startOfDay,
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
     // Also get overdue tasks with locations
     const overdueTarefas = await prisma.tarefa.findMany({
       where: {
-        userId: session.user.id,
+        userId: getEffectiveUserId(session),
         estado: { not: "CONCLUIDA" },
         dataVencimento: { lt: startOfDay },
         OR: [

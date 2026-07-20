@@ -117,17 +117,21 @@ export async function POST(request: Request) {
 
       // If installments, create parcelas
       if (numeroParcelas > 1 && dataInicioVencimento) {
-        const valorParcela = Number(data.valor) / numeroParcelas
+        // Round to cents; last parcela absorbs the remainder so the sum equals the total
+        const valorParcela = Math.round((Number(data.valor) / numeroParcelas) * 100) / 100
         const parcelas = []
 
         for (let i = 0; i < numeroParcelas; i++) {
           const dataVencimento = new Date(dataInicioVencimento)
           dataVencimento.setMonth(dataVencimento.getMonth() + i)
+          const isLast = i === numeroParcelas - 1
 
           parcelas.push({
             cobrancaId: newCobranca.id,
             numero: i + 1,
-            valor: valorParcela,
+            valor: isLast
+              ? Math.round((Number(data.valor) - valorParcela * (numeroParcelas - 1)) * 100) / 100
+              : valorParcela,
             dataVencimento,
             pago: false
           })

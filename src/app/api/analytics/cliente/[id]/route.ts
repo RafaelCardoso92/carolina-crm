@@ -1,16 +1,18 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { requireAuth, userScopedWhere } from "@/lib/api-auth"
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await requireAuth()
     const { id } = await params
 
-    // Get client with all sales and items
-    const cliente = await prisma.cliente.findUnique({
-      where: { id },
+    // Get client with all sales and items (sellers: own clients only)
+    const cliente = await prisma.cliente.findFirst({
+      where: { id, ...userScopedWhere(session) },
       include: {
         vendas: {
           include: {
@@ -139,6 +141,7 @@ export async function GET(
       tendencia
     })
   } catch (error) {
+    if (error instanceof Response) return error
     console.error("Error fetching client analytics:", error)
     return NextResponse.json(
       { error: "Erro ao carregar análise do cliente" },

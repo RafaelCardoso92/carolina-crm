@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { userScopedWhere } from "@/lib/api-auth"
 
 // GET - List metas for objetivos varios
 export async function GET(request: NextRequest) {
@@ -15,7 +16,9 @@ export async function GET(request: NextRequest) {
     const mes = searchParams.get("mes")
     const ano = searchParams.get("ano")
 
-    const where: Record<string, unknown> = {}
+    const where: Record<string, unknown> = {
+      objetivoVario: { ...userScopedWhere(session) }
+    }
     if (objetivoVarioId) where.objetivoVarioId = objetivoVarioId
     if (mes) where.mes = parseInt(mes)
     if (ano) where.ano = parseInt(ano)
@@ -55,6 +58,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Dados incompletos" }, { status: 400 })
     }
 
+    // Parent ownership check (sellers can only edit metas of their own objetivos)
+    const parent = await prisma.objetivoVario.findFirst({
+      where: { id: objetivoVarioId, ...userScopedWhere(session) },
+      select: { id: true }
+    })
+    if (!parent) {
+      return NextResponse.json({ error: "Objetivo não encontrado" }, { status: 404 })
+    }
+
     // Upsert - create or update
     const meta = await prisma.objetivoVarioMeta.upsert({
       where: {
@@ -87,6 +99,15 @@ export async function DELETE(request: NextRequest) {
 
     if (!id) {
       return NextResponse.json({ error: "ID nao fornecido" }, { status: 400 })
+    }
+
+    // Ownership check via parent objetivo
+    const meta = await prisma.objetivoVarioMeta.findFirst({
+      where: { id, objetivoVario: { ...userScopedWhere(session) } },
+      select: { id: true }
+    })
+    if (!meta) {
+      return NextResponse.json({ error: "Meta não encontrada" }, { status: 404 })
     }
 
     await prisma.objetivoVarioMeta.delete({ where: { id } })

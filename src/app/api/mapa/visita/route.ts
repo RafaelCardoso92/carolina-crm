@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
+import { userScopedWhere, getEffectiveUserId } from "@/lib/api-auth"
 
 // Log a quick visit from the map
 export async function POST(request: NextRequest) {
@@ -17,10 +18,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Cliente ou prospecto obrigatorio" }, { status: 400 })
     }
 
+    // Ownership check (sellers can only log visits on their own clients/prospects)
+    if (clienteId) {
+      const owned = await prisma.cliente.findFirst({
+        where: { id: clienteId, ...userScopedWhere(session) }, select: { id: true }
+      })
+      if (!owned) return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 })
+    }
+    if (prospectoId) {
+      const owned = await prisma.prospecto.findFirst({
+        where: { id: prospectoId, ...userScopedWhere(session) }, select: { id: true }
+      })
+      if (!owned) return NextResponse.json({ error: "Prospecto não encontrado" }, { status: 404 })
+    }
+
     // Create communication record
     const comunicacao = await prisma.comunicacao.create({
       data: {
-        userId: session.user.id,
+        userId: getEffectiveUserId(session),
         clienteId: clienteId || null,
         prospectoId: prospectoId || null,
         tipo: tipo,
@@ -67,6 +82,15 @@ export async function PATCH(request: NextRequest) {
 
     if (!tarefaId) {
       return NextResponse.json({ error: "Tarefa obrigatoria" }, { status: 400 })
+    }
+
+    // Ownership check (sellers can only complete their own tasks)
+    const existing = await prisma.tarefa.findFirst({
+      where: { id: tarefaId, ...userScopedWhere(session) },
+      select: { id: true }
+    })
+    if (!existing) {
+      return NextResponse.json({ error: "Tarefa não encontrada" }, { status: 404 })
     }
 
     // Update task as completed

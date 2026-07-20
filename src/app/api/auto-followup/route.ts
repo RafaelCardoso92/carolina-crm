@@ -2,10 +2,17 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { EstadoPipeline } from "@prisma/client"
+import { requireAuth, userScopedWhere } from "@/lib/api-auth"
 
 // Auto-create tasks when leads sit in a stage too long
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    // Two callers: (a) the k8s CronJob with the shared secret — runs for ALL
+    // users (created tasks are assigned to each entity's owner); (b) a logged-in
+    // user from the dashboard — runs scoped to their own data.
+    const cronSecret = process.env.CRON_SECRET
+    const isCron = !!cronSecret && request.headers.get("x-cron-secret") === cronSecret
+    const scope = isCron ? {} : userScopedWhere(await requireAuth())
     const now = new Date()
     const tasksCreated: any[] = []
 
@@ -26,7 +33,8 @@ export async function POST() {
     const prospects = await prisma.prospecto.findMany({
       where: {
         ativo: true,
-        estado: { in: activeStates }
+        estado: { in: activeStates },
+        ...scope
       },
       include: {
         tarefas: {
@@ -51,7 +59,8 @@ export async function POST() {
       const hasFollowUpTask = prospect.tarefas.some(t =>
         t.titulo.toLowerCase().includes("follow") ||
         t.titulo.toLowerCase().includes("contactar") ||
-        t.titulo.toLowerCase().includes("acompanhar")
+        t.titulo.toLowerCase().includes("acompanhar") ||
+        t.descricao?.startsWith("Auto-criada:")
       )
       if (hasFollowUpTask) continue
 
@@ -64,7 +73,8 @@ export async function POST() {
           tipo: "Telefonema",
           prioridade: daysSinceActivity > timeout * 2 ? "ALTA" : "MEDIA",
           dataVencimento: new Date(now.getTime() + 24 * 60 * 60 * 1000), // Tomorrow
-          prospectoId: prospect.id
+          prospectoId: prospect.id,
+          userId: prospect.userId
         }
       })
 
@@ -81,6 +91,7 @@ export async function POST() {
     const staleClients = await prisma.cliente.findMany({
       where: {
         ativo: true,
+        ...scope,
         OR: [
           { ultimoContacto: { lt: thirtyDaysAgo } },
           { ultimoContacto: null }
@@ -119,7 +130,8 @@ export async function POST() {
           tipo: "Telefonema",
           prioridade,
           dataVencimento: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000), // 3 days
-          clienteId: cliente.id
+          clienteId: cliente.id,
+          userId: cliente.userId
         }
       })
 
@@ -133,7 +145,7 @@ export async function POST() {
 
     // Check clients with partnership agreements falling behind
     const acordosAtivos = await prisma.acordoParceria.findMany({
-      where: { ativo: true },
+      where: { ativo: true, cliente: { ...scope } },
       include: {
         cliente: {
           include: {
@@ -209,7 +221,8 @@ export async function POST() {
           tipo: "Telefonema",
           prioridade,
           dataVencimento: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000), // 3 days
-          clienteId: acordo.clienteId
+          clienteId: acordo.clienteId,
+          userId: acordo.cliente.userId
         }
       })
 
@@ -227,6 +240,7 @@ export async function POST() {
       tasks: tasksCreated
     })
   } catch (error) {
+    if (error instanceof Response) return error
     console.error("Error in auto follow-up:", error)
     return NextResponse.json({ error: "Erro ao criar follow-ups automaticos" }, { status: 500 })
   }
@@ -252,6 +266,8 @@ function getFollowUpTaskTitle(estado: EstadoPipeline, dias: number): string {
 // GET endpoint to check what tasks would be created (preview)
 export async function GET() {
   try {
+    const session = await requireAuth()
+    const scope = userScopedWhere(session)
     const now = new Date()
     const preview: any[] = []
 
@@ -270,7 +286,8 @@ export async function GET() {
     const prospects = await prisma.prospecto.findMany({
       where: {
         ativo: true,
-        estado: { in: activeStates }
+        estado: { in: activeStates },
+        ...scope
       },
       include: {
         tarefas: {
@@ -293,7 +310,8 @@ export async function GET() {
       const hasFollowUpTask = prospect.tarefas.some(t =>
         t.titulo.toLowerCase().includes("follow") ||
         t.titulo.toLowerCase().includes("contactar") ||
-        t.titulo.toLowerCase().includes("acompanhar")
+        t.titulo.toLowerCase().includes("acompanhar") ||
+        t.descricao?.startsWith("Auto-criada:")
       )
 
       preview.push({
@@ -311,6 +329,7 @@ export async function GET() {
     const staleClients = await prisma.cliente.findMany({
       where: {
         ativo: true,
+        ...scope,
         OR: [
           { ultimoContacto: { lt: thirtyDaysAgo } },
           { ultimoContacto: null }
@@ -346,6 +365,7 @@ export async function GET() {
       items: preview
     })
   } catch (error) {
+    if (error instanceof Response) return error
     console.error("Error in auto follow-up preview:", error)
     return NextResponse.json({ error: "Erro ao prever follow-ups" }, { status: 500 })
   }

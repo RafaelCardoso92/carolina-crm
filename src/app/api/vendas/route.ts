@@ -4,6 +4,7 @@ import { NextResponse } from "next/server"
 import { requirePermission, getEffectiveUserId } from "@/lib/api-auth"
 import { PERMISSIONS, canViewAllData } from "@/lib/permissions"
 import { calcularValorComIVA } from "@/lib/iva"
+import { getComissaoVendedorForDate } from "@/lib/comissao"
 
 export async function GET(request: Request) {
   try {
@@ -215,6 +216,11 @@ export async function POST(request: Request) {
         const cobrancaValorSemIva = Math.round((total + objetivoVarioValor) * 100) / 100
         const cobrancaValorComIva = await calcularValorComIVA(cobrancaValorSemIva, dataEmissao)
 
+        // Commission at the seller's rate active on the emission date (same as the
+        // standalone cobrança flow in /api/cobrancas — keeps both paths consistent).
+        const comissaoRate = await getComissaoVendedorForDate(cliente!.userId!, dataEmissao)
+        const comissao = Math.round(cobrancaValorSemIva * (comissaoRate / 100) * 100) / 100
+
         // Create the cobrança
         const cobranca = await tx.cobranca.create({
           data: {
@@ -223,6 +229,7 @@ export async function POST(request: Request) {
             fatura: data.cobranca.fatura || null,
             valor: cobrancaValorComIva, // Total + objetivo vario COM IVA
             valorSemIva: cobrancaValorSemIva,
+            comissao,
             dataEmissao,
             dataInicioVencimento: dataEmissao, // Use emission date as first due date
             numeroParcelas,
@@ -233,17 +240,21 @@ export async function POST(request: Request) {
 
         // Create parcelas if more than 1
         if (numeroParcelas > 1) {
-          const valorParcela = cobrancaValorComIva / numeroParcelas
+          // Round to cents; last parcela absorbs the remainder so the sum equals the total
+          const valorParcela = Math.round((cobrancaValorComIva / numeroParcelas) * 100) / 100
           const parcelas = []
 
           for (let i = 0; i < numeroParcelas; i++) {
             const dataVencimento = new Date(dataEmissao)
             dataVencimento.setMonth(dataVencimento.getMonth() + i)
+            const isLast = i === numeroParcelas - 1
 
             parcelas.push({
               cobrancaId: cobranca.id,
               numero: i + 1,
-              valor: valorParcela,
+              valor: isLast
+                ? Math.round((cobrancaValorComIva - valorParcela * (numeroParcelas - 1)) * 100) / 100
+                : valorParcela,
               dataVencimento,
               pago: false
             })

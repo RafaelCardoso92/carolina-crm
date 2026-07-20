@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
+import { getEffectiveUserId } from "@/lib/api-auth"
 
 // GET - List samples
 export async function GET(request: NextRequest) {
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
 
     // Filter by user unless admin
     if (session.user.role === "SELLER") {
-      where.userId = session.user.id
+      where.userId = getEffectiveUserId(session)
     }
 
     const amostras = await prisma.amostra.findMany({
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     const amostra = await prisma.amostra.create({
       data: {
-        userId: session.user.id,
+        userId: getEffectiveUserId(session),
         clienteId: clienteId || null,
         prospectoId: prospectoId || null,
         produtoId: produtoId || null,

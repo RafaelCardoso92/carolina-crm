@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { requireAuth } from "@/lib/api-auth"
 
 // Generate notifications for overdue payments, tasks, and stale leads
 export async function POST() {
   try {
+    await requireAuth()
     const now = new Date()
     const notifications: any[] = []
 
@@ -205,6 +207,7 @@ export async function POST() {
       }
     })
   } catch (error) {
+    if (error instanceof Response) return error
     console.error("Error generating notifications:", error)
     return NextResponse.json({ error: "Erro ao gerar notificacoes" }, { status: 500 })
   }

@@ -31,6 +31,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+  }
+
   try {
     const body = await request.json()
     const { tipo, titulo, mensagem, clienteId, prospectoId, tarefaId, parcelaId } = body
@@ -55,6 +60,11 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+  }
+
   try {
     const body = await request.json()
     const { id, markAllRead } = body

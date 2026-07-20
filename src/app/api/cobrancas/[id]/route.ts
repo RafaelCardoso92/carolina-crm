@@ -118,68 +118,61 @@ export async function PUT(
 
     // If updateParcelas is true, regenerate all parcelas
     if (data.updateParcelas && data.numeroParcelas && data.dataInicioVencimento) {
-      // Delete existing parcelas
-      await prisma.parcela.deleteMany({
-        where: { cobrancaId: id }
-      })
-
-      // Create new parcelas
-      const valorParcela = data.valor / data.numeroParcelas
-      const parcelas = []
-      for (let i = 0; i < data.numeroParcelas; i++) {
-        const dataVencimento = new Date(data.dataInicioVencimento)
-        dataVencimento.setMonth(dataVencimento.getMonth() + i)
-        parcelas.push({
-          cobrancaId: id,
-          numero: i + 1,
-          valor: valorParcela,
-          dataVencimento,
-          pago: false
+      // Atomic: delete + recreate parcelas + update cobranca must not partially apply
+      const cobranca = await prisma.$transaction(async (tx) => {
+        // Delete existing parcelas
+        await tx.parcela.deleteMany({
+          where: { cobrancaId: id }
         })
-      }
 
-      await prisma.parcela.createMany({
-        data: parcelas
-      })
-
-      // Update cobranca with parcelas info
-      const cobranca = await prisma.cobranca.update({
-        where: { id },
-        data: {
-          clienteId: data.clienteId,
-          fatura: data.fatura || null,
-          valor: data.valor,
-          valorSemIva: valorSemIva,
-          comissao: calculatedComissao,
-          dataEmissao: data.dataEmissao ? new Date(data.dataEmissao) : null,
-          notas: data.notas || null,
-          numeroParcelas: data.numeroParcelas,
-          dataInicioVencimento: new Date(data.dataInicioVencimento),
-          pago: false // Reset pago status when parcelas are regenerated
-        },
-        include: {
-          cliente: true,
-          parcelas: {
-            orderBy: { numero: "asc" }
-          }
+        // Create new parcelas — round to cents, last parcela absorbs the remainder
+        // so the sum always equals the cobranca total
+        const valorParcela = Math.round((data.valor / data.numeroParcelas) * 100) / 100
+        const parcelas = []
+        for (let i = 0; i < data.numeroParcelas; i++) {
+          const dataVencimento = new Date(data.dataInicioVencimento)
+          dataVencimento.setMonth(dataVencimento.getMonth() + i)
+          const isLast = i === data.numeroParcelas - 1
+          parcelas.push({
+            cobrancaId: id,
+            numero: i + 1,
+            valor: isLast
+              ? Math.round((data.valor - valorParcela * (data.numeroParcelas - 1)) * 100) / 100
+              : valorParcela,
+            dataVencimento,
+            pago: false
+          })
         }
+
+        await tx.parcela.createMany({
+          data: parcelas
+        })
+
+        // Update cobranca with parcelas info
+        return tx.cobranca.update({
+          where: { id },
+          data: {
+            clienteId: data.clienteId,
+            fatura: data.fatura || null,
+            valor: data.valor,
+            valorSemIva: valorSemIva,
+            comissao: calculatedComissao,
+            dataEmissao: data.dataEmissao ? new Date(data.dataEmissao) : null,
+            notas: data.notas || null,
+            numeroParcelas: data.numeroParcelas,
+            dataInicioVencimento: new Date(data.dataInicioVencimento),
+            pago: false // Reset pago status when parcelas are regenerated
+          },
+          include: {
+            cliente: true,
+            parcelas: {
+              orderBy: { numero: "asc" }
+            }
+          }
+        })
       })
 
       return NextResponse.json(cobranca)
-    }
-
-    // If not updating parcelas but switching to single payment, delete existing parcelas
-    if (!data.updateParcelas && data.numeroParcelas === undefined) {
-      // Check if cobranca currently has parcelas
-      const existingParcelas = await prisma.parcela.count({
-        where: { cobrancaId: id }
-      })
-
-      if (existingParcelas > 0) {
-        await prisma.parcela.deleteMany({
-          where: { cobrancaId: id }
-        })
-      }
     }
 
     // Calculate dataVencimento for single payment cobrancas
@@ -192,27 +185,37 @@ export async function PUT(
       calculatedDataVencimento = new Date(data.dataVencimento)
     }
 
-    const cobranca = await prisma.cobranca.update({
-      where: { id },
-      data: {
-        clienteId: data.clienteId,
-        fatura: data.fatura || null,
-        valor: data.valor,
-        valorSemIva: valorSemIva,
-        comissao: calculatedComissao,
-        dataEmissao: data.dataEmissao ? new Date(data.dataEmissao) : null,
-        notas: data.notas || null,
-        numeroParcelas: numeroParcelas,
-        dataInicioVencimento: data.dataInicioVencimento ? new Date(data.dataInicioVencimento) : null,
-        prazoVencimentoDias: data.prazoVencimentoDias || null,
-        dataVencimento: calculatedDataVencimento
-      },
-      include: {
-        cliente: true,
-        parcelas: {
-          orderBy: { numero: "asc" }
-        }
+    // Atomic: parcela cleanup (when switching to single payment) + cobranca update
+    const cobranca = await prisma.$transaction(async (tx) => {
+      // If not updating parcelas but switching to single payment, delete existing parcelas
+      if (!data.updateParcelas && data.numeroParcelas === undefined) {
+        await tx.parcela.deleteMany({
+          where: { cobrancaId: id }
+        })
       }
+
+      return tx.cobranca.update({
+        where: { id },
+        data: {
+          clienteId: data.clienteId,
+          fatura: data.fatura || null,
+          valor: data.valor,
+          valorSemIva: valorSemIva,
+          comissao: calculatedComissao,
+          dataEmissao: data.dataEmissao ? new Date(data.dataEmissao) : null,
+          notas: data.notas || null,
+          numeroParcelas: numeroParcelas,
+          dataInicioVencimento: data.dataInicioVencimento ? new Date(data.dataInicioVencimento) : null,
+          prazoVencimentoDias: data.prazoVencimentoDias || null,
+          dataVencimento: calculatedDataVencimento
+        },
+        include: {
+          cliente: true,
+          parcelas: {
+            orderBy: { numero: "asc" }
+          }
+        }
+      })
     })
 
     return NextResponse.json(cobranca)

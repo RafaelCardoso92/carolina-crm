@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { requirePermission } from "@/lib/api-auth"
+import { PERMISSIONS } from "@/lib/permissions"
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(PERMISSIONS.PRODUTOS_READ)
     const { id } = await params
     const produto = await prisma.produto.findUnique({
       where: { id },
@@ -25,6 +28,7 @@ export async function GET(
 
     return NextResponse.json(produto)
   } catch (error) {
+    if (error instanceof Response) return error
     console.error("Error fetching produto:", error)
     return NextResponse.json(
       { error: "Erro ao carregar produto" },
@@ -38,6 +42,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(PERMISSIONS.PRODUTOS_WRITE)
     const { id } = await params
     const data = await request.json()
 
@@ -78,6 +83,7 @@ export async function PUT(
 
     return NextResponse.json(produto)
   } catch (error) {
+    if (error instanceof Response) return error
     console.error("Error updating produto:", error)
     return NextResponse.json(
       { error: "Erro ao atualizar produto" },
@@ -91,6 +97,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(PERMISSIONS.PRODUTOS_WRITE)
     const { id } = await params
 
     // Check if product has sales items
@@ -126,6 +133,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
+    if (error instanceof Response) return error
     console.error("Error deleting produto:", error)
     return NextResponse.json(
       { error: "Erro ao eliminar produto" },

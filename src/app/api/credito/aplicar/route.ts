@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { Decimal } from "@prisma/client/runtime/library"
+import { userScopedWhere } from "@/lib/api-auth"
 
 // POST - Apply credit to a cobranca or parcela
 export async function POST(request: NextRequest) {
@@ -28,9 +29,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify client exists and has sufficient credit
-    const cliente = await prisma.cliente.findUnique({
-      where: { id: clienteId }
+    // Verify client exists and has sufficient credit (sellers: own clients only)
+    const cliente = await prisma.cliente.findFirst({
+      where: { id: clienteId, ...userScopedWhere(session) }
     })
 
     if (!cliente) {
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
         include: { cobranca: true }
       })
 
-      if (!parcela) {
+      if (!parcela || parcela.cobranca.clienteId !== clienteId) {
         return NextResponse.json({ error: "Parcela not found" }, { status: 404 })
       }
 
@@ -157,7 +158,7 @@ export async function POST(request: NextRequest) {
         include: { parcelas: true }
       })
 
-      if (!cobranca) {
+      if (!cobranca || cobranca.clienteId !== clienteId) {
         return NextResponse.json({ error: "Cobranca not found" }, { status: 404 })
       }
 

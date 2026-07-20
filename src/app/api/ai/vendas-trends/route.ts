@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { generateAIResponse, getTokenBalance } from "@/lib/ai"
+import { userScopedWhere } from "@/lib/api-auth"
 
 export async function GET() {
   try {
@@ -48,17 +49,30 @@ export async function POST() {
     const currentMonth = now.getMonth() + 1
     const currentYear = now.getFullYear()
 
-    const monthlySales = await prisma.$queryRaw<Array<{mes: number, ano: number, total: number, count: bigint}>>`
-      SELECT mes, ano, SUM(total::numeric)::float as total, COUNT(*)::bigint as count
-      FROM "Venda"
-      WHERE (ano = ${currentYear} OR (ano = ${currentYear - 1} AND mes > ${currentMonth}))
-      GROUP BY mes, ano
-      ORDER BY ano DESC, mes DESC
-      LIMIT 12
-    `
+    // Sellers only see trends over their own clients' sales (admins see all)
+    const scope = userScopedWhere(session)
+    const scopedClientes = await prisma.cliente.findMany({
+      where: scope,
+      select: { id: true }
+    })
+    const clienteIds = scopedClientes.map(c => c.id)
+    const vendaScope = { clienteId: { in: clienteIds } }
+
+    const monthlySales = clienteIds.length > 0
+      ? await prisma.$queryRaw<Array<{mes: number, ano: number, total: number, count: bigint}>>`
+          SELECT mes, ano, SUM(total::numeric)::float as total, COUNT(*)::bigint as count
+          FROM "Venda"
+          WHERE (ano = ${currentYear} OR (ano = ${currentYear - 1} AND mes > ${currentMonth}))
+            AND "clienteId" = ANY(${clienteIds})
+          GROUP BY mes, ano
+          ORDER BY ano DESC, mes DESC
+          LIMIT 12
+        `
+      : []
 
     const topProducts = await prisma.itemVenda.groupBy({
       by: ["produtoId"],
+      where: { venda: vendaScope },
       _sum: { quantidade: true, subtotal: true },
       _count: true,
       orderBy: { _sum: { subtotal: "desc" } },
@@ -74,7 +88,8 @@ export async function POST() {
       where: {
         venda: {
           mes: currentMonth === 1 ? 12 : currentMonth - 1,
-          ano: currentMonth === 1 ? currentYear - 1 : currentYear
+          ano: currentMonth === 1 ? currentYear - 1 : currentYear,
+          ...vendaScope
         }
       },
       _sum: { quantidade: true, subtotal: true }
@@ -83,14 +98,14 @@ export async function POST() {
     const currentMonthProducts = await prisma.itemVenda.groupBy({
       by: ["produtoId"],
       where: {
-        venda: { mes: currentMonth, ano: currentYear }
+        venda: { mes: currentMonth, ano: currentYear, ...vendaScope }
       },
       _sum: { quantidade: true, subtotal: true }
     })
 
     const topClients = await prisma.venda.groupBy({
       by: ["clienteId"],
-      where: { ano: currentYear },
+      where: { ano: currentYear, ...vendaScope },
       _sum: { total: true },
       _count: true,
       orderBy: { _sum: { total: "desc" } },
@@ -102,12 +117,12 @@ export async function POST() {
     })
 
     const totalSales = await prisma.venda.aggregate({
-      where: { ano: currentYear },
+      where: { ano: currentYear, ...vendaScope },
       _sum: { total: true }
     })
 
     const totalReturns = await prisma.devolucao.aggregate({
-      where: { venda: { ano: currentYear } },
+      where: { venda: { ano: currentYear, ...vendaScope } },
       _sum: { totalDevolvido: true }
     })
 

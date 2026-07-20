@@ -285,9 +285,9 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
         }
         return sum
       }, 0),
-      totalComissao: groups[key].reduce((sum, c) => sum + (c.comissao ? Number(c.comissao) : Number(c.valorSemIva || 0) * 0.035), 0),
+      totalComissao: groups[key].reduce((sum, c) => sum + (Number(c.comissao ?? 0)), 0),
       comissaoGanha: groups[key].reduce((sum, c) => {
-        const comissaoTotal = c.comissao ? Number(c.comissao) : Number(c.valorSemIva || 0) * 0.035
+        const comissaoTotal = Number(c.comissao ?? 0)
         if (c.estado === "PAGO" || c.pago) {
           return sum + comissaoTotal
         } else if (c.estado === "PARCIAL" && c.valorPago) {
@@ -313,7 +313,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       const paymentMonthKey = getMonthKey(c.dataPago)
       if (paymentMonthKey !== currentMonthKey) return total
 
-      const comissaoTotal = c.comissao ? Number(c.comissao) : Number(c.valorSemIva || 0) * 0.035
+      const comissaoTotal = Number(c.comissao ?? 0)
 
       if (c.estado === "PAGO" || c.pago) {
         // Fully paid - full commission
@@ -337,7 +337,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
     cobrancas.forEach(c => {
       const isCI = c.tipoDocumento === "CONSUMO_INTERNO"
       const target = isCI ? result.ci : result.faturas
-      const comissaoTotal = c.comissao ? Number(c.comissao) : Number(c.valorSemIva || 0) * 0.035
+      const comissaoTotal = Number(c.comissao ?? 0)
 
       target.count++
       target.total += comissaoTotal
@@ -1553,15 +1553,15 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
           <td className="px-4 py-4 text-right">
             <div className="flex flex-col items-end">
               <span className="text-primary font-semibold">
-                {formatCurrency(cobranca.comissao ? Number(cobranca.comissao) : Number(cobranca.valorSemIva || 0) * 0.035)} €
+                {formatCurrency(Number(cobranca.comissao ?? 0))} €
               </span>
               {(cobranca.pago || cobranca.estado === "PAGO") ? (
                 <span className="text-xs text-green-600 font-medium">
-                  ✓ Ganha: {formatCurrency(cobranca.comissao ? Number(cobranca.comissao) : Number(cobranca.valorSemIva || 0) * 0.035)}€
+                  ✓ Ganha: {formatCurrency(Number(cobranca.comissao ?? 0))}€
                 </span>
               ) : cobranca.estado === "PARCIAL" && Number(cobranca.valorPago || 0) > 0 ? (
                 <span className="text-xs text-green-600 font-medium">
-                  ✓ Ganha: {formatCurrency((cobranca.comissao ? Number(cobranca.comissao) : Number(cobranca.valorSemIva || 0) * 0.035) * (Number(cobranca.valorPago) / Number(cobranca.valor)))}€
+                  ✓ Ganha: {formatCurrency((Number(cobranca.comissao ?? 0)) * (Number(cobranca.valorPago) / Number(cobranca.valor)))}€
                 </span>
               ) : null}
             </div>
@@ -1806,7 +1806,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h3 className="text-xs md:text-sm font-bold text-orange-600 uppercase tracking-wide">Pendente</h3>
+            <h3 className="text-xs md:text-sm font-bold text-orange-600 uppercase md:tracking-wide leading-tight">Pendente</h3>
           </div>
           <p className="text-xl md:text-3xl font-bold text-orange-600">{formatCurrency(totalPendente)} €</p>
           <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden md:block">Por receber {ano ? `(${ano})` : ""}</p>
@@ -1818,7 +1818,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h3 className="text-xs md:text-sm font-bold text-green-600 uppercase tracking-wide">Pago</h3>
+            <h3 className="text-xs md:text-sm font-bold text-green-600 uppercase md:tracking-wide leading-tight">Pago</h3>
           </div>
           <p className="text-xl md:text-3xl font-bold text-green-600">{formatCurrency(totalPago)} €</p>
           <div className="text-xs text-muted-foreground mt-1 hidden md:flex md:gap-2">
@@ -1834,7 +1834,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h3 className="text-xs md:text-sm font-bold text-primary uppercase tracking-wide">Comissões</h3>
+            <h3 className="text-xs md:text-sm font-bold text-primary uppercase md:tracking-wide leading-tight">Comissões</h3>
           </div>
           <p className="text-xl md:text-3xl font-bold text-primary">{formatCurrency(comissoesGanhasMesAtual)} €</p>
           <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden md:block">Ganhas este mês</p>
@@ -1847,7 +1847,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
-              <h3 className="text-xs md:text-sm font-bold text-red-600 uppercase tracking-wide">Em Atraso</h3>
+              <h3 className="text-xs md:text-sm font-bold text-red-600 uppercase md:tracking-wide leading-tight">Em Atraso</h3>
             </div>
             <p className="text-xl md:text-3xl font-bold text-red-600">{formatCurrency(valorEmAtraso)} €</p>
             <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden md:block">{totalAtrasadas} parcela{totalAtrasadas !== 1 ? "s" : ""} atrasada{totalAtrasadas !== 1 ? "s" : ""}</p>

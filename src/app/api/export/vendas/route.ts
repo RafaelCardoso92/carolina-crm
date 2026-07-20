@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import * as XLSX from "xlsx"
 import { getIVAForMonth } from "@/lib/iva"
+import { requirePermission, getEffectiveUserId } from "@/lib/api-auth"
+import { PERMISSIONS, canViewAllData } from "@/lib/permissions"
 
 const meses = [
   "", "Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho",
@@ -18,6 +20,11 @@ function calcularIVA(totalSemIVA: number, ivaRate: number) {
 
 export async function GET(request: Request) {
   try {
+    const session = await requirePermission(PERMISSIONS.VENDAS_READ)
+    // Sellers export only their own clients' sales; admins export everything
+    const userFilter = canViewAllData(session.user.role) && !session.user.impersonating
+      ? {}
+      : { cliente: { userId: getEffectiveUserId(session) } }
     const { searchParams } = new URL(request.url)
     const ano = parseInt(searchParams.get("ano") || new Date().getFullYear().toString())
     const tipo = searchParams.get("tipo") || "completo" // completo, mensal, trimestral, clientes
@@ -31,7 +38,7 @@ export async function GET(request: Request) {
 
     // Get all sales for the year with client info
     const vendas = await prisma.venda.findMany({
-      where: { ano },
+      where: { ano, ...userFilter },
       include: { cliente: true },
       orderBy: [{ mes: "asc" }, { cliente: { nome: "asc" } }]
     })
@@ -266,6 +273,7 @@ export async function GET(request: Request) {
       }
     })
   } catch (error) {
+    if (error instanceof Response) return error
     console.error("Error exporting to Excel:", error)
     return NextResponse.json({ error: "Erro ao exportar para Excel" }, { status: 500 })
   }

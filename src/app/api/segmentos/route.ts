@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { userScopedWhere } from "@/lib/api-auth"
 
 // GET - Get segments
 export async function GET(request: NextRequest) {
@@ -14,14 +15,16 @@ export async function GET(request: NextRequest) {
     const clienteId = searchParams.get("clienteId")
 
     if (!clienteId) {
+      // Sellers only see segments of their own clients
       const segmentos = await prisma.clienteSegmento.findMany({
+        where: { cliente: { ...userScopedWhere(session) } },
         include: { cliente: { select: { id: true, nome: true, codigo: true } } }
       })
       return NextResponse.json(segmentos)
     }
 
-    const segmento = await prisma.clienteSegmento.findUnique({
-      where: { clienteId },
+    const segmento = await prisma.clienteSegmento.findFirst({
+      where: { clienteId, cliente: { ...userScopedWhere(session) } },
       include: { cliente: { select: { id: true, nome: true } } }
     })
 
@@ -45,6 +48,15 @@ export async function POST(request: NextRequest) {
 
     if (!clienteId) {
       return NextResponse.json({ error: "ClienteId e obrigatorio" }, { status: 400 })
+    }
+
+    // Ownership check (sellers can only segment their own clients)
+    const owned = await prisma.cliente.findFirst({
+      where: { id: clienteId, ...userScopedWhere(session) },
+      select: { id: true }
+    })
+    if (!owned) {
+      return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 })
     }
 
     const result = await prisma.clienteSegmento.upsert({

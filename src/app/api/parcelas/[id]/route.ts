@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
+import { userScopedWhere } from "@/lib/api-auth"
 
 // GET single parcela
 export async function GET(
@@ -14,8 +15,9 @@ export async function GET(
 
   try {
     const { id } = await params
-    const parcela = await prisma.parcela.findUnique({
-      where: { id },
+    // Ownership via cobranca -> cliente (sellers only see their own clients' parcelas)
+    const parcela = await prisma.parcela.findFirst({
+      where: { id, cobranca: { cliente: { ...userScopedWhere(session) } } },
       include: {
         cobranca: {
           include: { cliente: true }
@@ -47,6 +49,15 @@ export async function PATCH(
   try {
     const { id } = await params
     const data = await request.json()
+
+    // Ownership via cobranca -> cliente (sellers can only touch their own clients' parcelas)
+    const existing = await prisma.parcela.findFirst({
+      where: { id, cobranca: { cliente: { ...userScopedWhere(session) } } },
+      select: { id: true }
+    })
+    if (!existing) {
+      return NextResponse.json({ error: "Parcela não encontrada" }, { status: 404 })
+    }
 
     // Update the parcela - use provided dataPago if given, otherwise default to current date
     const parcela = await prisma.parcela.update({

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { Prisma } from "@prisma/client"
+import { userScopedWhere } from "@/lib/api-auth"
 
 // GET - Fetch client credit balance and history
 export async function GET(
@@ -16,9 +17,9 @@ export async function GET(
 
     const { id: clienteId } = await params
 
-    // Fetch client with credit balance
-    const cliente = await prisma.cliente.findUnique({
-      where: { id: clienteId },
+    // Fetch client with credit balance (sellers: own clients only)
+    const cliente = await prisma.cliente.findFirst({
+      where: { id: clienteId, ...userScopedWhere(session) },
       select: {
         id: true,
         nome: true,
@@ -106,8 +107,8 @@ export async function POST(
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      const cliente = await tx.cliente.findUnique({
-        where: { id: clienteId },
+      const cliente = await tx.cliente.findFirst({
+        where: { id: clienteId, ...userScopedWhere(session) },
         select: { id: true, saldoCredito: true }
       })
 

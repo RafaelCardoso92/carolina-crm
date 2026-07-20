@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
+import { requireAuth } from "@/lib/api-auth"
 
 // POST - Geocode an address using Google Geocoding API or Nominatim fallback
 export async function POST(request: NextRequest) {
   try {
+    await requireAuth()
     const { address } = await request.json()
 
     if (!address) {
@@ -35,6 +37,7 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   } catch (error) {
+    if (error instanceof Response) return error
     console.error("Error geocoding address:", error)
     return NextResponse.json(
       { error: "Erro ao geocodificar morada" },
