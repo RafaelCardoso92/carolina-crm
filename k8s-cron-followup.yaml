@@ -1,0 +1,43 @@
+# Daily auto-followup generator — hits /api/auto-followup with the shared
+# cron secret so follow-up tasks are created even when nobody opens the app.
+# Secret: carolina-crm-cron (CRON_SECRET), also injected into the app deployment.
+# NOTE: the main carolina-crm Deployment lives only in-cluster (no k8s.yaml in
+# repo) — this file covers ONLY the CronJob. Apply: kubectl apply -f k8s-cron-followup.yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: carolina-crm-auto-followup
+  namespace: apps
+spec:
+  schedule: "0 7 * * *"   # 07:00 UTC daily
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 300
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: Never
+          nodeSelector:
+            role: production-eu
+          containers:
+            - name: curl
+              image: curlimages/curl:8.11.1
+              resources:
+                requests: { cpu: 10m, memory: 16Mi }
+                limits: { cpu: 100m, memory: 64Mi }
+              env:
+                - name: CRON_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: carolina-crm-cron
+                      key: CRON_SECRET
+              command:
+                - sh
+                - -c
+                - |
+                  curl -sf -X POST \
+                    -H "x-cron-secret: $CRON_SECRET" \
+                    http://carolina-crm.apps.svc.cluster.local/api/auto-followup
