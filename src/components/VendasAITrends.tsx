@@ -70,6 +70,8 @@ export default function VendasAITrends() {
   }
 
   const data = insight?.data as InsightData | undefined
+  // Insight older than 30 days is probably no longer representative
+  const isStale = !!insight && (Date.now() - new Date(insight.updatedAt).getTime()) > 30 * 24 * 60 * 60 * 1000
 
   if (loading) return (
     <div className="bg-white dark:bg-card rounded-2xl p-4 border border-emerald-500/20 shadow-sm">
@@ -84,6 +86,12 @@ export default function VendasAITrends() {
           <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
           <h3 className="font-bold text-foreground">Tendencias de Vendas AI</h3>
           {insight && <span className="text-xs text-muted-foreground">{new Date(insight.updatedAt).toLocaleDateString("pt-PT")}</span>}
+          {isStale && (
+            <button onClick={(e) => { e.stopPropagation(); generateInsight() }} disabled={generating}
+              className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 hover:bg-amber-200 transition disabled:opacity-50">
+              {generating ? "A reanalisar..." : "Desatualizada — Reanalisar"}
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {tokens && (

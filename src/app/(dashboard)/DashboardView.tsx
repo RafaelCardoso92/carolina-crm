@@ -264,9 +264,6 @@ export default function DashboardView() {
         {/* ========== OVERVIEW TAB ========== */}
         {activeTab === "overview" && (
           <>
-            {/* Wellbeing Section */}
-            <WellbeingSection />
-
             {/* Main Stats Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
               <StatCard
@@ -424,6 +421,9 @@ export default function DashboardView() {
                 <p className="text-xs text-muted-foreground">Graficos e insights</p>
               </button>
             </div>
+
+            {/* Wellbeing Section — kept, but after the business numbers */}
+            <WellbeingSection />
           </>
         )}
 

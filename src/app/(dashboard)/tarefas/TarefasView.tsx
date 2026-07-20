@@ -233,14 +233,14 @@ export default function TarefasView() {
               <div key={tarefa.id} className={`bg-card rounded-xl p-4 border ${isOverdue ? "border-red-300 dark:border-red-700" : "border-border"}`}>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className={`font-semibold ${tarefa.estado === "CONCLUIDA" ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <h3 className={`font-semibold w-full sm:w-auto ${tarefa.estado === "CONCLUIDA" ? "line-through text-muted-foreground" : "text-foreground"}`}>
                         {tarefa.titulo}
                       </h3>
-                      <span className={`text-[11px] px-2.5 py-1 rounded-md ${prioridadeColors[tarefa.prioridade]}`}>
+                      <span className={`text-[11px] px-2.5 py-1 rounded-md whitespace-nowrap ${prioridadeColors[tarefa.prioridade]}`}>
                         {tarefa.prioridade}
                       </span>
-                      <span className={`text-[11px] px-2.5 py-1 rounded-md ${estadoColors[tarefa.estado]}`}>
+                      <span className={`text-[11px] px-2.5 py-1 rounded-md whitespace-nowrap ${estadoColors[tarefa.estado]}`}>
                         {tarefa.estado.replace("_", " ")}
                       </span>
                     </div>

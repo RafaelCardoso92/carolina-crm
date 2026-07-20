@@ -151,32 +151,37 @@
 }
 
 /* Base body styles */
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  font-weight: 400;
-  letter-spacing: 0.01em;
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+/* Element-level defaults live in @layer base so Tailwind utility classes
+   (text-xs, tracking-*, etc.) written in components can override them.
+   Unlayered element rules would beat every utility class in Tailwind v4. */
+@layer base {
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-/* Headings */
-h1, h2, h3, h4, h5, h6 {
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.3;
-  color: var(--foreground);
-}
+  /* Headings */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+    color: var(--foreground);
+  }
 
-h1 { font-size: 1.875rem; font-weight: 700; }
-h2 { font-size: 1.5rem; }
-h3 { font-size: 1.25rem; }
+  h1 { font-size: 1.875rem; font-weight: 700; }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.25rem; }
 
-/* Smooth scrolling */
-html {
-  scroll-behavior: smooth;
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 /* Scrollbar styling */
@@ -259,52 +264,57 @@ html {
   transform: translateY(-1px);
 }
 
-/* Table */
-table {
-  border-collapse: separate;
-  border-spacing: 0;
-  width: 100%;
+/* Table — @layer base for the same override reason as above */
+@layer base {
+  table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+  }
+
+  th {
+    font-weight: 600;
+    text-align: left;
+    background: var(--table-header);
+    color: var(--foreground);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  td {
+    border-bottom: 1px solid var(--border);
+  }
+
+  tr:hover td {
+    background: var(--table-row-hover);
+  }
 }
 
-th {
-  font-weight: 600;
-  text-align: left;
-  background: var(--table-header);
-  color: var(--foreground);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
+/* Form inputs — in @layer base so Tailwind utilities (pl-10 etc.) can override.
+   Unlayered rules would beat every utility class in Tailwind v4. */
+@layer base {
+  input, select, textarea {
+    font-family: inherit;
+    font-size: inherit;
+    background: var(--card);
+    border: 1px solid var(--input);
+    border-radius: var(--radius);
+    padding: 0.625rem 0.875rem;
+    color: var(--foreground);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
 
-td {
-  border-bottom: 1px solid var(--border);
-}
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+    outline: none;
+  }
 
-tr:hover td {
-  background: var(--table-row-hover);
-}
-
-/* Form inputs */
-input, select, textarea {
-  font-family: inherit;
-  font-size: inherit;
-  background: var(--card);
-  border: 1px solid var(--input);
-  border-radius: var(--radius);
-  padding: 0.625rem 0.875rem;
-  color: var(--foreground);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-input:focus, select:focus, textarea:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-light);
-  outline: none;
-}
-
-/* Dark mode input adjustments */
-.dark input, .dark select, .dark textarea {
-  background: var(--secondary);
+  /* Dark mode input adjustments */
+  .dark input, .dark select, .dark textarea {
+    background: var(--secondary);
+  }
 }
 
 /* Badge styles */
@@ -392,10 +402,12 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* Responsive */
-@media (max-width: 768px) {
-  h1 { font-size: 1.5rem; }
-  h2 { font-size: 1.25rem; }
-  .stat-value { font-size: 1.5rem; }
+@layer base {
+  @media (max-width: 768px) {
+    h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.25rem; }
+    .stat-value { font-size: 1.5rem; }
+  }
 }
 
 /* Print */
