@@ -65,14 +65,14 @@ Next.js 16 (App Router, `output: "standalone"`) + React 19 + TypeScript + Tailwi
 
 External integrations: OpenAI, Google Gemini (`AI_PROVIDER` env switches), Stripe (live keys in `.env`), Resend (email), Google Maps (`@react-google-maps/api`), pdfkit + pdf-parse + poppler-utils (PDFs), `@napi-rs/canvas`, `xlsx`.
 
-Note: `package.json` has `"name": "baborette"` — legacy, do not "fix" it. The AI agent inside the app is also called **Baborella** (`src/lib/baborella/`).
+Note: `package.json` has `"name": "baborette"` — legacy, do not "fix" it.
 
 ## Architecture
 
 ### Route groups (App Router)
 
 - `src/app/(auth)/` — `login`, `esqueci-password`, `repor-password`. Public.
-- `src/app/(dashboard)/` — every authenticated UI page (clientes, vendas, cobrancas, prospectos, tarefas, rotas, mapa, orcamentos, comissoes, reconciliacao, definicoes, admin, etc.). All wrapped by `(dashboard)/layout.tsx` which mounts `Sidebar` + `ImpersonationBanner` + `BaborellaGlobal`.
+- `src/app/(dashboard)/` — every authenticated UI page (clientes, vendas, cobrancas, prospectos, tarefas, rotas, mapa, orcamentos, comissoes, reconciliacao, definicoes, admin, etc.). All wrapped by `(dashboard)/layout.tsx` which mounts `Sidebar` + `ImpersonationBanner`.
 - `src/app/api/` — ~50 route folders. Names are Portuguese (vendas, cobranças, prospectos, tarefas, etc.) — match the dashboard route names.
 
 ### Auth + permissions (the part most code touches)
@@ -102,17 +102,9 @@ Schema is in Portuguese. Core entities:
 - **AI tables**: `ClienteInsight`, `AIInsight`, `CobrancaRisk`, `ProdutoInsight`, `BaborellaChat`, `BaborellaAction`, `BaborellaSession`, `TokenBalance`, `TokenUsage`, `TokenPurchase`, `TokenAllocation`.
 - **Historical rate tables**: `HistoricoIVA`, `HistoricoComissao`, `HistoricoComissaoVendedor`. Always read rates via `src/lib/iva.ts` (`getIVAForDate`) and `src/lib/comissao.ts` (`getComissaoForDate` / per-seller variants) — never hard-code 23% IVA or 3.5% commission. Rates are date-banded (`dataInicio`/`dataFim`); the lookup picks the row active on the given date.
 
-### Baborella AI agent (`src/lib/baborella/`)
+### AI
 
-In-app assistant exposed as a chat widget. Architecture:
-- `registry.ts` — tool registry. Tools live in `tools/{clientes,cobrancas,global,mapa,prospectos,rotas,tarefas,vendas}.ts`.
-- `executor.ts` — two-step execution: `createPendingAction` for write operations (writes `BaborellaAction` row, requires user approval), `executeToolDirectly` for reads. `approveAndExecuteAction` / `rejectAction` finalize.
-- `prompts.ts` — system prompt + approval prompt builder.
-- `context.ts` — `buildEnhancedContext` injects current entity (cliente/venda/etc.) into the prompt.
-- `session.ts` — chat history persistence.
-- AI provider switch is via `AI_PROVIDER` env (`gemini` default; `openai` also wired). `src/lib/ai.ts` has an in-memory 1h response cache and per-user token accounting via `TokenBalance`/`TokenUsage`.
-
-When adding a new write capability for the agent, register a tool AND ensure it goes through `createPendingAction`, not direct execution. Approval is a hard requirement — that's why every action is logged in `BaborellaAction` with status (`PENDING`/`APPROVED`/`REJECTED`/`EXECUTED`).
+The Baborella chat agent was removed 2026-11-13 (owner's request); its DB tables (`Baborella*`) are kept. What remains is `src/lib/ai.ts` (OpenAI/Gemini, token accounting) behind the insight cards (`/api/ai/*`: cliente-insights, cobranca-risk, dashboard-insights, prospecto-tactics, vendas-trends).
 
 ### Files / uploads
 

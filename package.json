@@ -19,7 +19,6 @@
     "@react-google-maps/api": "^2.20.8",
     "@types/pdfkit": "^0.17.4",
     "bcryptjs": "^3.0.3",
-    "framer-motion": "^12.33.0",
     "lucide-react": "^0.563.0",
     "nanoid": "^5.1.6",
     "next": "^16.4.3",
