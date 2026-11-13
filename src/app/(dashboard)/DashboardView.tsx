@@ -2,12 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
+import Link from "next/link"
 import SalesCharts from "./SalesCharts"
-import { TarefasWidget, FollowUpWidget } from "@/components/DashboardWidgets"
-import { NotificationsWidget, ForecastWidget, HealthScoresWidget, QuickStatsWidget, AcordosWidget } from "@/components/EnhancedDashboardWidgets"
-import DashboardAIInsights from "@/components/DashboardAIInsights"
+import { AcordosWidget } from "@/components/EnhancedDashboardWidgets"
 import { formatCurrency } from "@/lib/utils"
-import WellbeingSection from "@/components/WellbeingSection"
 import StatCard from "@/components/ui/StatCard"
 
 const meses = [
@@ -84,14 +82,13 @@ interface DashboardData {
   objetivosVarios?: ObjetivoVario[]
 }
 
-type TabType = "overview" | "financial" | "goals" | "tasks" | "analytics"
+type TabType = "overview" | "financial" | "goals" | "analytics"
 
 const tabs: { id: TabType; label: string; icon: string }[] = [
   { id: "overview", label: "Visão Geral", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
   { id: "financial", label: "Financeiro", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
   { id: "goals", label: "Objetivos", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
-  { id: "tasks", label: "Tarefas", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" },
-  { id: "analytics", label: "Analytics", icon: "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" }
+  { id: "analytics", label: "Gráficos", icon: "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" }
 ]
 
 export default function DashboardView() {
@@ -106,7 +103,7 @@ export default function DashboardView() {
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
   const [showExportMenu, setShowExportMenu] = useState(false)
-  const [activeTab, setActiveTab] = useState<TabType>(tabParam || "overview")
+  const [activeTab, setActiveTab] = useState<TabType>(tabs.some(t => t.id === tabParam) ? tabParam! : "overview")
 
   // Update URL when tab changes
   function handleTabChange(tab: TabType) {
@@ -188,7 +185,16 @@ export default function DashboardView() {
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <Link
+            href="/vendas?nova=1"
+            className="order-first sm:order-last w-full sm:w-auto min-h-12 px-5 inline-flex items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground text-base font-semibold shadow-sm transition"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Nova venda
+          </Link>
           <select
             value={ano}
             onChange={(e) => setAno(parseInt(e.target.value))}
@@ -324,9 +330,6 @@ export default function DashboardView() {
               </div>
             )}
 
-            {/* Quick Stats */}
-            <QuickStatsWidget />
-
             {/* Late Payments Alert */}
             {data.parcelasAtrasadas > 0 && (
               <div className="bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-700 rounded-lg p-3 flex items-center gap-3">
@@ -379,61 +382,6 @@ export default function DashboardView() {
                 </div>
               </div>
             )}
-
-            {/* Quick Links to other tabs */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <button
-                onClick={() => handleTabChange("financial")}
-                className="bg-card border border-border rounded-lg p-3 hover:bg-secondary transition text-left"
-              >
-                <div className="flex items-center gap-2 text-primary mb-1">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="text-sm font-medium">Financeiro</span>
-                </div>
-                <p className="text-xs text-muted-foreground">Cobranças e IVA</p>
-              </button>
-              <button
-                onClick={() => handleTabChange("goals")}
-                className="bg-card border border-border rounded-lg p-3 hover:bg-secondary transition text-left"
-              >
-                <div className="flex items-center gap-2 text-primary mb-1">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                  <span className="text-sm font-medium">Objetivos</span>
-                </div>
-                <p className="text-xs text-muted-foreground">Metas e prémios</p>
-              </button>
-              <button
-                onClick={() => handleTabChange("tasks")}
-                className="bg-card border border-border rounded-lg p-3 hover:bg-secondary transition text-left"
-              >
-                <div className="flex items-center gap-2 text-primary mb-1">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                  </svg>
-                  <span className="text-sm font-medium">Tarefas</span>
-                </div>
-                <p className="text-xs text-muted-foreground">Pendentes e follow-ups</p>
-              </button>
-              <button
-                onClick={() => handleTabChange("analytics")}
-                className="bg-card border border-border rounded-lg p-3 hover:bg-secondary transition text-left"
-              >
-                <div className="flex items-center gap-2 text-primary mb-1">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                  </svg>
-                  <span className="text-sm font-medium">Analytics</span>
-                </div>
-                <p className="text-xs text-muted-foreground">Gráficos e insights</p>
-              </button>
-            </div>
-
-            {/* Wellbeing Section — kept, but after the business numbers */}
-            <WellbeingSection />
           </>
         )}
 
@@ -703,36 +651,12 @@ export default function DashboardView() {
           </>
         )}
 
-        {/* ========== TASKS TAB ========== */}
-        {activeTab === "tasks" && (
-          <>
-            <NotificationsWidget />
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-              <TarefasWidget />
-              <FollowUpWidget />
-            </div>
-          </>
-        )}
-
-        {/* ========== ANALYTICS TAB ========== */}
+        {/* ========== CHARTS TAB ========== */}
         {activeTab === "analytics" && (
-          <>
-            {/* AI Insights */}
-            <DashboardAIInsights />
-
-            {/* Widgets Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <ForecastWidget />
-              <HealthScoresWidget />
-            </div>
-
-            {/* Charts */}
-            <div className="bg-card rounded-lg border border-border p-4">
-              <h3 className="text-sm font-semibold text-foreground mb-4">Gráficos de Vendas</h3>
-              <SalesCharts ano={ano} />
-            </div>
-          </>
+          <div className="bg-card rounded-lg border border-border p-4">
+            <h3 className="text-sm font-semibold text-foreground mb-4">Gráficos de Vendas</h3>
+            <SalesCharts ano={ano} />
+          </div>
         )}
       </div>
     </div>

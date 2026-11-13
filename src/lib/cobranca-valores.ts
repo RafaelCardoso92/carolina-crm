@@ -28,6 +28,7 @@ export function valorPagoCobranca(c: CobrancaValores): number {
 }
 
 export function valorPendenteCobranca(c: CobrancaValores): number {
+  if (c.pago) return 0 // paid = settled, even if old parcelas are a cent off the total
   return Math.max(0, cent(n(c.valor) - valorPagoCobranca(c)))
 }
 

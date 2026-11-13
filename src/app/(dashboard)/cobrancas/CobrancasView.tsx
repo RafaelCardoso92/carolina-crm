@@ -1,8 +1,7 @@
 "use client"
-import CobrancaAIRisk from "@/components/CobrancaAIRisk"
 
 import { useState, useEffect, useMemo, Fragment } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Swal from "sweetalert2"
 import { formatCurrency } from "@/lib/utils"
@@ -113,7 +112,8 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [filter, setFilter] = useState<"all" | "pending" | "paid" | "overdue">("all")
+  const filtroUrl = useSearchParams().get("filter")
+  const [filter, setFilter] = useState<"all" | "pending" | "paid" | "overdue">(filtroUrl === "overdue" ? "overdue" : "pending")
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
 
   // Search and filter state
@@ -2047,10 +2047,6 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
         </div>
       )}
 
-      {/* AI Risk Analysis */}
-      <div className="mb-4">
-        <CobrancaAIRisk />
-      </div>
       {/* Search, Filter, Sort Controls */}
       <div className="bg-card rounded-xl shadow-sm p-4 mb-4 border border-border space-y-3">
         {/* Search Bar */}

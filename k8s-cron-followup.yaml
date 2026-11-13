@@ -9,6 +9,7 @@ metadata:
   name: carolina-crm-auto-followup
   namespace: apps
 spec:
+  suspend: true           # off since 2026-11-13: 302 auto-tasks, none ever closed (owner's call)
   schedule: "0 7 * * *"   # 07:00 UTC daily
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3

@@ -8,7 +8,6 @@ export const dynamic = "force-dynamic"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import ClientAnalytics from "./ClientAnalytics"
-import ClienteAIInsights from "@/components/ClienteAIInsights"
 import CommunicationLog from "@/components/CommunicationLog"
 import SampleTracking from "@/components/SampleTracking"
 import CustomerSegmentation from "@/components/CustomerSegmentation"
@@ -257,11 +256,6 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
       <div className="mb-8">
         <h2 className="text-xl font-bold text-foreground mb-4">Análise de Produtos</h2>
         <ClientAnalytics clienteId={id} />
-      </div>
-
-      {/* AI Insights */}
-      <div className="mb-8">
-        <ClienteAIInsights clienteId={id} />
       </div>
 
       {/* Cobrancas */}

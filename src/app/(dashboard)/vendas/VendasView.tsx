@@ -1,8 +1,7 @@
 "use client"
-import VendasAITrends from "@/components/VendasAITrends"
 
 import { useState, useEffect, useMemo, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Swal from "sweetalert2"
 import { formatCurrency } from "@/lib/utils"
@@ -375,6 +374,14 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
     setFormItems([{ produtoId: "", quantidade: "1", precoUnit: "" }]) // Start with one empty item
     setShowModal(true)
   }
+
+  // Dashboard "Nova venda" button links here with ?nova=1
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-off open on arrival
+    if (searchParams.get("nova") === "1") { openNewSale(); router.replace("/vendas") }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function openEditSale(venda: Venda) {
     setEditingId(venda.id)
@@ -1044,10 +1051,6 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
       </div>
 
 
-      {/* AI Trends Analysis */}
-      <div className="mb-6">
-        <VendasAITrends />
-      </div>
       {/* Add Sale Button */}
       <div className="flex justify-end mb-4 md:mb-6">
         <button

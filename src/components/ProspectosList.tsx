@@ -31,6 +31,7 @@ export default function ProspectosList() {
   const [filtroEstado, setFiltroEstado] = useState<string>("")
   const [search, setSearch] = useState("")
   const [cityFilter, setCityFilter] = useState("")
+  const [mostrarFechados, setMostrarFechados] = useState(false)
   const [showColorSettings, setShowColorSettings] = useState(false)
 
   const { colors, getColor, getLabel } = useEstadoColors()
@@ -101,10 +102,14 @@ export default function ProspectosList() {
     new Set(prospectos.map(p => p.cidade).filter((city): city is string => !!city))
   ).sort()
 
-  // Filter by city
-  const filteredProspectos = cityFilter
-    ? prospectos.filter(p => p.cidade === cityFilter)
-    : prospectos
+  const isFechado = (estado: string) => estado === "GANHO" || estado === "PERDIDO"
+  const fechadosCount = prospectos.filter(p => isFechado(p.estado)).length
+
+  // Filter by city; GANHO/PERDIDO hidden unless toggled or picked in the estado filter
+  const filteredProspectos = prospectos.filter(p =>
+    (!cityFilter || p.cidade === cityFilter) &&
+    (filtroEstado || mostrarFechados || !isFechado(p.estado))
+  )
 
   const stats = colors.map((estado) => ({
     ...estado,
@@ -216,6 +221,17 @@ export default function ProspectosList() {
             </Link>
           </div>
         </div>
+        {!filtroEstado && fechadosCount > 0 && (
+          <label className="flex items-center gap-2 mt-3 text-xs text-muted-foreground cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={mostrarFechados}
+              onChange={(e) => setMostrarFechados(e.target.checked)}
+              className="w-4 h-4 accent-purple-600"
+            />
+            Mostrar ganhos/perdidos ({fechadosCount})
+          </label>
+        )}
         {(filtroEstado || cityFilter || search) && (
           <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-border">
             <span className="text-xs text-muted-foreground">Filtros:</span>
@@ -282,7 +298,7 @@ export default function ProspectosList() {
             {filteredProspectos.map((prospecto) => {
               const estadoColor = getColor(prospecto.estado)
               const estadoLabel = getLabel(prospecto.estado)
-              const isOverdue = prospecto.dataProximaAccao && new Date(prospecto.dataProximaAccao) < new Date()
+              const isOverdue = !isFechado(prospecto.estado) && prospecto.dataProximaAccao && new Date(prospecto.dataProximaAccao) < new Date()
 
               return (
                 <div key={prospecto.id} className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
@@ -413,7 +429,7 @@ export default function ProspectosList() {
                   {filteredProspectos.map((prospecto) => {
                     const estadoColor = getColor(prospecto.estado)
                     const estadoLabel = getLabel(prospecto.estado)
-                    const isOverdue = prospecto.dataProximaAccao && new Date(prospecto.dataProximaAccao) < new Date()
+                    const isOverdue = !isFechado(prospecto.estado) && prospecto.dataProximaAccao && new Date(prospecto.dataProximaAccao) < new Date()
 
                     return (
                       <tr key={prospecto.id} className="hover:bg-secondary/30 transition">

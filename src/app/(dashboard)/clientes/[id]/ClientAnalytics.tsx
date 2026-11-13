@@ -181,12 +181,14 @@ export default function ClientAnalytics({ clienteId }: { clienteId: string }) {
             const maxTotal = Math.max(...analytics.tendencia.map(t => t.total))
             const height = maxTotal > 0 ? (item.total / maxTotal) * 100 : 0
             return (
-              <div key={index} className="flex-1 flex flex-col items-center gap-1">
-                <div
-                  className={`w-full rounded-t transition-all ${item.total > 0 ? "bg-primary" : "bg-secondary"}`}
-                  style={{ height: `${Math.max(height, 4)}%` }}
-                  title={`${meses[item.mes]} ${item.ano}: ${formatCurrency(item.total)} €`}
-                />
+              <div key={index} className="flex-1 h-full flex flex-col items-center gap-1">
+                <div className="flex-1 w-full flex items-end">
+                  <div
+                    className={`w-full rounded-t transition-all ${item.total > 0 ? "bg-primary" : "bg-secondary"}`}
+                    style={{ height: `${Math.max(height, 4)}%` }}
+                    title={`${meses[item.mes]} ${item.ano}: ${formatCurrency(item.total)} €`}
+                  />
+                </div>
                 <span className="text-xs text-muted-foreground truncate w-full text-center">
                   {meses[item.mes]}
                 </span>

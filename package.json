@@ -13,7 +13,6 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "@napi-rs/canvas": "^0.1.89",
     "@prisma/client": "5.22.0",
     "@react-google-maps/api": "^2.20.8",
@@ -23,7 +22,6 @@
     "nanoid": "^5.1.6",
     "next": "^16.4.3",
     "next-auth": "^5.0.0-beta.32",
-    "openai": "^6.16.0",
     "pdf-parse": "^2.4.5",
     "pdfkit": "^0.17.2",
     "pg": "^8.16.3",
@@ -32,7 +30,6 @@
     "react-dom": "19.2.3",
     "recharts": "^3.6.0",
     "resend": "^6.9.1",
-    "stripe": "^20.3.0",
     "sweetalert2": "^11.26.17",
     "uuid": "^13.0.0",
     "xlsx": "^0.18.5"
