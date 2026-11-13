@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { formatCurrency } from "@/lib/utils"
+import Swal from "sweetalert2"
 
 type Produto = {
   id: string
@@ -112,6 +113,33 @@ function CampanhasContent() {
       }
     } catch (error) {
       console.error("Error toggling ativo:", error)
+    } finally {
+      setTogglingId(null)
+    }
+  }
+
+  async function eliminarCampanha(c: Campanha) {
+    const r = await Swal.fire({
+      title: "Eliminar campanha?",
+      text: c.totalVendas > 0
+        ? `"${c.titulo}" tem ${c.totalVendas} venda(s) associada(s). As vendas ficam, só deixam de estar ligadas a esta campanha.`
+        : `"${c.titulo}" vai ser eliminada.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#c41e3a",
+      cancelButtonColor: "#666666",
+      confirmButtonText: "Sim, eliminar",
+      cancelButtonText: "Cancelar"
+    })
+    if (!r.isConfirmed) return
+    setTogglingId(c.id)
+    try {
+      const res = await fetch(`/api/campanhas/${c.id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Erro ao eliminar campanha")
+      setCampanhas(campanhas.filter(x => x.id !== c.id))
+      setExpandedId(null)
+    } catch (error) {
+      Swal.fire({ icon: "error", title: "Erro", text: (error as Error).message, confirmButtonColor: "#b8860b" })
     } finally {
       setTogglingId(null)
     }
@@ -390,6 +418,16 @@ function CampanhasContent() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                       </svg>
                       {campanha.recorrente ? "Recorrente" : "Marcar Recorrente"}
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); eliminarCampanha(campanha); }}
+                      disabled={togglingId === campanha.id}
+                      className="px-3 py-1.5 text-sm font-medium rounded-lg transition flex items-center gap-1.5 bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300 sm:ml-auto"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Eliminar
                     </button>
                   </div>
 
