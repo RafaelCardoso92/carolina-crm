@@ -39,6 +39,7 @@ interface CobrancasStats {
   pagasCount: number
   pagasValor: number
   comissaoMensal: number
+  comissaoMensalCI?: number
 }
 
 interface ObjetivoVario {
@@ -481,7 +482,7 @@ export default function DashboardView() {
                   <StatCard
                     label="Comissão do Mês"
                     value={`${formatCurrency(data.cobrancasStats.comissaoMensal)} €`}
-                    sub={meses[data.currentMonth]}
+                    sub={(data.cobrancasStats.comissaoMensalCI ?? 0) > 0 ? `${meses[data.currentMonth]} · C.I. à parte: ${formatCurrency(data.cobrancasStats.comissaoMensalCI ?? 0)} €` : meses[data.currentMonth]}
                   />
                 </div>
               </div>

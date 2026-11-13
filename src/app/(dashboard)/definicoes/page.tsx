@@ -420,19 +420,16 @@ function DefinicoesContent() {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {[1, 2, 3, 4].map((t) => {
-                const obj = data?.objetivosTrimestrais.find(o => o.ano === selectedAno && o.trimestre === t)
-                const anual = data?.objetivosAnuais.find(o => o.ano === selectedAno)
-                const fallback = anual ? Number(anual.objetivo) / 4 : undefined
+                // Always the sum of the quarter's 3 monthly objectives (set them below)
+                const soma = (data?.objetivosMensais ?? [])
+                  .filter(o => o.ano === selectedAno && Math.ceil(o.mes / 3) === t)
+                  .reduce((sum, o) => sum + Number(o.objetivo), 0)
                 return (
-                  <ObjetivoForm
-                    key={t}
-                    label={`${t}º Trimestre`}
-                    currentValue={obj?.objetivo}
-                    fallbackValue={fallback}
-                    onSave={(valor) => saveObjetivo("objetivo_trimestral", { trimestre: t, ano: selectedAno, objetivo: valor })}
-                    saving={saving}
-                    compact
-                  />
+                  <div key={t} className="rounded-xl border border-border p-4">
+                    <p className="text-sm font-medium text-muted-foreground">{t}º Trimestre</p>
+                    <p className="text-xl font-bold text-foreground tabular-nums mt-1">{formatCurrency(soma)} €</p>
+                    <p className="text-xs text-muted-foreground mt-1">Soma dos 3 meses</p>
+                  </div>
                 )
               })}
             </div>

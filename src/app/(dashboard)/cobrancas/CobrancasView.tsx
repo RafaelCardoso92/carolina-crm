@@ -256,7 +256,9 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
       totalPendente: groups[key].reduce((sum, c) => sum + valorPendenteCobranca(c), 0),
       totalPago: groups[key].reduce((sum, c) => sum + valorPagoCobranca(c), 0),
       totalComissao: groups[key].reduce((sum, c) => sum + (Number(c.comissao ?? 0)), 0),
-      comissaoGanha: groups[key].reduce((sum, c) => sum + comissaoGanha(c, valorPagoCobranca(c)), 0)
+      // C.I. commission is paid like Christmas/holiday pay: never added to the invoices' commission
+      comissaoGanha: groups[key].filter(c => c.tipoDocumento !== "CONSUMO_INTERNO").reduce((sum, c) => sum + comissaoGanha(c, valorPagoCobranca(c)), 0),
+      comissaoGanhaCI: groups[key].filter(c => c.tipoDocumento === "CONSUMO_INTERNO").reduce((sum, c) => sum + comissaoGanha(c, valorPagoCobranca(c)), 0)
     }))
   }, [filtered])
 
@@ -264,21 +266,23 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
   const resumo = useMemo(() => {
     const now = new Date()
     const mesPassado = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const r = { totalPendente: 0, totalPago: 0, pagoEsteMes: 0, pagoMesPassado: 0, valorEmAtraso: 0, totalAtrasadas: 0, comissoesGanhasMesAtual: 0 }
+    const r = { totalPendente: 0, totalPago: 0, pagoEsteMes: 0, pagoMesPassado: 0, valorEmAtraso: 0, totalAtrasadas: 0, comissoesGanhasMesAtual: 0, comissoesCIMesAtual: 0 }
     for (const c of baseFiltered) {
       r.totalPendente += valorPendenteCobranca(c)
       r.totalPago += valorPagoCobranca(c)
       const esteMes = pagoNoMes(c, now.getFullYear(), now.getMonth())
       r.pagoEsteMes += esteMes
       r.pagoMesPassado += pagoNoMes(c, mesPassado.getFullYear(), mesPassado.getMonth())
-      r.comissoesGanhasMesAtual += comissaoGanha(c, esteMes)
+      // Commission counts in the month it was paid; C.I. is summed apart (paid as Christmas/holiday pay)
+      if (c.tipoDocumento === "CONSUMO_INTERNO") r.comissoesCIMesAtual += comissaoGanha(c, esteMes)
+      else r.comissoesGanhasMesAtual += comissaoGanha(c, esteMes)
       const atraso = emAtraso(c, now)
       r.valorEmAtraso += atraso.valor
       r.totalAtrasadas += atraso.count
     }
     return r
   }, [baseFiltered])
-  const { totalPendente, totalPago, pagoEsteMes, pagoMesPassado, valorEmAtraso, totalAtrasadas, comissoesGanhasMesAtual } = resumo
+  const { totalPendente, totalPago, pagoEsteMes, pagoMesPassado, valorEmAtraso, totalAtrasadas, comissoesGanhasMesAtual, comissoesCIMesAtual } = resumo
 
   // Calculate commission breakdown by document type
   const comissoesPorTipo = useMemo(() => {
@@ -1926,7 +1930,8 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
             <h3 className="text-xs md:text-sm font-bold text-primary uppercase md:tracking-wide leading-tight">Comissões</h3>
           </div>
           <p className="text-xl md:text-3xl font-bold text-primary">{formatCurrency(comissoesGanhasMesAtual)} €</p>
-          <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden md:block">Ganhas este mês</p>
+          <p className="text-xs md:text-sm text-muted-foreground mt-1">Faturas, ganhas este mês</p>
+          {comissoesCIMesAtual > 0 && <p className="text-xs md:text-sm text-muted-foreground">C.I. à parte: {formatCurrency(comissoesCIMesAtual)} €</p>}
         </div>
         {totalAtrasadas > 0 && (
           <div className="bg-white dark:bg-card rounded-2xl shadow-sm p-4 md:p-5 border-l-4 border-red-500 border border-border col-span-2 md:col-span-1 hover:shadow-md transition-shadow">
@@ -2763,6 +2768,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
                     <span className="text-green-700 dark:text-green-400 font-semibold">Pago: {formatCurrency(group.totalPago)} €</span>
                     <span className="text-muted-foreground hidden md:inline" aria-hidden="true">|</span>
                     <span className="text-primary font-semibold">Comissão Ganha: {formatCurrency(group.comissaoGanha)} €</span>
+                    {group.comissaoGanhaCI > 0 && <span className="text-muted-foreground font-semibold">C.I.: {formatCurrency(group.comissaoGanhaCI)} €</span>}
                   </div>
                 </button>
 

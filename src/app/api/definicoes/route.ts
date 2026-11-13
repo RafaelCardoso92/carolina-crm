@@ -115,20 +115,26 @@ export async function POST(request: Request) {
         break
 
       case "objetivo_trimestral":
-        await prisma.objetivoTrimestral.upsert({
-          where: { trimestre_ano: { trimestre: dados.trimestre, ano: dados.ano } },
-          update: { objetivo: dados.objetivo },
-          create: { trimestre: dados.trimestre, ano: dados.ano, objetivo: dados.objetivo }
-        })
-        break
+        return NextResponse.json({ error: "O objetivo trimestral é a soma dos 3 objetivos mensais: altere os meses." }, { status: 400 })
 
-      case "objetivo_mensal":
+      case "objetivo_mensal": {
         await prisma.objetivoMensal.upsert({
           where: { mes_ano: { mes: dados.mes, ano: dados.ano } },
           update: { objetivo: dados.objetivo },
           create: { mes: dados.mes, ano: dados.ano, objetivo: dados.objetivo }
         })
+        // The quarter's objective is always the sum of its 3 monthly objectives
+        const trimestre = Math.ceil(dados.mes / 3)
+        const meses = [trimestre * 3 - 2, trimestre * 3 - 1, trimestre * 3]
+        const soma = await prisma.objetivoMensal.aggregate({ where: { ano: dados.ano, mes: { in: meses } }, _sum: { objetivo: true } })
+        const objetivo = Number(soma._sum.objetivo ?? 0)
+        await prisma.objetivoTrimestral.upsert({
+          where: { trimestre_ano: { trimestre, ano: dados.ano } },
+          update: { objetivo },
+          create: { trimestre, ano: dados.ano, objetivo }
+        })
         break
+      }
 
       default:
         return NextResponse.json({ error: "Tipo invalido" }, { status: 400 })

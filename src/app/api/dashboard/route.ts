@@ -116,11 +116,11 @@ export async function GET(request: Request) {
       // Commission earned in the month = share of each cobrança's commission paid in the month
       prisma.parcela.findMany({
         where: { pago: true, dataPago: { gte: inicioMes, lt: fimMes }, cobranca: { cliente: userFilter } },
-        select: { valor: true, pago: true, valorPago: true, cobranca: { select: { valor: true, comissao: true } } }
+        select: { valor: true, pago: true, valorPago: true, cobranca: { select: { valor: true, comissao: true, tipoDocumento: true } } }
       }),
       prisma.cobranca.findMany({
         where: { dataPago: { gte: inicioMes, lt: fimMes }, parcelas: { none: {} }, cliente: userFilter },
-        select: { valor: true, pago: true, valorPago: true, dataPago: true, comissao: true }
+        select: { valor: true, pago: true, valorPago: true, dataPago: true, comissao: true, tipoDocumento: true }
       }),
       // Objetivos Vários by activity in the period (same rule as the vendas page VariosCard)
       prisma.objetivoVario.findMany({
@@ -156,10 +156,14 @@ export async function GET(request: Request) {
     const atrasos = cobrancasPorPagar.map(c => emAtraso(c, now))
     const parcelasAtrasadas = atrasos.reduce((s, a) => s + a.count, 0)
     const valorAtrasado = Math.round(atrasos.reduce((s, a) => s + a.valor, 0) * 100) / 100
-    const comissaoMensal = Math.round((
-      parcelasPagasMes.reduce((s, p) => s + comissaoGanha(p.cobranca, Number(p.valor)), 0) +
-      cobrancasSemParcelasPagasMes.reduce((s, c) => s + comissaoGanha(c, pagoNoMes(c, ano, mes - 1)), 0)
+    // Commission counts in the month the invoice/parcela was paid. C.I. is paid apart (Christmas/holiday pay):
+    // never added to comissaoMensal, summed on its own.
+    const comissaoDe = (ci: boolean) => Math.round((
+      parcelasPagasMes.filter(p => (p.cobranca.tipoDocumento === "CONSUMO_INTERNO") === ci).reduce((s, p) => s + comissaoGanha(p.cobranca, Number(p.valor)), 0) +
+      cobrancasSemParcelasPagasMes.filter(c => (c.tipoDocumento === "CONSUMO_INTERNO") === ci).reduce((s, c) => s + comissaoGanha(c, pagoNoMes(c, ano, mes - 1)), 0)
     ) * 100) / 100
+    const comissaoMensal = comissaoDe(false)
+    const comissaoMensalCI = comissaoDe(true)
     const objMensal = Number(objetivoMensal?.objetivo) || 0
     const objTrimestral = Number(objetivoTrimestral?.objetivo) || 0
     const objAnual = Number(objetivoAnual?.objetivo) || 0
@@ -242,7 +246,8 @@ export async function GET(request: Request) {
       cobrancasStats: {
         pendentesCount: cobrancasPendentesCount, pendentesValor: pendentesTotal,
         pagasCount: cobrancasPagasCount, pagasValor: Number(cobrancasPagasValor._sum.valor) || 0,
-        comissaoMensal
+        comissaoMensal,
+        comissaoMensalCI
       },
       objetivosVarios: objetivosVariosData
     }
