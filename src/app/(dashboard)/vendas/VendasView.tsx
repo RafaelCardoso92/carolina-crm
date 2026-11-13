@@ -51,6 +51,7 @@ type Campanha = {
   titulo: string
   mes: number
   ano: number
+  recorrente?: boolean
   produtos: CampanhaOuVarioProduto[]
 }
 
@@ -217,6 +218,8 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
   // Sale month/year (allows creating sales for a different month than the one being viewed)
   const [formMes, setFormMes] = useState(mes)
   const [formAno, setFormAno] = useState(ano)
+  // Only the sale month's campaigns (plus recurring ones and any already on the sale being edited): past months are noise
+  const campanhasDoMes = campanhas.filter(c => c.recorrente || (c.mes === formMes && c.ano === formAno) || selectedCampanhas.some(sc => sc.id === c.id))
 
   // Cobranca state
   const [criarCobranca, setCriarCobranca] = useState(true)
@@ -1735,7 +1738,7 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                   >
                     Produtos
                   </button>
-                  {campanhas.length > 0 && (
+                  {campanhasDoMes.length > 0 && (
                     <button
                       type="button"
                       onClick={() => handleSaleModeChange('campanha')}
@@ -1775,7 +1778,7 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                     Selecionar Campanhas
                   </h3>
                   <div className="space-y-2">
-                    {campanhas.map((c) => {
+                    {campanhasDoMes.map((c) => {
                       const selectedCampanha = selectedCampanhas.find(sc => sc.id === c.id)
                       const isSelected = !!selectedCampanha
                       return (
@@ -2041,7 +2044,7 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
               </div>
 
               {/* Campanhas Section - only show in normal mode */}
-              {saleMode === 'normal' && campanhas.length > 0 && (
+              {saleMode === 'normal' && campanhasDoMes.length > 0 && (
                 <div className="bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-xl p-4 border border-emerald-200 dark:border-emerald-800">
                   <h3 className="text-sm font-bold text-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
                     <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2052,7 +2055,7 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                     <span className="text-xs font-normal text-emerald-600 dark:text-emerald-400">(adiciona ao total da venda)</span>
                   </h3>
                   <div className="space-y-2">
-                    {campanhas.map((c) => {
+                    {campanhasDoMes.map((c) => {
                       const selectedCampanha = selectedCampanhas.find(sc => sc.id === c.id)
                       const isSelected = !!selectedCampanha
                       return (

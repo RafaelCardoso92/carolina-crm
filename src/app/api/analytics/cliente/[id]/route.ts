@@ -116,11 +116,10 @@ export async function GET(
       const mes = date.getMonth() + 1
       const ano = date.getFullYear()
 
-      const venda = cliente.vendas.find(v => v.mes === mes && v.ano === ano)
       tendencia.push({
         mes,
         ano,
-        total: venda ? Number(venda.total) : 0
+        total: cliente.vendas.filter(v => v.mes === mes && v.ano === ano).reduce((s, v) => s + Number(v.total), 0)
       })
     }
 

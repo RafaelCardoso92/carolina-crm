@@ -282,6 +282,7 @@ export default async function VendasPage({
           titulo: c.titulo,
           mes: c.mes,
           ano: c.ano,
+          recorrente: c.recorrente,
           produtos: c.produtos.map(p => ({
             produtoId: p.produtoId,
             nome: p.nome,

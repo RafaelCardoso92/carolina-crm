@@ -28,7 +28,6 @@ async function getCliente(id: string, session: any) {
     include: {
       vendas: {
         orderBy: [{ ano: "desc" }, { mes: "desc" }],
-        take: 10,
         include: {
           itens: {
             include: { produto: true }
@@ -36,8 +35,7 @@ async function getCliente(id: string, session: any) {
         }
       },
       cobrancas: {
-        orderBy: { createdAt: "desc" },
-        take: 10
+        orderBy: { createdAt: "desc" }
       }
     }
   })
@@ -72,9 +70,14 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
     notFound()
   }
 
-  const totalVendas = cliente.vendas.reduce((sum, v) => sum + Number(v.total), 0)
-  const totalCobrancas = cliente.cobrancas.reduce((sum, c) => sum + Number(c.valor), 0)
-  const pendentes = cliente.cobrancas.filter(c => !c.pago).reduce((sum, c) => sum + Number(c.valor), 0)
+  const anoAtual = new Date().getFullYear()
+  const totalAno = (ano: number) => cliente.vendas.filter(v => v.ano === ano).reduce((sum, v) => sum + Number(v.total), 0)
+  const totalVendas = totalAno(anoAtual)
+  const totalVendasAnterior = totalAno(anoAtual - 1)
+  const anosVendas = [...new Set(cliente.vendas.map(v => v.ano))]
+  const totalCobrancas = cliente.cobrancas.filter(c => (c.dataEmissao ?? c.createdAt).getFullYear() === anoAtual).reduce((sum, c) => sum + Number(c.valor), 0)
+  const pendentes = cliente.cobrancas.filter(c => !c.pago).reduce((sum, c) => sum + Number(c.valor) - Number(c.valorPago ?? 0), 0)
+  const ultimasCobrancas = cliente.cobrancas.slice(0, 10)
   const saldoCredito = Number(cliente.saldoCredito || 0)
 
   return (
@@ -105,11 +108,12 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8">
         <div className="bg-card rounded-xl shadow-sm p-4 md:p-6">
-          <h3 className="text-sm font-medium text-muted-foreground">Total Vendas</h3>
+          <h3 className="text-sm font-medium text-muted-foreground">Total Vendas {anoAtual}</h3>
           <p className="text-xl md:text-2xl font-bold text-foreground mt-2">{formatCurrency(totalVendas)} EUR</p>
+          {totalVendasAnterior > 0 && <p className="text-xs text-muted-foreground mt-1">{anoAtual - 1}: {formatCurrency(totalVendasAnterior)} EUR</p>}
         </div>
         <div className="bg-card rounded-xl shadow-sm p-4 md:p-6">
-          <h3 className="text-sm font-medium text-muted-foreground">Total Faturado</h3>
+          <h3 className="text-sm font-medium text-muted-foreground">Total Faturado {anoAtual}</h3>
           <p className="text-xl md:text-2xl font-bold text-foreground mt-2">{formatCurrency(totalCobrancas)} EUR</p>
         </div>
         <div className="bg-card rounded-xl shadow-sm p-4 md:p-6">
@@ -220,10 +224,17 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
 
       {/* Sales History */}
       <div className="bg-card rounded-xl shadow-sm p-6 mb-8">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Ultimas Vendas</h3>
+        <h3 className="text-lg font-semibold text-foreground mb-4">Vendas</h3>
         {cliente.vendas.length > 0 ? (
+          <div className="space-y-6">
+          {anosVendas.map((ano) => (
+          <div key={ano}>
+          <div className="flex justify-between items-baseline mb-2">
+            <h4 className="font-semibold text-foreground">{ano}</h4>
+            <span className="text-sm text-muted-foreground">Total {formatCurrency(totalAno(ano))} EUR</span>
+          </div>
           <ul className="space-y-2">
-            {cliente.vendas.map((venda) => (
+            {cliente.vendas.filter(v => v.ano === ano).map((venda) => (
               <li key={venda.id} className="py-3 border-b border-border last:border-0">
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">{meses[venda.mes]} {venda.ano}</span>
@@ -241,6 +252,9 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
               </li>
             ))}
           </ul>
+          </div>
+          ))}
+          </div>
         ) : (
           <p className="text-muted-foreground text-sm">Sem vendas registadas</p>
         )}
@@ -272,7 +286,7 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
                 </tr>
               </thead>
               <tbody>
-                {cliente.cobrancas.map((cobranca) => (
+                {ultimasCobrancas.map((cobranca) => (
                   <tr key={cobranca.id} className="border-b border-border last:border-0">
                     <td className="py-3 text-foreground">{cobranca.fatura || "-"}</td>
                     <td className="py-3 text-foreground">{formatCurrency(Number(cobranca.valor))} EUR</td>

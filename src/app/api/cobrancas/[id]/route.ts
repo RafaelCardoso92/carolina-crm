@@ -116,8 +116,23 @@ export async function PUT(
     const valorSemIva = data.valorSemIva || (Number(data.valor) / (1 + ivaRate / 100))
     const calculatedComissao = data.comissao ?? Math.round(valorSemIva * (comissaoRate / 100) * 100) / 100
 
-    // If updateParcelas is true, regenerate all parcelas
-    if (data.updateParcelas && data.numeroParcelas && data.dataInicioVencimento) {
+    // Regenerating parcelas wipes their payments: only when the plan really changed (count, first due date or total),
+    // and never over parcelas that already have a payment (the form always sends updateParcelas, even to add an invoice number).
+    const atual = await prisma.cobranca.findUnique({
+      where: { id },
+      select: { valor: true, numeroParcelas: true, dataInicioVencimento: true, parcelas: { select: { pago: true, valorPago: true } } }
+    })
+    const temPagamentos = !!atual?.parcelas.some((p) => p.pago || Number(p.valorPago ?? 0) > 0)
+    const dia = (d: Date | string | null | undefined) => (d ? new Date(d).toISOString().slice(0, 10) : null)
+    const planoMudou = !atual || atual.parcelas.length !== Number(data.numeroParcelas) ||
+      dia(atual.dataInicioVencimento) !== dia(data.dataInicioVencimento) || Number(atual.valor) !== Number(data.valor)
+    const regenerar = data.updateParcelas && data.numeroParcelas && data.dataInicioVencimento && planoMudou
+    const paraPagamentoUnico = !data.updateParcelas && data.numeroParcelas === undefined && (atual?.parcelas.length ?? 0) > 0
+    if ((regenerar || paraPagamentoUnico) && temPagamentos) {
+      return NextResponse.json({ error: "Esta cobrança já tem parcelas pagas: não é possível mudar o número de parcelas, a data da primeira ou o valor total sem perder esses pagamentos. Os outros campos (fatura, notas, data de emissão) podem ser alterados." }, { status: 409 })
+    }
+
+    if (regenerar) {
       // Atomic: delete + recreate parcelas + update cobranca must not partially apply
       const cobranca = await prisma.$transaction(async (tx) => {
         // Delete existing parcelas
@@ -175,6 +190,24 @@ export async function PUT(
       return NextResponse.json(cobranca)
     }
 
+    // Installment plan unchanged: keep the parcelas and their payments, update the rest
+    if (data.updateParcelas) {
+      const cobranca = await prisma.cobranca.update({
+        where: { id },
+        data: {
+          clienteId: data.clienteId,
+          fatura: data.fatura || null,
+          valor: data.valor,
+          valorSemIva: valorSemIva,
+          comissao: calculatedComissao,
+          dataEmissao: data.dataEmissao ? new Date(data.dataEmissao) : null,
+          notas: data.notas || null
+        },
+        include: { cliente: true, parcelas: { orderBy: { numero: "asc" } } }
+      })
+      return NextResponse.json(cobranca)
+    }
+
     // Calculate dataVencimento for single payment cobrancas
     let calculatedDataVencimento: Date | null = null
     const numeroParcelas = data.numeroParcelas || 1
@@ -188,7 +221,7 @@ export async function PUT(
     // Atomic: parcela cleanup (when switching to single payment) + cobranca update
     const cobranca = await prisma.$transaction(async (tx) => {
       // If not updating parcelas but switching to single payment, delete existing parcelas
-      if (!data.updateParcelas && data.numeroParcelas === undefined) {
+      if (paraPagamentoUnico) {
         await tx.parcela.deleteMany({
           where: { cobrancaId: id }
         })
