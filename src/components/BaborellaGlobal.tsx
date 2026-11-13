@@ -502,7 +502,7 @@ export default function BaborellaGlobal() {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
             onClick={() => setIsOpen(true)}
-            className="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-shadow group"
+            className="fixed bottom-above-nav right-6 z-50 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-shadow group"
           >
             <Sparkles className="w-6 h-6 group-hover:animate-pulse" />
             <span className="absolute -top-1 -right-1 bg-green-500 w-3 h-3 rounded-full animate-pulse" />
@@ -516,7 +516,7 @@ export default function BaborellaGlobal() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-6 right-6 z-50 w-[95vw] sm:w-96 md:w-[480px] lg:w-[520px] h-[80vh] sm:h-[560px] md:h-[640px] lg:h-[700px] max-h-[800px] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200 dark:border-gray-700"
+            className="fixed bottom-above-nav right-6 z-50 w-[95vw] sm:w-96 md:w-[480px] lg:w-[520px] h-[80vh] sm:h-[560px] md:h-[640px] lg:h-[700px] max-h-[800px] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200 dark:border-gray-700"
           >
             {/* Header */}
             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4">

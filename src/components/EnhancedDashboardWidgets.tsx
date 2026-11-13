@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { formatCurrency } from "@/lib/utils"
 import HelpTooltip from "./HelpTooltip"
+import StatCard from "./ui/StatCard"
 
 interface Notification {
   id: string
@@ -139,8 +140,8 @@ export function NotificationsWidget() {
               </span>
             )}
           </span>
-          Notificacoes
-          <HelpTooltip text="Alertas automaticos sobre pagamentos em atraso, tarefas pendentes, leads parados e clientes sem contacto recente." />
+          Notificações
+          <HelpTooltip text="Alertas automáticos sobre pagamentos em atraso, tarefas pendentes, leads parados e clientes sem contacto recente." />
         </h3>
         {unreadCount > 0 && (
           <button
@@ -153,7 +154,7 @@ export function NotificationsWidget() {
       </div>
 
       {notifications.length === 0 ? (
-        <p className="text-muted-foreground text-sm">Sem notificacoes - tudo em ordem!</p>
+        <p className="text-muted-foreground text-sm">Sem notificações - tudo em ordem!</p>
       ) : (
         <div className="space-y-2">
           {notifications.slice(0, expanded ? 10 : 3).map(notif => (
@@ -183,7 +184,7 @@ export function NotificationsWidget() {
               onClick={() => setExpanded(!expanded)}
               className="w-full text-sm text-primary hover:underline text-center py-2"
             >
-              {expanded ? "Ver menos" : `Ver mais ${notifications.length - 3} notificacoes`}
+              {expanded ? "Ver menos" : `Ver mais ${notifications.length - 3} notificações`}
             </button>
           )}
         </div>
@@ -239,8 +240,8 @@ export function ForecastWidget() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
           </svg>
         </span>
-        Previsao de Vendas
-        <HelpTooltip text="Previsao calculada com base no historico de vendas do mesmo mes em anos anteriores, tendencias de crescimento e pipeline de prospectos em negociacao." />
+        Previsão de Vendas
+        <HelpTooltip text="Previsão calculada com base no histórico de vendas do mesmo mês em anos anteriores, tendências de crescimento e pipeline de prospectos em negociação." />
       </h3>
 
       <div className="space-y-4">
@@ -250,11 +251,11 @@ export function ForecastWidget() {
               {formatCurrency(data.current.previsaoTotal)} €
             </span>
             <span className="text-sm text-muted-foreground flex items-center gap-1">
-              Confianca: {data.current.confianca}%
-              <HelpTooltip text="Nivel de confianca baseado na quantidade de dados historicos disponiveis e pipeline ativo." position="left" />
+              Confiança: {data.current.confianca}%
+              <HelpTooltip text="Nível de confiança baseado na quantidade de dados históricos disponiveis e pipeline ativo." position="left" />
             </span>
           </div>
-          <p className="text-xs text-muted-foreground">Previsao para este mes</p>
+          <p className="text-xs text-muted-foreground">Previsão para este mês</p>
         </div>
 
         <div>
@@ -269,7 +270,7 @@ export function ForecastWidget() {
             />
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Faltam {formatCurrency(data.current.faltaParaPrevisao)} € para atingir a previsao
+            Faltam {formatCurrency(data.current.faltaParaPrevisao)} € para atingir a previsão
           </p>
         </div>
 
@@ -277,7 +278,7 @@ export function ForecastWidget() {
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground flex items-center gap-1">
               Pipeline ativo
-              <HelpTooltip text="Prospectos em fase de Proposta ou Negociacao que podem converter em vendas." position="right" />
+              <HelpTooltip text="Prospectos em fase de Proposta ou Negociação que podem converter em vendas." position="right" />
             </span>
             <span className="font-medium text-foreground">
               {data.pipeline.total} ({formatCurrency(data.pipeline.valor)} €)
@@ -342,8 +343,8 @@ export function HealthScoresWidget() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
         </span>
-        Saude dos Clientes
-        <HelpTooltip text="Score de 0-100 calculado com base no historico de pagamentos (40%), frequencia de comunicacao (30%) e recencia de compras (30%)." />
+        Saúde dos Clientes
+        <HelpTooltip text="Score de 0-100 calculado com base no histórico de pagamentos (40%), frequência de comunicação (30%) e recência de compras (30%)." />
       </h3>
 
       <div className="grid grid-cols-3 gap-4 mb-4">
@@ -352,14 +353,14 @@ export function HealthScoresWidget() {
           <p className="text-xs text-muted-foreground">Total</p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-red-500">{data.atRisk}</p>
+          <p className="text-2xl font-bold tabular-nums text-red-600 dark:text-red-400">{data.atRisk}</p>
           <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
             Em Risco
-            <HelpTooltip text="Clientes com score abaixo de 40 - precisam de atencao urgente." position="bottom" />
+            <HelpTooltip text="Clientes com score abaixo de 40 - precisam de atenção urgente." position="bottom" />
           </p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-orange-500">{data.declining}</p>
+          <p className="text-2xl font-bold tabular-nums text-amber-700 dark:text-amber-400">{data.declining}</p>
           <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
             A Descer
             <HelpTooltip text="Clientes cujo score desceu 5+ pontos recentemente." position="bottom" />
@@ -369,7 +370,7 @@ export function HealthScoresWidget() {
 
       {atRiskClients.length > 0 && (
         <div className="pt-3 border-t border-border">
-          <p className="text-xs font-medium text-red-500 mb-2">Clientes em risco - contactar urgente:</p>
+          <p className="text-xs font-medium text-red-700 dark:text-red-400 mb-2">Clientes em risco - contactar urgente:</p>
           <div className="space-y-1">
             {atRiskClients.map(client => (
               <Link
@@ -382,7 +383,7 @@ export function HealthScoresWidget() {
                   client.tendencia === "DESCENDO" ? "text-red-500" :
                   client.tendencia === "SUBINDO" ? "text-green-500" : "text-muted-foreground"
                 }`}>
-                  {client.tendencia === "DESCENDO" ? "↓ A descer" : client.tendencia === "SUBINDO" ? "↑ A subir" : "→ Estavel"}
+                  {client.tendencia === "DESCENDO" ? "↓ A descer" : client.tendencia === "SUBINDO" ? "↑ A subir" : "→ Estável"}
                 </span>
               </Link>
             ))}
@@ -422,9 +423,9 @@ export function QuickStatsWidget() {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
+          <div key={i} className="bg-card rounded-xl border border-border p-4 animate-pulse">
             <div className="h-8 bg-muted rounded w-1/2 mb-2"></div>
             <div className="h-4 bg-muted rounded w-3/4"></div>
           </div>
@@ -434,85 +435,36 @@ export function QuickStatsWidget() {
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <Link
-        href="/cobrancas"
-        className={`bg-card rounded-xl p-4 border-l-4 ${
-          stats.overduePayments.count > 0 ? "border-red-500" : "border-green-500"
-        } hover:shadow-md transition`}
-      >
-        <div className="flex items-start justify-between">
-          <div>
-            <p className={`text-2xl font-bold ${
-              stats.overduePayments.count > 0 ? "text-red-500" : "text-green-500"
-            }`}>
-              {stats.overduePayments.count}
-            </p>
-            <p className="text-sm text-muted-foreground">Pagamentos Atrasados</p>
-            {stats.overduePayments.count > 0 && (
-              <p className="text-xs text-red-500 mt-1">{formatCurrency(stats.overduePayments.value)} €</p>
-            )}
-          </div>
-          <HelpTooltip text="Parcelas com data de vencimento ultrapassada e ainda nao pagas." position="left" />
-        </div>
-      </Link>
-
-      <Link
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+      <StatCard
+        href="/cobrancas?filter=overdue"
+        label="Pagamentos Atrasados"
+        value={stats.overduePayments.count}
+        sub={stats.overduePayments.count > 0 ? `${formatCurrency(stats.overduePayments.value)} €` : "Tudo em dia"}
+        tone={stats.overduePayments.count > 0 ? "overdue" : "good"}
+        help={<HelpTooltip text="Parcelas e cobranças com o prazo ultrapassado e ainda por pagar." position="left" />}
+      />
+      <StatCard
         href="/tarefas"
-        className={`bg-card rounded-xl p-4 border-l-4 ${
-          stats.tasksDueToday > 0 ? "border-blue-500" : "border-gray-300"
-        } hover:shadow-md transition`}
-      >
-        <div className="flex items-start justify-between">
-          <div>
-            <p className={`text-2xl font-bold ${
-              stats.tasksDueToday > 0 ? "text-blue-500" : "text-muted-foreground"
-            }`}>
-              {stats.tasksDueToday}
-            </p>
-            <p className="text-sm text-muted-foreground">Tarefas Hoje</p>
-          </div>
-          <HelpTooltip text="Tarefas com data de vencimento para hoje que ainda nao foram concluidas." position="left" />
-        </div>
-      </Link>
-
-      <Link
+        label="Tarefas Hoje"
+        value={stats.tasksDueToday}
+        tone={stats.tasksDueToday > 0 ? "primary" : "none"}
+        help={<HelpTooltip text="Tarefas com data de vencimento para hoje que ainda não foram concluídas." position="left" />}
+      />
+      <StatCard
         href="/prospectos"
-        className={`bg-card rounded-xl p-4 border-l-4 ${
-          stats.staleLeads > 0 ? "border-amber-500" : "border-gray-300"
-        } hover:shadow-md transition`}
-      >
-        <div className="flex items-start justify-between">
-          <div>
-            <p className={`text-2xl font-bold ${
-              stats.staleLeads > 0 ? "text-amber-500" : "text-muted-foreground"
-            }`}>
-              {stats.staleLeads}
-            </p>
-            <p className="text-sm text-muted-foreground">Leads Parados</p>
-          </div>
-          <HelpTooltip text="Prospectos que nao tiveram contacto nos ultimos 7 dias e ainda nao foram ganhos ou perdidos." position="left" />
-        </div>
-      </Link>
-
-      <Link
+        label="Leads Parados"
+        value={stats.staleLeads}
+        tone={stats.staleLeads > 0 ? "pending" : "none"}
+        help={<HelpTooltip text="Prospectos que não tiveram contacto nos últimos 7 dias e ainda não foram ganhos ou perdidos." position="left" />}
+      />
+      <StatCard
         href="/clientes"
-        className={`bg-card rounded-xl p-4 border-l-4 ${
-          stats.clientsNoContact > 0 ? "border-purple-500" : "border-gray-300"
-        } hover:shadow-md transition`}
-      >
-        <div className="flex items-start justify-between">
-          <div>
-            <p className={`text-2xl font-bold ${
-              stats.clientsNoContact > 0 ? "text-purple-500" : "text-muted-foreground"
-            }`}>
-              {stats.clientsNoContact}
-            </p>
-            <p className="text-sm text-muted-foreground">Clientes sem Contacto</p>
-          </div>
-          <HelpTooltip text="Clientes ativos que nao foram contactados nos ultimos 30 dias." position="left" />
-        </div>
-      </Link>
+        label="Clientes sem Contacto"
+        value={stats.clientsNoContact}
+        tone={stats.clientsNoContact > 0 ? "pending" : "none"}
+        help={<HelpTooltip text="Clientes ativos que não foram contactados nos últimos 30 dias." position="left" />}
+      />
     </div>
   )
 }
@@ -590,7 +542,7 @@ export function AcordosWidget() {
             </svg>
           </span>
           Acordos de Parceria
-          <HelpTooltip text="Clientes com compromissos anuais de compras. Mostra progresso trimestral e alerta quando estao atrasados." />
+          <HelpTooltip text="Clientes com compromissos anuais de compras. Mostra progresso trimestral e alerta quando estão atrasados." />
         </h3>
         <p className="text-muted-foreground text-sm">Sem acordos ativos</p>
       </div>
@@ -606,7 +558,7 @@ export function AcordosWidget() {
           </svg>
         </span>
         Acordos de Parceria
-        <HelpTooltip text="Clientes com compromissos anuais de compras. Mostra progresso trimestral e alerta quando estao atrasados." />
+        <HelpTooltip text="Clientes com compromissos anuais de compras. Mostra progresso trimestral e alerta quando estão atrasados." />
       </h3>
 
       <div className="grid grid-cols-4 gap-2 mb-4">
@@ -615,22 +567,22 @@ export function AcordosWidget() {
           <p className="text-xs text-muted-foreground">Total</p>
         </div>
         <div className="text-center">
-          <p className="text-xl font-bold text-green-500">{data.noCaminho}</p>
+          <p className="text-xl font-bold tabular-nums text-green-700 dark:text-green-400">{data.noCaminho}</p>
           <p className="text-xs text-muted-foreground">No Caminho</p>
         </div>
         <div className="text-center">
-          <p className="text-xl font-bold text-red-500">{data.atras}</p>
+          <p className="text-xl font-bold tabular-nums text-red-600 dark:text-red-400">{data.atras}</p>
           <p className="text-xs text-muted-foreground">Atrasados</p>
         </div>
         <div className="text-center">
-          <p className="text-xl font-bold text-blue-500">{data.adiantado}</p>
+          <p className="text-xl font-bold tabular-nums text-primary">{data.adiantado}</p>
           <p className="text-xs text-muted-foreground">Adiantados</p>
         </div>
       </div>
 
       {data.clientesAtRisk.length > 0 && (
         <div className="pt-3 border-t border-border">
-          <p className="text-xs font-medium text-red-500 mb-2">Clientes atrasados - requer atencao:</p>
+          <p className="text-xs font-medium text-red-700 dark:text-red-400 mb-2">Clientes atrasados - requer atenção:</p>
           <div className="space-y-1">
             {data.clientesAtRisk.map(client => (
               <Link
@@ -639,8 +591,8 @@ export function AcordosWidget() {
                 className="flex items-center justify-between p-2 bg-secondary rounded text-sm hover:bg-muted transition"
               >
                 <span className="text-foreground truncate">{client.clienteNome}</span>
-                <span className="text-red-500 font-medium whitespace-nowrap ml-2">
-                  -{formatCurrency(client.deficit)} EUR
+                <span className="text-red-700 dark:text-red-400 font-medium tabular-nums whitespace-nowrap ml-2">
+                  -{formatCurrency(client.deficit)} €
                 </span>
               </Link>
             ))}
@@ -724,11 +676,11 @@ export function BulkActionsPanel({
   }
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-card rounded-xl shadow-lg border border-border p-4 z-50 min-w-[400px] max-w-[90vw]">
+    <div className="fixed left-1/2 -translate-x-1/2 bg-card rounded-xl shadow-lg border border-border p-4 z-50 sm:min-w-[400px] max-w-[90vw] bottom-above-nav-sm">
       <div className="flex items-center justify-between mb-3">
         <span className="font-medium text-foreground flex items-center gap-2">
           {selectedIds.length} {entityType === "cliente" ? "clientes" : "prospectos"} selecionados
-          <HelpTooltip text="Pode executar acoes em massa para todos os itens selecionados de uma vez." />
+          <HelpTooltip text="Pode executar ações em massa para todos os itens selecionados de uma vez." />
         </span>
         <button
           onClick={onClear}
@@ -758,7 +710,7 @@ export function BulkActionsPanel({
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
-            Registar Comunicacao
+            Registar Comunicação
           </button>
           {entityType === "prospecto" && (
             <button
@@ -782,7 +734,7 @@ export function BulkActionsPanel({
             <>
               <input
                 type="text"
-                placeholder="Titulo da tarefa"
+                placeholder="Título da tarefa"
                 value={taskTitle}
                 onChange={(e) => setTaskTitle(e.target.value)}
                 className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground"
@@ -804,7 +756,7 @@ export function BulkActionsPanel({
                   className="px-3 py-2 border border-border rounded-lg bg-background text-foreground"
                 >
                   <option value="BAIXA">Baixa</option>
-                  <option value="MEDIA">Media</option>
+                  <option value="MEDIA">Média</option>
                   <option value="ALTA">Alta</option>
                   <option value="URGENTE">Urgente</option>
                 </select>

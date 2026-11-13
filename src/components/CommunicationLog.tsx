@@ -84,7 +84,7 @@ export default function CommunicationLog({ clienteId, prospectoId }: Props) {
   return (
     <div className="bg-card rounded-xl shadow-sm p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-foreground">Historico de Contactos</h3>
+        <h3 className="text-lg font-semibold text-foreground">Histórico de Contactos</h3>
         <button
           onClick={() => setShowForm(true)}
           className="bg-primary text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-primary-hover transition"

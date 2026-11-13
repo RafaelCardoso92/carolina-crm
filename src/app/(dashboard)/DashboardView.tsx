@@ -8,6 +8,7 @@ import { NotificationsWidget, ForecastWidget, HealthScoresWidget, QuickStatsWidg
 import DashboardAIInsights from "@/components/DashboardAIInsights"
 import { formatCurrency } from "@/lib/utils"
 import WellbeingSection from "@/components/WellbeingSection"
+import StatCard from "@/components/ui/StatCard"
 
 const meses = [
   "", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
@@ -76,6 +77,8 @@ interface DashboardData {
   parcelasAtrasadas: number
   valorAtrasado: number
   proximasParcelas: ProximaParcela[]
+  proximasParcelasCount?: number
+  proximasParcelasValor?: number
   cobrancasStats?: CobrancasStats
   objetivosVarios?: ObjetivoVario[]
 }
@@ -83,11 +86,11 @@ interface DashboardData {
 type TabType = "overview" | "financial" | "goals" | "tasks" | "analytics"
 
 const tabs: { id: TabType; label: string; icon: string }[] = [
-  { id: "overview", label: "Visao Geral", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
+  { id: "overview", label: "Visão Geral", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
   { id: "financial", label: "Financeiro", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
   { id: "goals", label: "Objetivos", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
   { id: "tasks", label: "Tarefas", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" },
-  { id: "analytics", label: "Analytics", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" }
+  { id: "analytics", label: "Analytics", icon: "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" }
 ]
 
 export default function DashboardView() {
@@ -160,8 +163,8 @@ export default function DashboardView() {
 
   if (loading || !data) {
     return (
-      <div className="flex items-center justify-center h-40">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center h-40" role="status" aria-label="A carregar">
+        <div className="animate-spin motion-reduce:animate-none rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     )
   }
@@ -188,14 +191,16 @@ export default function DashboardView() {
           <select
             value={ano}
             onChange={(e) => setAno(parseInt(e.target.value))}
-            className="text-xs sm:text-sm border border-border bg-card rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-primary"
+            aria-label="Ano"
+            className="min-h-11 text-sm border border-border bg-card rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-primary"
           >
             {years.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
           <select
             value={mes}
             onChange={(e) => setMes(parseInt(e.target.value))}
-            className="text-xs sm:text-sm border border-border bg-card rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-primary"
+            aria-label="Mês"
+            className="min-h-11 text-sm border border-border bg-card rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-primary"
           >
             {meses.slice(1).map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
           </select>
@@ -204,7 +209,9 @@ export default function DashboardView() {
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
               disabled={exporting}
-              className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm font-medium rounded-lg px-2.5 py-1.5 flex items-center gap-1.5 disabled:opacity-50"
+              aria-label="Exportar para Excel"
+              aria-expanded={showExportMenu}
+              className="min-h-11 min-w-11 justify-center bg-green-700 hover:bg-green-800 text-white text-sm font-medium rounded-lg px-3 flex items-center gap-1.5 disabled:opacity-50"
             >
               {exporting ? (
                 <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
@@ -226,7 +233,7 @@ export default function DashboardView() {
                   <button
                     key={item.id}
                     onClick={() => exportToExcel(item.id)}
-                    className="w-full px-3 py-1.5 text-left text-sm text-foreground hover:bg-secondary"
+                    className="w-full px-3 py-2.5 text-left text-sm text-foreground hover:bg-secondary"
                   >
                     {item.label}
                   </button>
@@ -238,22 +245,24 @@ export default function DashboardView() {
       </div>
 
       {/* Tabs Navigation */}
-      <div className="bg-card rounded-xl border border-border p-1 sticky top-0 z-40">
-        <div className="flex gap-1 overflow-x-auto">
+      <div className="bg-card rounded-xl border border-border p-1 sticky top-16 lg:top-0 z-30">
+        <div className="flex gap-1 overflow-x-auto" role="tablist">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition whitespace-nowrap ${
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              className={`flex-1 sm:flex-none flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 min-h-11 px-1 sm:px-4 py-1.5 sm:py-2.5 rounded-lg font-medium text-[11px] leading-tight sm:text-sm transition whitespace-nowrap ${
                 activeTab === tab.id
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground hover:bg-secondary"
               }`}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
               </svg>
-              <span className="hidden sm:inline">{tab.label}</span>
+              <span>{tab.label}</span>
             </button>
           ))}
         </div>
@@ -267,28 +276,28 @@ export default function DashboardView() {
             {/* Main Stats Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
               <StatCard
-                title="Clientes"
-                value={data.clientesAtivos.toString()}
-                subtitle={`${data.totalClientes} total`}
-                color="primary"
+                label="Clientes"
+                value={data.clientesAtivos}
+                sub={`${data.totalClientes} no total`}
+                href="/clientes"
               />
               <StatCard
-                title={`Vendas ${meses[data.currentMonth]}`}
-                value={`${formatCurrency(data.vendasMes)}€`}
-                subtitle={data.objetivoMensal > 0 ? `Obj: ${formatCurrency(data.objetivoMensal)}€` : ""}
-                color="green"
+                label={`Vendas ${meses[data.currentMonth]}`}
+                value={`${formatCurrency(data.vendasMes)} €`}
+                sub={data.objetivoMensal > 0 ? `Objetivo: ${formatCurrency(data.objetivoMensal)} €` : undefined}
+                tone="good"
               />
               <StatCard
-                title={`${data.currentTrimestre}º Trim`}
-                value={`${formatCurrency(data.vendasTrimestre)}€`}
-                subtitle={data.objetivoTrimestral > 0 ? `Obj: ${formatCurrency(data.objetivoTrimestral)}€` : ""}
-                color="blue"
+                label={`${data.currentTrimestre}º Trimestre`}
+                value={`${formatCurrency(data.vendasTrimestre)} €`}
+                sub={data.objetivoTrimestral > 0 ? `Objetivo: ${formatCurrency(data.objetivoTrimestral)} €` : undefined}
               />
               <StatCard
-                title="A Receber"
-                value={`${formatCurrency(data.pendentes)}€`}
-                subtitle="Pendente"
-                color="orange"
+                label="A Receber"
+                value={`${formatCurrency(data.pendentes)} €`}
+                sub="Pendente"
+                tone="pending"
+                href="/cobrancas"
               />
             </div>
 
@@ -327,10 +336,10 @@ export default function DashboardView() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-red-800 dark:text-red-100">
-                    {data.parcelasAtrasadas} parcela{data.parcelasAtrasadas !== 1 ? "s" : ""} em atraso: <span className="font-bold">{formatCurrency(data.valorAtrasado)}€</span>
+                    {data.parcelasAtrasadas} parcela{data.parcelasAtrasadas !== 1 ? "s" : ""} em atraso: <span className="font-bold tabular-nums">{formatCurrency(data.valorAtrasado)} €</span>
                   </p>
                 </div>
-                <a href="/cobrancas?filter=overdue" className="shrink-0 text-xs font-medium text-red-700 dark:text-red-200 hover:underline">
+                <a href="/cobrancas?filter=overdue" className="shrink-0 inline-flex items-center min-h-11 px-2 -mr-2 text-sm font-medium text-red-700 dark:text-red-200 hover:underline">
                   Ver
                 </a>
               </div>
@@ -340,8 +349,8 @@ export default function DashboardView() {
             {data.proximasParcelas.length > 0 && (
               <div className="bg-card rounded-lg border border-border p-3">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-semibold text-foreground">Proximos Vencimentos</h3>
-                  <a href="/cobrancas" className="text-xs text-primary hover:underline">Ver todos</a>
+                  <h3 className="text-sm font-semibold text-foreground">Próximos Vencimentos</h3>
+                  <a href="/cobrancas" className="inline-flex items-center min-h-11 px-2 -mr-2 text-sm text-primary hover:underline">Ver todos</a>
                 </div>
                 <div className="space-y-1.5">
                   {data.proximasParcelas.slice(0, 5).map((parcela) => {
@@ -358,9 +367,9 @@ export default function DashboardView() {
                           <span className="text-sm text-foreground truncate">{parcela.clienteNome}</span>
                         </div>
                         <div className="text-right shrink-0 ml-2">
-                          <span className="text-sm font-semibold text-foreground">{formatCurrency(parcela.valor)}€</span>
-                          <span className={`text-xs ml-1.5 ${diasRestantes <= 2 ? "text-red-500" : "text-muted-foreground"}`}>
-                            {diasRestantes === 0 ? "Hoje" : diasRestantes === 1 ? "Amanha" : `${diasRestantes}d`}
+                          <span className="text-sm font-semibold text-foreground tabular-nums">{formatCurrency(parcela.valor)} €</span>
+                          <span className={`text-xs ml-1.5 ${diasRestantes <= 2 ? "text-red-700 dark:text-red-400" : "text-muted-foreground"}`}>
+                            {diasRestantes === 0 ? "Hoje" : diasRestantes === 1 ? "Amanhã" : `${diasRestantes}d`}
                           </span>
                         </div>
                       </div>
@@ -382,7 +391,7 @@ export default function DashboardView() {
                   </svg>
                   <span className="text-sm font-medium">Financeiro</span>
                 </div>
-                <p className="text-xs text-muted-foreground">Cobrancas e IVA</p>
+                <p className="text-xs text-muted-foreground">Cobranças e IVA</p>
               </button>
               <button
                 onClick={() => handleTabChange("goals")}
@@ -394,7 +403,7 @@ export default function DashboardView() {
                   </svg>
                   <span className="text-sm font-medium">Objetivos</span>
                 </div>
-                <p className="text-xs text-muted-foreground">Metas e premios</p>
+                <p className="text-xs text-muted-foreground">Metas e prémios</p>
               </button>
               <button
                 onClick={() => handleTabChange("tasks")}
@@ -414,11 +423,11 @@ export default function DashboardView() {
               >
                 <div className="flex items-center gap-2 text-primary mb-1">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                   </svg>
                   <span className="text-sm font-medium">Analytics</span>
                 </div>
-                <p className="text-xs text-muted-foreground">Graficos e insights</p>
+                <p className="text-xs text-muted-foreground">Gráficos e insights</p>
               </button>
             </div>
 
@@ -432,54 +441,48 @@ export default function DashboardView() {
           <>
             {/* Cobrancas Summary Card */}
             {data.cobrancasStats && (
-              <div className="bg-white dark:bg-card rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
+              <div className="bg-card rounded-xl border border-border shadow-sm p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold text-foreground flex items-center gap-2">
                     <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
-                    Cobrancas
+                    Cobranças
                   </h3>
-                  <a href="/cobrancas" className="text-xs text-primary hover:underline font-medium">
+                  <a href="/cobrancas" className="inline-flex items-center min-h-11 px-2 -mr-2 text-sm text-primary hover:underline font-medium">
                     Ver todas →
                   </a>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                  <div className="bg-white dark:bg-card border border-orange-200 dark:border-orange-800 rounded-xl p-3 text-center">
-                    <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{data.cobrancasStats.pendentesCount}</p>
-                    <p className="text-xs text-muted-foreground">Pendentes</p>
-                    <p className="text-sm font-semibold text-orange-600 dark:text-orange-400 mt-1">
-                      {formatCurrency(data.cobrancasStats.pendentesValor)}€
-                    </p>
-                  </div>
-                  <div className="bg-white dark:bg-card border border-green-200 dark:border-green-800 rounded-xl p-3 text-center">
-                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">{data.cobrancasStats.pagasCount}</p>
-                    <p className="text-xs text-muted-foreground">Pagas</p>
-                    <p className="text-sm font-semibold text-green-600 dark:text-green-400 mt-1">
-                      {formatCurrency(data.cobrancasStats.pagasValor)}€
-                    </p>
-                  </div>
-                  <div className="bg-white dark:bg-card border border-red-200 dark:border-red-800 rounded-xl p-3 text-center">
-                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">{data.parcelasAtrasadas}</p>
-                    <p className="text-xs text-muted-foreground">Em Atraso</p>
-                    <p className="text-sm font-semibold text-red-600 dark:text-red-400 mt-1">
-                      {formatCurrency(data.valorAtrasado)}€
-                    </p>
-                  </div>
-                  <div className="bg-white dark:bg-card border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-center">
-                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{data.proximasParcelas.length}</p>
-                    <p className="text-xs text-muted-foreground">Proximos 7 dias</p>
-                    <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 mt-1">
-                      {formatCurrency(data.proximasParcelas.reduce((sum, p) => sum + p.valor, 0))}€
-                    </p>
-                  </div>
-                  <div className="bg-white dark:bg-card border-2 border-purple-300 dark:border-purple-700 rounded-xl p-3 text-center">
-                    <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{formatCurrency(data.cobrancasStats.comissaoMensal)}€</p>
-                    <p className="text-xs text-muted-foreground">Comissao do Mes</p>
-                    <p className="text-sm font-semibold text-purple-600 dark:text-purple-400 mt-1">
-                      {meses[data.currentMonth]}
-                    </p>
-                  </div>
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
+                  <StatCard
+                    label="Pendentes"
+                    value={`${formatCurrency(data.cobrancasStats.pendentesValor)} €`}
+                    sub={`${data.cobrancasStats.pendentesCount} cobranças`}
+                    tone="pending"
+                  />
+                  <StatCard
+                    label="Pagas"
+                    value={`${formatCurrency(data.cobrancasStats.pagasValor)} €`}
+                    sub={`${data.cobrancasStats.pagasCount} cobranças`}
+                    tone="good"
+                  />
+                  <StatCard
+                    label="Em Atraso"
+                    value={`${formatCurrency(data.valorAtrasado)} €`}
+                    sub={`${data.parcelasAtrasadas} parcelas`}
+                    tone={data.parcelasAtrasadas > 0 ? "overdue" : "none"}
+                    href="/cobrancas?filter=overdue"
+                  />
+                  <StatCard
+                    label="Próximos 7 dias"
+                    value={`${formatCurrency(data.proximasParcelasValor ?? data.proximasParcelas.reduce((sum, p) => sum + p.valor, 0))} €`}
+                    sub={`${data.proximasParcelasCount ?? data.proximasParcelas.length} parcelas`}
+                  />
+                  <StatCard
+                    label="Comissão do Mês"
+                    value={`${formatCurrency(data.cobrancasStats.comissaoMensal)} €`}
+                    sub={meses[data.currentMonth]}
+                  />
                 </div>
               </div>
             )}
@@ -487,23 +490,11 @@ export default function DashboardView() {
             {/* Annual Summary */}
             <div className="bg-card rounded-lg border border-border p-4">
               <h3 className="text-sm font-semibold text-foreground mb-3">Resumo Anual {data.currentYear}</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="bg-secondary/50 rounded-xl p-4 text-center">
-                  <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Sem IVA</p>
-                  <p className="text-xl font-bold text-foreground">{formatCurrency(ivaAno.semIVA)}€</p>
-                </div>
-                <div className="bg-secondary/50 rounded-xl p-4 text-center">
-                  <p className="text-xs font-medium text-muted-foreground uppercase mb-1">IVA</p>
-                  <p className="text-xl font-bold text-foreground">{formatCurrency(ivaAno.iva)}€</p>
-                </div>
-                <div className="bg-secondary/50 rounded-xl p-4 text-center">
-                  <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Total</p>
-                  <p className="text-xl font-bold text-foreground">{formatCurrency(ivaAno.comIVA)}€</p>
-                </div>
-                <div className="bg-secondary/50 rounded-xl p-4 text-center">
-                  <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Objetivo</p>
-                  <p className="text-xl font-bold text-foreground">{data.objetivoAnual > 0 ? `${formatCurrency(data.objetivoAnual)}€` : "N/D"}</p>
-                </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                <StatCard label="Sem IVA" value={`${formatCurrency(ivaAno.semIVA)} €`} />
+                <StatCard label="IVA" value={`${formatCurrency(ivaAno.iva)} €`} />
+                <StatCard label="Total" value={`${formatCurrency(ivaAno.comIVA)} €`} />
+                <StatCard label="Objetivo" value={data.objetivoAnual > 0 ? `${formatCurrency(data.objetivoAnual)} €` : "N/D"} tone={data.objetivoAnual > 0 ? "primary" : "none"} />
               </div>
               {data.objetivoAnual > 0 && (
                 <div className="mt-4">
@@ -513,7 +504,7 @@ export default function DashboardView() {
                   </div>
                   <div className="w-full bg-muted rounded-full h-2">
                     <div
-                      className={`h-2 rounded-full ${data.progressoAnual >= 100 ? "bg-green-500" : "bg-primary"}`}
+                      className={`h-2 rounded-full ${data.progressoAnual >= 100 ? "bg-green-600" : "bg-primary"}`}
                       style={{ width: `${Math.min(data.progressoAnual, 100)}%` }}
                     />
                   </div>
@@ -526,17 +517,17 @@ export default function DashboardView() {
               <div className="bg-card rounded-lg border border-border p-4">
                 <h3 className="text-sm font-semibold text-foreground mb-3">IVA {meses[data.currentMonth]}</h3>
                 <div className="grid grid-cols-3 gap-2">
-                  <MiniStat label="Sem IVA" value={`${formatCurrency(ivaMes.semIVA)}€`} />
-                  <MiniStat label="IVA" value={`${formatCurrency(ivaMes.iva)}€`} />
-                  <MiniStat label="Total" value={`${formatCurrency(ivaMes.comIVA)}€`} />
+                  <MiniStat label="Sem IVA" value={`${formatCurrency(ivaMes.semIVA)} €`} />
+                  <MiniStat label="IVA" value={`${formatCurrency(ivaMes.iva)} €`} />
+                  <MiniStat label="Total" value={`${formatCurrency(ivaMes.comIVA)} €`} />
                 </div>
               </div>
               <div className="bg-card rounded-lg border border-border p-4">
                 <h3 className="text-sm font-semibold text-foreground mb-3">IVA {data.currentTrimestre}º Trimestre</h3>
                 <div className="grid grid-cols-3 gap-2">
-                  <MiniStat label="Sem IVA" value={`${formatCurrency(ivaTrimestre.semIVA)}€`} />
-                  <MiniStat label="IVA" value={`${formatCurrency(ivaTrimestre.iva)}€`} />
-                  <MiniStat label="Total" value={`${formatCurrency(ivaTrimestre.comIVA)}€`} />
+                  <MiniStat label="Sem IVA" value={`${formatCurrency(ivaTrimestre.semIVA)} €`} />
+                  <MiniStat label="IVA" value={`${formatCurrency(ivaTrimestre.iva)} €`} />
+                  <MiniStat label="Total" value={`${formatCurrency(ivaTrimestre.comIVA)} €`} />
                 </div>
               </div>
             </div>
@@ -545,8 +536,8 @@ export default function DashboardView() {
             {data.proximasParcelas.length > 0 && (
               <div className="bg-card rounded-lg border border-border p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-foreground">Proximos Vencimentos (7 dias)</h3>
-                  <a href="/cobrancas" className="text-xs text-primary hover:underline">Ver todos</a>
+                  <h3 className="text-sm font-semibold text-foreground">Próximos Vencimentos (7 dias)</h3>
+                  <a href="/cobrancas" className="inline-flex items-center min-h-11 px-2 -mr-2 text-sm text-primary hover:underline">Ver todos</a>
                 </div>
                 <div className="space-y-2">
                   {data.proximasParcelas.map((parcela) => {
@@ -566,9 +557,9 @@ export default function DashboardView() {
                           </div>
                         </div>
                         <div className="text-right shrink-0 ml-3">
-                          <span className="text-sm font-bold text-foreground">{formatCurrency(parcela.valor)}€</span>
-                          <span className={`text-xs block ${diasRestantes <= 2 ? "text-red-500 font-medium" : "text-muted-foreground"}`}>
-                            {diasRestantes === 0 ? "Hoje" : diasRestantes === 1 ? "Amanha" : `Em ${diasRestantes} dias`}
+                          <span className="text-sm font-bold text-foreground tabular-nums">{formatCurrency(parcela.valor)} €</span>
+                          <span className={`text-xs block ${diasRestantes <= 2 ? "text-red-700 dark:text-red-400 font-medium" : "text-muted-foreground"}`}>
+                            {diasRestantes === 0 ? "Hoje" : diasRestantes === 1 ? "Amanhã" : `Em ${diasRestantes} dias`}
                           </span>
                         </div>
                       </div>
@@ -587,15 +578,15 @@ export default function DashboardView() {
           <>
             {/* Objetivos Varios Widget */}
             {data.objetivosVarios && data.objetivosVarios.length > 0 && (
-              <div className="bg-white dark:bg-card rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
+              <div className="bg-card rounded-xl border border-border shadow-sm p-4">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-semibold text-foreground flex items-center gap-2">
                     <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
-                    Objetivos Varios - {meses[data.currentMonth]}
+                    Objetivos Vários - {meses[data.currentMonth]}
                   </h3>
-                  <a href="/definicoes" className="text-xs text-primary hover:underline font-medium">
+                  <a href="/definicoes" className="inline-flex items-center min-h-11 px-2 -mr-2 text-sm text-primary hover:underline font-medium">
                     Gerir →
                   </a>
                 </div>
@@ -617,7 +608,7 @@ export default function DashboardView() {
                           )}
                         </div>
                         {obj.atingido && (
-                          <span className="shrink-0 ml-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+                          <span className="shrink-0 ml-2 bg-green-700 text-white text-xs px-2 py-1 rounded-full font-medium">
                             Atingido
                           </span>
                         )}
@@ -626,18 +617,18 @@ export default function DashboardView() {
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Progresso</span>
-                          <span className={`font-bold ${obj.atingido ? "text-green-600 dark:text-green-400" : "text-primary"}`}>
+                          <span className={`font-bold tabular-nums ${obj.atingido ? "text-green-700 dark:text-green-400" : "text-primary"}`}>
                             {obj.progresso.toFixed(0)}%
                           </span>
                         </div>
                         <div className="w-full bg-muted rounded-full h-2.5">
                           <div
-                            className={`h-2.5 rounded-full transition-all ${obj.atingido ? "bg-green-500" : "bg-primary"}`}
+                            className={`h-2.5 rounded-full transition-all ${obj.atingido ? "bg-green-600" : "bg-primary"}`}
                             style={{ width: `${Math.min(obj.progresso, 100)}%` }}
                           />
                         </div>
                         <div className="flex justify-between text-xs text-muted-foreground pt-1">
-                          <span>{formatCurrency(obj.totalVendido)}€ / {formatCurrency(obj.totalObjetivo)}€</span>
+                          <span className="tabular-nums">{formatCurrency(obj.totalVendido)} € / {formatCurrency(obj.totalObjetivo)} €</span>
                           <span>{obj.vendasCount} venda{obj.vendasCount !== 1 ? "s" : ""}</span>
                         </div>
                       </div>
@@ -672,13 +663,13 @@ export default function DashboardView() {
             {/* Prizes */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <PrizeCard
-                title={`Premio ${meses[data.currentMonth]}`}
+                title={`Prémio ${meses[data.currentMonth]}`}
                 current={data.vendasMes}
                 premio={data.premioMensalAtual}
                 proximo={data.proximoPremioMensal}
               />
               <PrizeCard
-                title={`Premio ${data.currentTrimestre}º Trimestre`}
+                title={`Prémio ${data.currentTrimestre}º Trimestre`}
                 current={data.vendasTrimestre}
                 premio={data.premioTrimestralAtual}
                 proximo={data.proximoPremioTrimestral}
@@ -690,20 +681,20 @@ export default function DashboardView() {
               <div className="bg-card rounded-xl border border-border p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-foreground">Progresso Anual {data.currentYear}</h3>
-                  <span className={`text-sm font-bold ${data.progressoAnual >= 100 ? "text-green-500" : "text-primary"}`}>
+                  <span className={`text-sm font-bold tabular-nums ${data.progressoAnual >= 100 ? "text-green-700 dark:text-green-400" : "text-primary"}`}>
                     {data.progressoAnual.toFixed(0)}%
                   </span>
                 </div>
                 <div className="w-full bg-muted rounded-full h-3 mb-3">
                   <div
-                    className={`h-3 rounded-full ${data.progressoAnual >= 100 ? "bg-green-500" : "bg-primary"}`}
+                    className={`h-3 rounded-full ${data.progressoAnual >= 100 ? "bg-green-600" : "bg-primary"}`}
                     style={{ width: `${Math.min(data.progressoAnual, 100)}%` }}
                   />
                 </div>
                 <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>{formatCurrency(data.vendasAno)}€ / {formatCurrency(data.objetivoAnual)}€</span>
-                  <span className={data.progressoAnual >= 100 ? "text-green-500 font-medium" : "text-orange-500"}>
-                    {data.progressoAnual >= 100 ? "Objetivo atingido!" : `Falta ${formatCurrency(data.objetivoAnual - data.vendasAno)}€`}
+                  <span className="tabular-nums">{formatCurrency(data.vendasAno)} € / {formatCurrency(data.objetivoAnual)} €</span>
+                  <span className={`tabular-nums ${data.progressoAnual >= 100 ? "text-green-700 dark:text-green-400 font-medium" : "text-amber-700 dark:text-amber-400"}`}>
+                    {data.progressoAnual >= 100 ? "Objetivo atingido!" : `Falta ${formatCurrency(data.objetivoAnual - data.vendasAno)} €`}
                   </span>
                 </div>
               </div>
@@ -737,7 +728,7 @@ export default function DashboardView() {
 
             {/* Charts */}
             <div className="bg-card rounded-lg border border-border p-4">
-              <h3 className="text-sm font-semibold text-foreground mb-4">Graficos de Vendas</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-4">Gráficos de Vendas</h3>
               <SalesCharts ano={ano} />
             </div>
           </>
@@ -747,33 +738,11 @@ export default function DashboardView() {
   )
 }
 
-function StatCard({ title, value, subtitle, color }: {
-  title: string
-  value: string
-  subtitle: string
-  color: "primary" | "green" | "blue" | "orange"
-}) {
-  const colors = {
-    primary: "border-l-primary text-primary",
-    green: "border-l-green-500 text-green-600 dark:text-green-400",
-    blue: "border-l-blue-500 text-blue-600 dark:text-blue-400",
-    orange: "border-l-orange-500 text-orange-600 dark:text-orange-400"
-  }
-
-  return (
-    <div className={`bg-card rounded-lg border border-border border-l-2 ${colors[color].split(" ")[0]} p-3`}>
-      <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">{title}</p>
-      <p className={`text-base sm:text-lg font-bold ${colors[color].split(" ").slice(1).join(" ")}`}>{value}</p>
-      {subtitle && <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{subtitle}</p>}
-    </div>
-  )
-}
-
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-secondary/50 rounded-lg p-3 text-center">
-      <p className="text-[10px] font-medium text-muted-foreground uppercase">{label}</p>
-      <p className="text-sm font-bold text-foreground">{value}</p>
+    <div className="bg-secondary/50 rounded-lg p-2 sm:p-3 text-center min-w-0">
+      <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
+      <p className="text-sm font-bold text-foreground tabular-nums">{value}</p>
     </div>
   )
 }
@@ -795,22 +764,22 @@ function PrizeCard({ title, current, premio, proximo }: {
               <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span className="text-sm font-medium text-green-700 dark:text-green-200">Premio Garantido</span>
+              <span className="text-sm font-medium text-green-700 dark:text-green-200">Prémio Garantido</span>
             </div>
-            <span className="text-lg font-bold text-green-700 dark:text-green-100">{formatCurrency(premio.premio)}€</span>
+            <span className="text-lg font-bold tabular-nums text-green-700 dark:text-green-100">{formatCurrency(premio.premio)} €</span>
           </div>
         </div>
       ) : (
         <div className="bg-secondary/50 rounded-xl p-3 mb-3">
-          <span className="text-sm text-muted-foreground">Sem premio garantido</span>
+          <span className="text-sm text-muted-foreground">Sem prémio garantido</span>
         </div>
       )}
 
       {proximo && (
         <div>
           <div className="flex justify-between text-sm mb-2">
-            <span className="text-muted-foreground">Proximo premio: {formatCurrency(proximo.premio)}€</span>
-            <span className="text-primary font-medium">Falta {formatCurrency(proximo.minimo - current)}€</span>
+            <span className="text-muted-foreground tabular-nums">Próximo prémio: {formatCurrency(proximo.premio)} €</span>
+            <span className="text-primary font-medium tabular-nums">Falta {formatCurrency(proximo.minimo - current)} €</span>
           </div>
           <div className="w-full bg-muted rounded-full h-2">
             <div
@@ -837,20 +806,20 @@ function ProgressCard({ title, current, target, percentage }: {
     <div className="bg-card rounded-xl border border-border p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-        <span className={`text-lg font-bold ${isComplete ? "text-green-500" : "text-primary"}`}>
+        <span className={`text-lg font-bold tabular-nums ${isComplete ? "text-green-700 dark:text-green-400" : "text-primary"}`}>
           {percentage.toFixed(0)}%
         </span>
       </div>
       <div className="w-full bg-muted rounded-full h-2.5 mb-3">
         <div
-          className={`h-2.5 rounded-full ${isComplete ? "bg-green-500" : "bg-primary"}`}
+          className={`h-2.5 rounded-full ${isComplete ? "bg-green-600" : "bg-primary"}`}
           style={{ width: `${Math.min(percentage, 100)}%` }}
         />
       </div>
       <div className="flex justify-between text-sm text-muted-foreground">
-        <span>{formatCurrency(current)}€ / {formatCurrency(target)}€</span>
-        <span className={isComplete ? "text-green-500 font-medium" : "text-orange-500"}>
-          {isComplete ? "Atingido!" : `Falta ${formatCurrency(remaining)}€`}
+        <span className="tabular-nums">{formatCurrency(current)} € / {formatCurrency(target)} €</span>
+        <span className={`tabular-nums ${isComplete ? "text-green-700 dark:text-green-400 font-medium" : "text-amber-700 dark:text-amber-400"}`}>
+          {isComplete ? "Atingido!" : `Falta ${formatCurrency(remaining)} €`}
         </span>
       </div>
     </div>

@@ -8,6 +8,7 @@ import { useTheme } from "./ThemeProvider"
 import { UserRole } from "@prisma/client"
 import { useSellerFilter } from "@/contexts/SellerFilterContext"
 import AccountSwitcher from "./AccountSwitcher"
+import BottomNav from "./BottomNav"
 
 interface MenuItem {
   href: string
@@ -62,11 +63,6 @@ const menuGroups: MenuGroup[] = [
         label: "Vendas",
         icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
       },
-      {
-        href: "/orcamentos",
-        label: "Orcamentos",
-        icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-      },
     ]
   },
   {
@@ -74,18 +70,65 @@ const menuGroups: MenuGroup[] = [
     items: [
       {
         href: "/cobrancas",
-        label: "Cobrancas",
+        label: "Cobranças",
         icon: "M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
       },
       {
-        href: "/reconciliacao",
-        label: "Reconciliacao",
-        icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+        href: "/comissoes",
+        label: "Comissões",
+        icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+      },
+    ]
+  },
+  {
+    label: "Operacional",
+    items: [
+      {
+        href: "/produtos",
+        label: "Produtos",
+        icon: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
       },
       {
-        href: "/comissoes",
-        label: "Comissoes",
-        icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        href: "/campanhas",
+        label: "Campanhas",
+        icon: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"
+      },
+      {
+        href: "/objetivos-varios",
+        label: "Obj. Vários",
+        icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+      },
+    ]
+  },
+  {
+    label: "Sistema",
+    items: [
+      {
+        href: "/gestao",
+        label: "Gestão",
+        icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z",
+        roles: ["ADMIN", "MASTERADMIN"]
+      },
+      {
+        href: "/admin/usuarios",
+        label: "Utilizadores",
+        icon: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z",
+        roles: ["ADMIN", "MASTERADMIN"]
+      },
+      {
+        href: "/definicoes",
+        label: "Definições",
+        icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+      },
+    ]
+  },
+  {
+    label: "Mais",
+    items: [
+      {
+        href: "/orcamentos",
+        label: "Orçamentos",
+        icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
       },
       {
         href: "/despesas",
@@ -93,11 +136,11 @@ const menuGroups: MenuGroup[] = [
         icon: "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z",
         badge: "α"
       },
-    ]
-  },
-  {
-    label: "Operacional",
-    items: [
+      {
+        href: "/reconciliacao",
+        label: "Reconciliação",
+        icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+      },
       {
         href: "/rotas",
         label: "Rotas",
@@ -109,46 +152,9 @@ const menuGroups: MenuGroup[] = [
         icon: "M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z"
       },
       {
-        href: "/produtos",
-        label: "Produtos",
-        icon: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-      },
-      {
         href: "/amostras",
         label: "Amostras",
         icon: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-      },
-      {
-        href: "/campanhas",
-        label: "Campanhas",
-        icon: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"
-      },
-      {
-        href: "/objetivos-varios",
-        label: "Obj. Varios",
-        icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-      },
-    ]
-  },
-  {
-    label: "Sistema",
-    items: [
-      {
-        href: "/gestao",
-        label: "Gestao",
-        icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z",
-        roles: ["ADMIN", "MASTERADMIN"]
-      },
-      {
-        href: "/admin/usuarios",
-        label: "Usuarios",
-        icon: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z",
-        roles: ["ADMIN", "MASTERADMIN"]
-      },
-      {
-        href: "/definicoes",
-        label: "Definicoes",
-        icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z"
       },
       {
         href: "/mensagens",
@@ -165,6 +171,7 @@ const menuGroups: MenuGroup[] = [
 ]
 
 
+
 // Seller Filter Dropdown Component
 function SellerFilterDropdown() {
   const { sellers, selectedSellerId, setSelectedSellerId, isLoading, canFilter } = useSellerFilter()
@@ -175,7 +182,7 @@ function SellerFilterDropdown() {
 
   return (
     <div className="mb-3">
-      <label className="block px-1 mb-1.5 text-[9px] font-medium uppercase tracking-wider text-white/30">
+      <label className="block px-1 mb-1.5 text-[11px] font-medium uppercase tracking-wider text-white/70">
         Ver dados de
       </label>
       <select
@@ -194,7 +201,7 @@ function SellerFilterDropdown() {
       {selectedSellerId && (
         <button
           onClick={() => setSelectedSellerId(null)}
-          className="mt-1.5 w-full px-2 py-1 text-[10px] text-white/50 hover:text-white hover:bg-white/5 rounded transition"
+          className="mt-1.5 w-full px-2 min-h-11 text-xs text-white/80 hover:text-white hover:bg-white/5 rounded transition"
         >
           Limpar filtro
         </button>
@@ -209,6 +216,7 @@ export default function Sidebar() {
   const { theme, setTheme } = useTheme()
   const [isOpen, setIsOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [moreOpen, setMoreOpen] = useState(false)
   const userRole = session?.user?.role
 
   // Filter menu groups based on user role
@@ -221,9 +229,33 @@ export default function Sidebar() {
     })
   })).filter(group => group.items.length > 0)
 
-  // Close sidebar when route changes
+  const isActive = (href: string) => pathname === href || (href !== "/" && pathname.startsWith(href))
+  const moreItems = menuGroups.find(g => g.label === "Mais")!.items
+  const moreHasActive = moreItems.some(i => isActive(i.href))
+  const allItems = menuGroups.flatMap(g => g.items)
+  const iconOf = (href: string) => allItems.find(i => i.href === href)!.icon
+  const bottomItems = [
+    { href: "/", label: "Início", icon: iconOf("/") },
+    { href: "/vendas", label: "Vendas", icon: iconOf("/vendas") },
+    { href: "/cobrancas", label: "Cobranças", icon: iconOf("/cobrancas") },
+    { href: "/clientes", label: "Clientes", icon: iconOf("/clientes") },
+  ]
+
+  // "Mais" group: collapsed by default, remembered per device
+  useEffect(() => {
+    try { setMoreOpen(localStorage.getItem("sidebar-mais-open") === "1") } catch {}
+  }, [])
+
+  function toggleMore() {
+    const next = !moreOpen
+    setMoreOpen(next)
+    try { localStorage.setItem("sidebar-mais-open", next ? "1" : "0") } catch {}
+  }
+
+  // Close sidebar when route changes; open "Mais" if the current page lives there
   useEffect(() => {
     setIsOpen(false)
+    if (moreHasActive) setMoreOpen(true)
   }, [pathname])
 
   // Fetch unread message count
@@ -293,32 +325,60 @@ export default function Sidebar() {
       <div className="flex-shrink-0 px-5 py-5 border-b border-white/10">
         <Link href="/" className="block">
           <span className="text-xl font-bold text-white tracking-tight block">Baborette</span>
-          <p className="text-[10px] text-white/50 font-medium mt-0.5">CRM Professional v2.6</p>
+          <p className="text-[11px] text-white/70 font-medium mt-0.5">CRM Professional v2.6</p>
         </Link>
       </div>
 
       {/* Navigation - Scrollable */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">
-        {filteredGroups.map((group, groupIndex) => (
-          <div key={group.label} className={groupIndex > 0 ? "mt-6" : ""}>
-            <span className="block px-3 mb-1.5 text-[9px] font-medium uppercase tracking-wider text-white/30">
-              {group.label}
-            </span>
-            <ul className="space-y-1">
+        {filteredGroups.map((group, groupIndex) => {
+          const isMore = group.label === "Mais"
+          const open = !isMore || moreOpen
+          return (
+          <div key={group.label} className={groupIndex > 0 ? (isMore ? "mt-4 pt-3 border-t border-white/10" : "mt-5") : ""}>
+            {isMore ? (
+              <button
+                type="button"
+                onClick={toggleMore}
+                aria-expanded={open}
+                className="w-full flex items-center gap-3 px-3 min-h-11 rounded-lg text-white/80 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
+                </svg>
+                <span className="text-sm">Mais</span>
+                {!open && unreadCount > 0 && (
+                  <span className="px-1.5 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded-full min-w-[18px] text-center">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+                <svg className={`ml-auto w-4 h-4 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            ) : (
+              <span className="block px-3 mb-1 text-[11px] font-medium uppercase tracking-wider text-white/70">
+                {group.label}
+              </span>
+            )}
+            {open && (
+            <ul className={`space-y-0.5 ${isMore ? "mt-1" : ""}`}>
               {group.items.map((item) => {
                 const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))
                 return (
                   <li key={item.href}>
                     <Link
                       href={item.href}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
+                      aria-current={isActive ? "page" : undefined}
+                      className={`flex items-center gap-3 px-3 min-h-11 rounded-lg transition-colors duration-200 group ${
                         isActive
-                          ? "bg-white/10 text-white font-medium"
-                          : "text-white/60 hover:text-white hover:bg-white/5"
+                          ? "bg-white/15 text-white font-medium"
+                          : "text-white/80 hover:text-white hover:bg-white/5"
                       }`}
                     >
                       <svg
-                        className={`w-5 h-5 flex-shrink-0 ${isActive ? "text-white" : "text-white/50 group-hover:text-white/70"}`}
+                        aria-hidden="true"
+                        className={`w-5 h-5 flex-shrink-0 ${isActive ? "text-white" : "text-white/70 group-hover:text-white"}`}
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -341,8 +401,10 @@ export default function Sidebar() {
                 )
               })}
             </ul>
+            )}
           </div>
-        ))}
+          )
+        })}
       </nav>
 
       {/* Bottom Section */}
@@ -360,7 +422,7 @@ export default function Sidebar() {
               <p className="text-sm font-medium text-white truncate">
                 {session.user.name || session.user.email}
               </p>
-              <p className="text-[10px] text-white/50">
+              <p className="text-[11px] text-white/70">
                 {session.user.role === "MASTERADMIN" ? "Master Admin" :
                  session.user.role === "ADMIN" ? "Admin" : "Vendedor"}
               </p>
@@ -375,7 +437,7 @@ export default function Sidebar() {
         <div className="flex gap-2">
           <button
             onClick={cycleTheme}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200"
+            className="flex-1 flex items-center justify-center gap-2 px-3 min-h-11 text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200"
             title={themeLabel}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -392,8 +454,9 @@ export default function Sidebar() {
               }
               signOut({ callbackUrl: "/login" })
             }}
-            className="flex items-center justify-center px-3 py-2 text-white/60 hover:text-red-400 hover:bg-white/5 rounded-lg transition-all duration-200"
+            className="flex items-center justify-center px-3 min-h-11 min-w-11 text-white/80 hover:text-red-300 hover:bg-white/5 rounded-lg transition-all duration-200"
             title="Sair"
+            aria-label="Sair"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -408,14 +471,15 @@ export default function Sidebar() {
     <>
       {/* Mobile Header Bar */}
       <div className={`lg:hidden fixed left-0 right-0 z-40 bg-sidebar border-b border-white/10 ${isImpersonating ? "top-11" : "top-0"}`}>
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center justify-between px-4 py-2.5">
           <Link href="/" className="flex items-center">
             <span className="text-lg font-bold text-white">Baborette</span>
           </Link>
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition"
-            aria-label="Toggle menu"
+            className="p-2.5 -mr-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition"
+            aria-label={isOpen ? "Fechar menu" : "Abrir menu"}
+            aria-expanded={isOpen}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {isOpen ? (
@@ -427,6 +491,9 @@ export default function Sidebar() {
           </button>
         </div>
       </div>
+
+      {/* Phone bottom bar (< md); rendered before the overlay so the open drawer covers it */}
+      <BottomNav items={bottomItems} onMoreAction={() => setIsOpen(true)} moreOpen={isOpen} badge={unreadCount} />
 
       {/* Mobile Overlay */}
       {isOpen && (

@@ -13,7 +13,7 @@ export default function QuickReorder({ vendaId, clienteNome }: Props) {
   const [loading, setLoading] = useState(false)
 
   async function handleReorder() {
-    if (!confirm(`Criar nova venda com os mesmos itens da ultima venda de ${clienteNome}?`)) {
+    if (!confirm(`Criar nova venda com os mesmos itens da última venda de ${clienteNome}?`)) {
       return
     }
 
@@ -51,7 +51,7 @@ export default function QuickReorder({ vendaId, clienteNome }: Props) {
         </svg>
       </span>
       <span className="font-medium text-foreground">
-        {loading ? "A criar..." : "Repetir Ultima Venda"}
+        {loading ? "A criar..." : "Repetir Última Venda"}
       </span>
     </button>
   )

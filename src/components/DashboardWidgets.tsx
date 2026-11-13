@@ -36,7 +36,7 @@ const prioridadeColors = {
 
 const prioridadeLabels = {
   BAIXA: "Baixa",
-  MEDIA: "Media",
+  MEDIA: "Média",
   ALTA: "Alta",
   URGENTE: "Urgente"
 }
@@ -89,7 +89,7 @@ export function TarefasWidget() {
             </svg>
           </span>
           Tarefas
-          <HelpTooltip text="Tarefas pendentes para hoje e atrasadas. A cor da borda indica a prioridade: cinza=baixa, azul=media, laranja=alta, vermelho=urgente." />
+          <HelpTooltip text="Tarefas pendentes para hoje e atrasadas. A cor da borda indica a prioridade: cinza=baixa, azul=média, laranja=alta, vermelho=urgente." />
         </h3>
         <Link href="/tarefas" className="text-sm text-primary hover:underline">
           Ver todas
@@ -192,8 +192,8 @@ export function FollowUpWidget() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </span>
-          Follow-up Necessario
-          <HelpTooltip text="Clientes ativos que nao foram contactados nos ultimos 30 dias. Manter contacto regular aumenta a fidelizacao." />
+          Follow-up Necessário
+          <HelpTooltip text="Clientes ativos que não foram contactados nos últimos 30 dias. Manter contacto regular aumenta a fidelização." />
         </h3>
       </div>
 

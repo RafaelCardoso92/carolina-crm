@@ -46,7 +46,7 @@ const TIPOS_TAREFA = [
 
 const PRIORIDADES = [
   { value: "BAIXA", label: "Baixa", color: "bg-gray-100 text-gray-700" },
-  { value: "MEDIA", label: "Media", color: "bg-blue-100 text-blue-700" },
+  { value: "MEDIA", label: "Média", color: "bg-blue-100 text-blue-700" },
   { value: "ALTA", label: "Alta", color: "bg-orange-100 text-orange-700" },
   { value: "URGENTE", label: "Urgente", color: "bg-red-100 text-red-700" }
 ]
@@ -104,7 +104,7 @@ export default function TarefaForm({ tarefa, onSuccess, onCancel }: Props) {
       Swal.fire({
         icon: "warning",
         title: "Título obrigatório",
-        text: "Por favor insira um titulo para a tarefa."
+        text: "Por favor insira um título para a tarefa."
       })
       return
     }
@@ -157,7 +157,7 @@ export default function TarefaForm({ tarefa, onSuccess, onCancel }: Props) {
       {/* Title */}
       <div>
         <label className="block text-sm font-medium text-foreground mb-1">
-          Titulo *
+          Título *
         </label>
         <input
           type="text"
@@ -202,7 +202,7 @@ export default function TarefaForm({ tarefa, onSuccess, onCancel }: Props) {
       </div>
 
       {/* Due date and Reminder */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-foreground mb-1">
             Data de Vencimento
@@ -228,7 +228,7 @@ export default function TarefaForm({ tarefa, onSuccess, onCancel }: Props) {
       </div>
 
       {/* Link to Cliente or Prospecto */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-foreground mb-1">
             Cliente (opcional)
@@ -266,7 +266,7 @@ export default function TarefaForm({ tarefa, onSuccess, onCancel }: Props) {
       {/* Description */}
       <div>
         <label className="block text-sm font-medium text-foreground mb-1">
-          Descricao
+          Descrição
         </label>
         <textarea
           value={formData.descricao || ""}
@@ -282,14 +282,14 @@ export default function TarefaForm({ tarefa, onSuccess, onCancel }: Props) {
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 px-4 py-2 border-2 border-border rounded-lg text-foreground font-medium hover:bg-secondary transition"
+          className="flex-1 px-4 py-2.5 border-2 border-border rounded-lg text-foreground font-medium hover:bg-secondary transition"
         >
           Cancelar
         </button>
         <button
           type="submit"
           disabled={loading}
-          className="flex-1 px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition disabled:opacity-50"
+          className="flex-1 px-4 py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition disabled:opacity-50"
         >
           {loading ? "A guardar..." : tarefa?.id ? "Atualizar" : "Criar Tarefa"}
         </button>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { userScopedWhere } from "@/lib/permissions"
+import { emAtraso } from "@/lib/cobranca-valores"
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,32 +24,18 @@ export async function GET(request: NextRequest) {
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
     const [
-      overduePaymentsCount,
-      overduePaymentsValue,
+      cobrancasPorPagar,
       tasksDueToday,
       staleLeads,
       clientsNoContact
     ] = await Promise.all([
-      // Overdue payments count - filter by client's vendedoraId
-      prisma.parcela.count({
-        where: {
-          pago: false,
-          dataVencimento: { lt: now },
-          cobranca: {
-            cliente: userFilter
-          }
+      // Overdue = same rule as the dashboard banner and the cobranças page (parcelas + single payments, partial payments net)
+      prisma.cobranca.findMany({
+        where: { pago: false, cliente: userFilter },
+        select: {
+          valor: true, pago: true, valorPago: true, dataVencimento: true,
+          parcelas: { select: { valor: true, pago: true, valorPago: true, dataVencimento: true } }
         }
-      }),
-      // Overdue payments value - filter by client's vendedoraId
-      prisma.parcela.aggregate({
-        where: {
-          pago: false,
-          dataVencimento: { lt: now },
-          cobranca: {
-            cliente: userFilter
-          }
-        },
-        _sum: { valor: true }
       }),
       // Tasks due today - filter by userId
       prisma.tarefa.count({
@@ -86,10 +73,11 @@ export async function GET(request: NextRequest) {
       })
     ])
 
+    const atrasos = cobrancasPorPagar.map(c => emAtraso(c, now))
     return NextResponse.json({
       overduePayments: {
-        count: overduePaymentsCount,
-        value: Number(overduePaymentsValue._sum.valor) || 0
+        count: atrasos.reduce((s, a) => s + a.count, 0),
+        value: Math.round(atrasos.reduce((s, a) => s + a.valor, 0) * 100) / 100
       },
       tasksDueToday,
       staleLeads,

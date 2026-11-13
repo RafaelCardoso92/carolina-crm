@@ -78,7 +78,7 @@ export default function DashboardAIInsights() {
       Swal.fire({
         icon: "warning",
         title: "Tokens esgotados",
-        html: "O seu saldo de tokens esta negativo.<br/>Adicione mais tokens para continuar.",
+        html: "O seu saldo de tokens está negativo.<br/>Adicione mais tokens para continuar.",
         confirmButtonText: "Comprar Tokens",
         confirmButtonColor: "#b8860b",
         showCancelButton: true,
@@ -117,7 +117,7 @@ export default function DashboardAIInsights() {
           Swal.fire({
             icon: "success",
             title: "Insights gerados!",
-            html: `Foram utilizados <strong>${data.tokensUsed.toLocaleString()}</strong> tokens.`,
+            html: `Foram utilizados <strong>${data.tokensUsed.toLocaleString("de-DE")}</strong> tokens.`,
             timer: 3000,
             timerProgressBar: true,
             showConfirmButton: false
@@ -143,7 +143,7 @@ export default function DashboardAIInsights() {
     const result = await Swal.fire({
       icon: "question",
       title: "Eliminar insight?",
-      text: "Esta acao nao pode ser desfeita",
+      text: "Esta ação não pode ser desfeita",
       showCancelButton: true,
       confirmButtonText: "Eliminar",
       cancelButtonText: "Cancelar",
@@ -235,7 +235,7 @@ export default function DashboardAIInsights() {
       {!insight ? (
         <div className="px-4 pb-4">
           <p className="text-sm text-muted-foreground mb-3">
-            Gere insights inteligentes sobre o seu negocio usando IA
+            Gere insights inteligentes sobre o seu negócio usando IA
           </p>
           <button
             onClick={generateInsight}
@@ -298,7 +298,7 @@ export default function DashboardAIInsights() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14" />
                       </svg>
                     )}
-                    <span className="font-medium text-sm">Previsao: {data.previsaoProximoMes.tendencia}</span>
+                    <span className="font-medium text-sm">Previsão: {data.previsaoProximoMes.tendencia}</span>
                     <span className="text-xs text-muted-foreground">(Confianca: {data.previsaoProximoMes.confianca})</span>
                   </div>
                   <p className="text-xs text-muted-foreground">{data.previsaoProximoMes.justificacao}</p>

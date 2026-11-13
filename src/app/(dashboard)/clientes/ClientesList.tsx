@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import Swal from "sweetalert2"
+import { formatCurrency } from "@/lib/utils"
 
 type Cliente = {
   user?: { id: string; name: string | null; email: string } | null
@@ -57,6 +58,15 @@ export default function ClientesList({ clientes, showSeller = false }: { cliente
     try {
       const res = await fetch(`/api/clientes/${id}`, { method: "DELETE" })
       if (res.ok) {
+        const data = await res.json().catch(() => ({}))
+        if (data.archived) {
+          Swal.fire({
+            icon: "info",
+            title: "Cliente arquivado",
+            text: "Cliente arquivado (tem vendas/cobranças, por isso não foi apagado).",
+            confirmButtonColor: "#005290"
+          })
+        }
         router.refresh()
       } else {
         Swal.fire({
@@ -124,9 +134,9 @@ export default function ClientesList({ clientes, showSeller = false }: { cliente
               <select
                 value={cityFilter}
                 onChange={(e) => setCityFilter(e.target.value)}
-                className="pl-9 pr-8 py-2.5 border border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-card text-foreground text-sm appearance-none cursor-pointer min-w-[140px]"
+                className="pl-9 pr-8 py-2.5 border border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-card text-foreground text-sm appearance-none cursor-pointer min-w-[140px] w-full sm:w-auto"
               >
-                <option value="">Todas cidades</option>
+                <option value="">Todas as cidades</option>
                 {uniqueCities.map(city => (
                   <option key={city} value={city}>{city}</option>
                 ))}
@@ -155,19 +165,19 @@ export default function ClientesList({ clientes, showSeller = false }: { cliente
             {search && (
               <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-lg text-xs">
                 "{search}"
-                <button onClick={() => setSearch("")} className="hover:text-primary/70">×</button>
+                <button onClick={() => setSearch("")} aria-label="Remover filtro" className="px-1 hover:text-primary/70">×</button>
               </span>
             )}
             {cityFilter && (
               <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200 rounded-lg text-xs">
                 {cityFilter}
-                <button onClick={() => setCityFilter("")} className="hover:opacity-70">×</button>
+                <button onClick={() => setCityFilter("")} aria-label="Remover filtro" className="px-1 hover:opacity-70">×</button>
               </span>
             )}
             {showInactive && (
               <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 rounded-lg text-xs">
                 Inativos
-                <button onClick={() => setShowInactive(false)} className="hover:opacity-70">×</button>
+                <button onClick={() => setShowInactive(false)} aria-label="Remover filtro" className="px-1 hover:opacity-70">×</button>
               </span>
             )}
             <button
@@ -190,7 +200,7 @@ export default function ClientesList({ clientes, showSeller = false }: { cliente
               {showSeller && <th className="px-4 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Vendedor</th>}
               <th className="px-4 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider hidden xl:table-cell">Contacto</th>
               <th className="px-4 py-4 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">Vendas</th>
-              <th className="px-4 py-4 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Credito</th>
+              <th className="px-4 py-4 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Crédito</th>
               <th className="px-4 py-4 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">Estado</th>
               <th className="px-4 py-4 text-right text-xs font-bold text-muted-foreground uppercase tracking-wider">Ações</th>
             </tr>
@@ -215,7 +225,7 @@ export default function ClientesList({ clientes, showSeller = false }: { cliente
                 <td className="px-4 py-4 text-center hidden lg:table-cell">
                   {cliente.saldoCredito > 0 ? (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                      {cliente.saldoCredito.toFixed(2)} €
+                      {formatCurrency(cliente.saldoCredito)} €
                     </span>
                   ) : (
                     <span className="text-muted-foreground/40 text-xs">-</span>
@@ -226,7 +236,7 @@ export default function ClientesList({ clientes, showSeller = false }: { cliente
                     onClick={() => handleToggleActive(cliente.id, cliente.ativo)}
                     className={`px-3 py-1 rounded-full text-xs font-medium ${
                       cliente.ativo
-                        ? "bg-green-500/20 text-green-600 dark:text-green-400"
+                        ? "bg-green-500/15 text-green-800 dark:text-green-300"
                         : "bg-secondary text-muted-foreground"
                     }`}
                   >
@@ -239,6 +249,7 @@ export default function ClientesList({ clientes, showSeller = false }: { cliente
                       href={`/clientes/${cliente.id}`}
                       className="p-2 text-muted-foreground hover:text-primary transition"
                       title="Ver detalhes"
+                      aria-label={`Ver ${cliente.nome}`}
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -249,6 +260,7 @@ export default function ClientesList({ clientes, showSeller = false }: { cliente
                       href={`/clientes/${cliente.id}/editar`}
                       className="p-2 text-muted-foreground hover:text-blue-600 transition"
                       title="Editar"
+                      aria-label={`Editar ${cliente.nome}`}
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -258,6 +270,7 @@ export default function ClientesList({ clientes, showSeller = false }: { cliente
                       onClick={() => handleDelete(cliente.id, cliente.nome)}
                       className="p-2 text-muted-foreground hover:text-red-600 transition"
                       title="Eliminar"
+                      aria-label={`Eliminar ${cliente.nome}`}
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -307,9 +320,10 @@ export default function ClientesList({ clientes, showSeller = false }: { cliente
               </div>
               <button
                 onClick={() => handleToggleActive(cliente.id, cliente.ativo)}
-                className={`px-2 py-0.5 rounded-full text-xs font-medium ml-2 ${
+                title={cliente.ativo ? "Marcar como inativo" : "Marcar como ativo"}
+                className={`px-3 py-1.5 -my-1 rounded-full text-xs font-medium ml-2 ${
                   cliente.ativo
-                    ? "bg-green-500/20 text-green-600"
+                    ? "bg-green-500/15 text-green-800 dark:text-green-300"
                     : "bg-secondary text-muted-foreground"
                 }`}
               >
@@ -322,33 +336,36 @@ export default function ClientesList({ clientes, showSeller = false }: { cliente
                 <span><span className="font-medium">{cliente._count.vendas}</span> vendas</span>
                 {cliente.saldoCredito > 0 && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                    {cliente.saldoCredito.toFixed(2)} €
+                    {formatCurrency(cliente.saldoCredito)} €
                   </span>
                 )}
               </div>
               <div className="flex gap-1">
                 <Link
                   href={`/clientes/${cliente.id}`}
-                  className="p-2 text-muted-foreground hover:text-primary transition"
+                  aria-label={`Ver ${cliente.nome}`}
+                  className="p-3 -my-1 text-muted-foreground hover:text-primary transition"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                   </svg>
                 </Link>
                 <Link
                   href={`/clientes/${cliente.id}/editar`}
-                  className="p-2 text-muted-foreground hover:text-blue-600 transition"
+                  aria-label={`Editar ${cliente.nome}`}
+                  className="p-3 -my-1 text-muted-foreground hover:text-blue-600 transition"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
                 </Link>
                 <button
                   onClick={() => handleDelete(cliente.id, cliente.nome)}
-                  className="p-2 text-muted-foreground hover:text-red-600 transition"
+                  aria-label={`Eliminar ${cliente.nome}`}
+                  className="p-3 -my-1 text-muted-foreground hover:text-red-600 transition"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                 </button>

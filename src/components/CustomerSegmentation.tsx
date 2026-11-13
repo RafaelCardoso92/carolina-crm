@@ -98,7 +98,7 @@ export default function CustomerSegmentation({ clienteId }: Props) {
   return (
     <div className="bg-card rounded-xl shadow-sm p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-foreground">Segmentacao</h3>
+        <h3 className="text-lg font-semibold text-foreground">Segmentação</h3>
         <button
           onClick={() => setEditing(!editing)}
           className="text-sm text-primary hover:underline"
@@ -157,7 +157,7 @@ export default function CustomerSegmentation({ clienteId }: Props) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-muted-foreground mb-1">Potencial Mensal (EUR)</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Potencial Mensal (€)</label>
             <input
               type="number"
               value={formData.potencialMensal}
@@ -205,7 +205,7 @@ export default function CustomerSegmentation({ clienteId }: Props) {
           
           {segmento.potencialMensal && (
             <p className="text-sm text-muted-foreground">
-              Potencial mensal: <span className="font-medium text-foreground">{Number(segmento.potencialMensal).toFixed(2)} EUR</span>
+              Potencial mensal: <span className="font-medium text-foreground">{Number(segmento.potencialMensal).toFixed(2)} €</span>
             </p>
           )}
           

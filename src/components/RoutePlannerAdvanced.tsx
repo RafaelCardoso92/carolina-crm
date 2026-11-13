@@ -2382,7 +2382,7 @@ export default function RoutePlannerAdvanced() {
 
       {/* Mobile Navigation Bar */}
       {optimizedRoute.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-3 z-30 lg:hidden safe-area-bottom">
+        <div className="fixed bottom-at-nav left-0 right-0 bg-card border-t border-border p-3 z-30 lg:hidden safe-area-bottom">
           <div className="flex gap-2">
             <button
               onClick={() => openNavigation("google")}

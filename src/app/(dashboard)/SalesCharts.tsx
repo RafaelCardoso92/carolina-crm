@@ -19,6 +19,7 @@ import {
   Pie,
   Cell
 } from "recharts"
+import { formatCurrency } from "@/lib/utils"
 
 interface TrendsData {
   ano: number
@@ -47,14 +48,7 @@ interface TrendsData {
 
 const COLORS = ["#8b5cf6", "#a78bfa", "#c4b5fd", "#ddd6fe", "#ede9fe"]
 
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat("pt-PT", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(value)
-}
+const euros = (value: number) => `${formatCurrency(value)} €`
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -63,7 +57,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         <p className="font-bold text-gray-800 dark:text-gray-100 mb-2">{label}</p>
         {payload.map((entry: any, index: number) => (
           <p key={index} style={{ color: entry.color }} className="text-sm">
-            {entry.name}: {formatCurrency(entry.value)}
+            {entry.name}: {euros(entry.value)}
           </p>
         ))}
       </div>
@@ -228,7 +222,7 @@ export default function SalesCharts({ ano }: { ano: number }) {
                     <div className="flex-1">
                       <div className="flex justify-between items-center mb-1">
                         <span className="font-medium text-gray-800 dark:text-gray-100 text-sm truncate max-w-[150px]">{cliente.nome}</span>
-                        <span className="font-bold text-purple-600 text-sm">{formatCurrency(cliente.vendas)}</span>
+                        <span className="font-bold text-purple-700 dark:text-purple-300 text-sm tabular-nums">{euros(cliente.vendas)}</span>
                       </div>
                       <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2">
                         <div
@@ -258,7 +252,7 @@ export default function SalesCharts({ ano }: { ano: number }) {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                  <Tooltip formatter={(value) => euros(Number(value))} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -275,7 +269,7 @@ export default function SalesCharts({ ano }: { ano: number }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
               </svg>
             </div>
-            Comparacao {ano} vs {ano - 1}
+            Comparação {ano} vs {ano - 1}
           </h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={data.dadosMensais} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>

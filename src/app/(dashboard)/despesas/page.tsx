@@ -647,7 +647,7 @@ function DespesasContent() {
       {/* Floating Add Button - Mobile Only */}
       <button
         onClick={() => setShowForm(true)}
-        className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 active:scale-95 transition flex items-center justify-center z-30"
+        className="md:hidden fixed bottom-above-nav right-6 w-14 h-14 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 active:scale-95 transition flex items-center justify-center z-30"
       >
         <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />

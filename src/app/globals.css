@@ -57,6 +57,20 @@
 
   /* Radius */
   --radius: 8px;
+
+  /* Height of the phone BottomNav (0 from md up). Fixed bottom elements add it: bottom-above-nav */
+  --bottom-nav-offset: 0px;
+}
+
+@media (max-width: 767.98px) {
+  :root { --bottom-nav-offset: calc(4rem + env(safe-area-inset-bottom)); }
+}
+
+/* Floating buttons/panels that must clear the phone BottomNav */
+@layer utilities {
+  .bottom-above-nav { bottom: calc(1.5rem + var(--bottom-nav-offset)); }
+  .bottom-at-nav { bottom: var(--bottom-nav-offset); }
+  .bottom-above-nav-sm { bottom: calc(1rem + var(--bottom-nav-offset)); }
 }
 
 /* Dark theme - Sophisticated, easy on the eyes */

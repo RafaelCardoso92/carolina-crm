@@ -8,6 +8,11 @@ import Swal from "sweetalert2"
 import { formatCurrency } from "@/lib/utils"
 import { valorPagoCobranca, valorPendenteCobranca, venceuAntesDeHoje, emAtraso, pagoNoMes, comissaoGanha } from "@/lib/cobranca-valores"
 
+async function erroDoServidor(res: Response, fallback = "Não foi possível guardar a alteração.") {
+  const data = await res.json().catch(() => ({}))
+  Swal.fire({ icon: "error", title: "Erro", text: data.error || fallback, confirmButtonColor: "#b8860b" })
+}
+
 type Parcela = {
   id: string
   numero: number
@@ -97,7 +102,7 @@ function getMonthLabel(monthKey: string): string {
   if (monthKey === "sem-data") return "Sem Data"
   const [year, month] = monthKey.split("-")
   const monthNames = [
-    "Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho",
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
     "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
   ]
   return `${monthNames[parseInt(month) - 1]} ${year}`
@@ -413,7 +418,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
         Swal.fire({
           icon: "error",
           title: "Erro",
-          text: error.error || "Erro ao guardar cobranca",
+          text: error.error || "Erro ao guardar cobrança",
           confirmButtonColor: "#b8860b"
         })
       }
@@ -421,7 +426,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
       Swal.fire({
         icon: "error",
         title: "Erro",
-        text: "Erro ao guardar cobranca",
+        text: "Erro ao guardar cobrança",
         confirmButtonColor: "#b8860b"
       })
     } finally {
@@ -446,7 +451,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
               </svg>
             </div>
             <h2 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin: 0 0 8px 0;">Marcar como Pendente?</h2>
-            <p style="font-size: 0.875rem; color: #6b7280; margin: 0;">Isto ira remover todos os pagamentos registados.</p>
+            <p style="font-size: 0.875rem; color: #6b7280; margin: 0;">Isto irá remover todos os pagamentos registados.</p>
           </div>
         `,
         showCancelButton: true,
@@ -465,8 +470,9 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
           body: JSON.stringify({ pago: false, dataPago: null, valorPago: null, estado: "PENDENTE" })
         })
         if (res.ok) router.refresh()
+        else await erroDoServidor(res)
       } catch {
-        Swal.fire({ icon: "error", title: "Erro", text: "Erro ao atualizar cobranca", confirmButtonColor: "#b8860b" })
+        Swal.fire({ icon: "error", title: "Erro", text: "Erro ao atualizar cobrança", confirmButtonColor: "#b8860b" })
       }
       return
     }
@@ -485,7 +491,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
       const creditButtonHtml = hasCredit ? `
         <button type="button" id="action-credit" style="width: 100%; padding: 14px 20px; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; border: none; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: transform 0.1s;">
           <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          Usar Credito (${formatCurrency(clienteCredito)} € disponivel)
+          Usar Crédito (${formatCurrency(clienteCredito)} € disponível)
         </button>
       ` : ''
 
@@ -499,7 +505,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
               </svg>
             </div>
             <h2 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin: 0 0 8px 0;">Pagamento Parcial</h2>
-            <p style="font-size: 0.875rem; color: #6b7280; margin: 0 0 16px 0;">Ja pago: <strong>${formatCurrency(currentValorPago)} €</strong> de ${formatCurrency(valorCobranca)} €</p>
+            <p style="font-size: 0.875rem; color: #6b7280; margin: 0 0 16px 0;">Já pago: <strong>${formatCurrency(currentValorPago)} €</strong> de ${formatCurrency(valorCobranca)} €</p>
 
             <div style="display: flex; flex-direction: column; gap: 10px;">
               ${creditButtonHtml}
@@ -554,17 +560,17 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                   </svg>
                 </div>
-                <h2 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin: 0;">Aplicar Credito</h2>
+                <h2 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin: 0;">Aplicar Crédito</h2>
               </div>
 
               <div style="background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid #c4b5fd;">
-                <p style="font-size: 0.875rem; color: #5b21b6; margin: 0 0 4px 0; font-weight: 500;">Saldo de credito disponivel</p>
+                <p style="font-size: 0.875rem; color: #5b21b6; margin: 0 0 4px 0; font-weight: 500;">Saldo de crédito disponível</p>
                 <p style="font-size: 1.75rem; font-weight: 700; color: #7c3aed; margin: 0;">${formatCurrency(clienteCredito)} €</p>
               </div>
 
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
                 <div style="background: #fef3c7; border-radius: 10px; padding: 12px; border: 1px solid #fde68a;">
-                  <p style="font-size: 0.75rem; color: #92400e; margin: 0 0 2px 0; font-weight: 500;">Ja pago</p>
+                  <p style="font-size: 0.75rem; color: #92400e; margin: 0 0 2px 0; font-weight: 500;">Já pago</p>
                   <p style="font-size: 1.25rem; font-weight: 700; color: #b45309; margin: 0;">${formatCurrency(currentValorPago)} €</p>
                 </div>
                 <div style="background: #fef2f2; border-radius: 10px; padding: 12px; border: 1px solid #fecaca;">
@@ -575,7 +581,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
 
               <div style="margin-bottom: 16px;">
                 <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 8px;">
-                  Valor a aplicar do credito
+                  Valor a aplicar do crédito
                 </label>
                 <div style="position: relative;">
                   <input type="number" step="0.01" id="valorCredito" value="${maxCredit.toFixed(2)}" min="0.01" max="${maxCredit.toFixed(2)}"
@@ -590,7 +596,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
                 <p style="font-size: 0.8125rem; color: #0369a1; margin: 0; line-height: 1.4;">
-                  O valor sera <strong>deduzido do saldo de credito</strong> do cliente e aplicado a esta cobranca.
+                  O valor será <strong>deduzido do saldo de crédito</strong> do cliente e aplicado a esta cobrança.
                 </p>
               </div>
             </div>
@@ -598,7 +604,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
           showCancelButton: true,
           confirmButtonColor: "#8b5cf6",
           cancelButtonColor: "#6b7280",
-          confirmButtonText: '<span style="display: flex; align-items: center; gap: 8px; padding: 4px 8px;"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Aplicar Credito</span>',
+          confirmButtonText: '<span style="display: flex; align-items: center; gap: 8px; padding: 4px 8px;"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Aplicar Crédito</span>',
           cancelButtonText: "Cancelar",
           width: '400px',
           padding: '24px',
@@ -610,7 +616,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
               return false
             }
             if (valor > clienteCredito) {
-              Swal.showValidationMessage("Valor superior ao credito disponivel")
+              Swal.showValidationMessage("Valor superior ao crédito disponível")
               return false
             }
             if (valor > valorRestante) {
@@ -638,9 +644,9 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
             const result = await res.json()
             Swal.fire({
               icon: "success",
-              title: "Credito Aplicado",
+              title: "Crédito Aplicado",
               html: `
-                <p>Foram aplicados <strong>${formatCurrency(result.valorAplicado)} €</strong> de credito.</p>
+                <p>Foram aplicados <strong>${formatCurrency(result.valorAplicado)} €</strong> de crédito.</p>
                 <p style="color: #6b7280; font-size: 0.875rem; margin-top: 8px;">Saldo restante: ${formatCurrency(result.saldoRestante)} €</p>
               `,
               confirmButtonColor: "#8b5cf6",
@@ -649,10 +655,10 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
             router.refresh()
           } else {
             const error = await res.json()
-            Swal.fire({ icon: "error", title: "Erro", text: error.error || "Erro ao aplicar credito", confirmButtonColor: "#b8860b" })
+            Swal.fire({ icon: "error", title: "Erro", text: error.error || "Erro ao aplicar crédito", confirmButtonColor: "#b8860b" })
           }
         } catch {
-          Swal.fire({ icon: "error", title: "Erro", text: "Erro ao aplicar credito", confirmButtonColor: "#b8860b" })
+          Swal.fire({ icon: "error", title: "Erro", text: "Erro ao aplicar crédito", confirmButtonColor: "#b8860b" })
         }
         return
       }
@@ -669,7 +675,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
                 </svg>
               </div>
               <h2 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin: 0 0 8px 0;">Remover Pagamento?</h2>
-              <p style="font-size: 0.875rem; color: #6b7280; margin: 0;">Isto ira remover os ${formatCurrency(currentValorPago)} € ja pagos e marcar como pendente.</p>
+              <p style="font-size: 0.875rem; color: #6b7280; margin: 0;">Isto irá remover os ${formatCurrency(currentValorPago)} € já pagos e marcar como pendente.</p>
             </div>
           `,
           showCancelButton: true,
@@ -688,6 +694,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
             body: JSON.stringify({ pago: false, dataPago: null, valorPago: null, estado: "PENDENTE" })
           })
           if (res.ok) router.refresh()
+          else await erroDoServidor(res)
         } catch {
           Swal.fire({ icon: "error", title: "Erro", text: "Erro ao remover pagamento", confirmButtonColor: "#b8860b" })
         }
@@ -710,7 +717,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
               </div>
 
               <div style="background: #f3f4f6; border-radius: 10px; padding: 12px; margin-bottom: 16px; text-align: center;">
-                <p style="font-size: 0.75rem; color: #6b7280; margin: 0;">Valor total da cobranca: <strong>${formatCurrency(valorCobranca)} €</strong></p>
+                <p style="font-size: 0.75rem; color: #6b7280; margin: 0;">Valor total da cobrança: <strong>${formatCurrency(valorCobranca)} €</strong></p>
               </div>
 
               <div style="margin-bottom: 16px;">
@@ -741,7 +748,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
               return false
             }
             if (newValue > valorCobranca) {
-              Swal.showValidationMessage("O valor nao pode ser superior ao total")
+              Swal.showValidationMessage("O valor não pode ser superior ao total")
               return false
             }
             return { valorPago: newValue }
@@ -762,6 +769,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
             })
           })
           if (res.ok) router.refresh()
+          else await erroDoServidor(res)
         } catch {
           Swal.fire({ icon: "error", title: "Erro", text: "Erro ao editar pagamento", confirmButtonColor: "#b8860b" })
         }
@@ -794,7 +802,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
           ${isPartialPayment ? `
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
             <div style="background: #fef3c7; border-radius: 10px; padding: 12px; border: 1px solid #fde68a;">
-              <p style="font-size: 0.75rem; color: #92400e; margin: 0 0 2px 0; font-weight: 500;">Ja pago</p>
+              <p style="font-size: 0.75rem; color: #92400e; margin: 0 0 2px 0; font-weight: 500;">Já pago</p>
               <p style="font-size: 1.25rem; font-weight: 700; color: #b45309; margin: 0;">${formatCurrency(currentValorPago)} €</p>
             </div>
             <div style="background: #fef2f2; border-radius: 10px; padding: 12px; border: 1px solid #fecaca;">
@@ -807,7 +815,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
           <div id="credit-section" style="background: linear-gradient(135deg, ${hasCredit ? '#f5f3ff' : '#f9fafb'} 0%, ${hasCredit ? '#ede9fe' : '#f3f4f6'} 100%); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; border: 1px solid ${hasCredit ? '#c4b5fd' : '#e5e7eb'};">
             <div style="display: flex; align-items: center; justify-content: space-between;${hasCredit ? ' margin-bottom: 12px;' : ''}">
               <div>
-                <p style="font-size: 0.8rem; color: ${hasCredit ? '#5b21b6' : '#6b7280'}; margin: 0 0 2px 0; font-weight: 500;">Credito disponivel</p>
+                <p style="font-size: 0.8rem; color: ${hasCredit ? '#5b21b6' : '#6b7280'}; margin: 0 0 2px 0; font-weight: 500;">Crédito disponível</p>
                 <p style="font-size: 1.35rem; font-weight: 700; color: ${hasCredit ? '#7c3aed' : '#9ca3af'}; margin: 0;">${formatCurrency(clienteCredito)} €</p>
               </div>
               ${hasCredit ? `
@@ -825,7 +833,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
             ${hasCredit ? `
             <div id="creditAmountSection" style="display: none;">
               <label style="display: block; font-size: 0.8rem; font-weight: 600; color: #5b21b6; margin-bottom: 6px;">
-                Valor de credito a aplicar
+                Valor de crédito a aplicar
               </label>
               <div style="position: relative;">
                 <input type="number" step="0.01" id="valorCredito" value="${Math.min(clienteCredito, valorRestante).toFixed(2)}" min="0.01" max="${Math.min(clienteCredito, valorRestante).toFixed(2)}"
@@ -865,10 +873,10 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
             </svg>
             <p style="font-size: 0.8125rem; color: #0369a1; margin: 0; line-height: 1.4;">
               ${isPartialPayment
-                ? 'Este valor sera <strong>adicionado</strong> ao pagamento ja efetuado.'
+                ? 'Este valor será <strong>adicionado</strong> ao pagamento já efetuado.'
                 : hasCredit
-                  ? 'Pode usar o <strong>credito disponivel</strong> e/ou registar pagamento. Se o total for inferior ao valor em falta, sera marcado como <strong>pagamento parcial</strong>.'
-                  : 'Se o valor pago for inferior ao total, sera marcado como <strong>pagamento parcial</strong>.'}
+                  ? 'Pode usar o <strong>crédito disponível</strong> e/ou registar pagamento. Se o total for inferior ao valor em falta, será marcado como <strong>pagamento parcial</strong>.'
+                  : 'Se o valor pago for inferior ao total, será marcado como <strong>pagamento parcial</strong>.'}
             </p>
           </div>
         </div>
@@ -900,7 +908,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
               if (hint) {
                 if (creditVal > 0) {
                   hint.style.display = 'block'
-                  hint.textContent = 'Valor ajustado: ' + creditVal.toFixed(2) + ' € credito + ' + remaining.toFixed(2) + ' € pagamento'
+                  hint.textContent = 'Valor ajustado: ' + creditVal.toFixed(2) + ' € crédito + ' + remaining.toFixed(2) + ' € pagamento'
                 } else {
                   hint.style.display = 'none'
                 }
@@ -984,11 +992,11 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
         })
         if (!creditRes.ok) {
           const error = await creditRes.json()
-          Swal.fire({ icon: "error", title: "Erro", text: error.error || "Erro ao aplicar credito", confirmButtonColor: "#b8860b" })
+          Swal.fire({ icon: "error", title: "Erro", text: error.error || "Erro ao aplicar crédito", confirmButtonColor: "#b8860b" })
           return
         }
       } catch {
-        Swal.fire({ icon: "error", title: "Erro", text: "Erro ao aplicar credito", confirmButtonColor: "#b8860b" })
+        Swal.fire({ icon: "error", title: "Erro", text: "Erro ao aplicar crédito", confirmButtonColor: "#b8860b" })
         return
       }
     }
@@ -1010,7 +1018,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
             icon: "success",
             title: "Pagamento Registado",
             html: `
-              <p>Credito aplicado: <strong>${formatCurrency(creditoAplicar)} €</strong></p>
+              <p>Crédito aplicado: <strong>${formatCurrency(creditoAplicar)} €</strong></p>
               ${novoPagamento > 0 ? `<p>Pagamento: <strong>${formatCurrency(novoPagamento)} €</strong></p>` : ''}
               <p style="color: #6b7280; font-size: 0.875rem; margin-top: 8px;">Total: ${formatCurrency(totalPago)} € de ${formatCurrency(valorCobranca)} €</p>
             `,
@@ -1019,9 +1027,11 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
           })
         }
         router.refresh()
+      } else {
+        await erroDoServidor(res)
       }
     } catch {
-      Swal.fire({ icon: "error", title: "Erro", text: "Erro ao atualizar cobranca", confirmButtonColor: "#b8860b" })
+      Swal.fire({ icon: "error", title: "Erro", text: "Erro ao atualizar cobrança", confirmButtonColor: "#b8860b" })
     }
   }
 
@@ -1065,6 +1075,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
           body: JSON.stringify({ pago: false, dataPago: null, valorPago: null })
         })
         if (res.ok) router.refresh()
+        else await erroDoServidor(res)
       } catch {
         Swal.fire({ icon: "error", title: "Erro", text: "Erro ao atualizar parcela", confirmButtonColor: "#b8860b" })
       }
@@ -1087,7 +1098,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
               </svg>
             </div>
             <h2 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin: 0 0 4px 0;">Parcela ${numeroParcela} - Pagamento Parcial</h2>
-            <p style="font-size: 0.875rem; color: #6b7280; margin: 0 0 16px 0;">Ja pago: <strong>${formatCurrency(currentValorPago)} €</strong> de ${formatCurrency(valorParcela)} €</p>
+            <p style="font-size: 0.875rem; color: #6b7280; margin: 0 0 16px 0;">Já pago: <strong>${formatCurrency(currentValorPago)} €</strong> de ${formatCurrency(valorParcela)} €</p>
 
             <div style="display: flex; flex-direction: column; gap: 10px;">
               <button type="button" id="action-add" style="width: 100%; padding: 14px 20px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: transform 0.1s;">
@@ -1138,7 +1149,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
                 </svg>
               </div>
               <h2 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin: 0 0 8px 0;">Remover Pagamento?</h2>
-              <p style="font-size: 0.875rem; color: #6b7280; margin: 0;">Isto ira remover os ${formatCurrency(currentValorPago)} € ja pagos da parcela ${numeroParcela}.</p>
+              <p style="font-size: 0.875rem; color: #6b7280; margin: 0;">Isto irá remover os ${formatCurrency(currentValorPago)} € já pagos da parcela ${numeroParcela}.</p>
             </div>
           `,
           showCancelButton: true,
@@ -1157,6 +1168,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
             body: JSON.stringify({ pago: false, dataPago: null, valorPago: null })
           })
           if (res.ok) router.refresh()
+          else await erroDoServidor(res)
         } catch {
           Swal.fire({ icon: "error", title: "Erro", text: "Erro ao remover pagamento", confirmButtonColor: "#b8860b" })
         }
@@ -1211,7 +1223,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
               return false
             }
             if (newValue > valorParcela) {
-              Swal.showValidationMessage("O valor nao pode ser superior ao total")
+              Swal.showValidationMessage("O valor não pode ser superior ao total")
               return false
             }
             return { valorPago: newValue }
@@ -1231,6 +1243,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
             })
           })
           if (res.ok) router.refresh()
+          else await erroDoServidor(res)
         } catch {
           Swal.fire({ icon: "error", title: "Erro", text: "Erro ao editar pagamento", confirmButtonColor: "#b8860b" })
         }
@@ -1270,7 +1283,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
           ${isPartialPayment ? `
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
             <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 12px; padding: 14px; border: 1px solid #bbf7d0;">
-              <p style="font-size: 0.75rem; color: #166534; margin: 0 0 4px 0; font-weight: 500;">Ja pago</p>
+              <p style="font-size: 0.75rem; color: #166534; margin: 0 0 4px 0; font-weight: 500;">Já pago</p>
               <p style="font-size: 1.25rem; font-weight: 700; color: #15803d; margin: 0;">${formatCurrency(currentValorPago)} €</p>
             </div>
             <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; padding: 14px; border: 1px solid #fcd34d;">
@@ -1346,6 +1359,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
         body: JSON.stringify({ pago: !isParcial, valorPago: totalPago, dataPago })
       })
       if (res.ok) router.refresh()
+      else await erroDoServidor(res)
     } catch {
       Swal.fire({ icon: "error", title: "Erro", text: "Erro ao atualizar parcela", confirmButtonColor: "#b8860b" })
     }
@@ -1353,8 +1367,8 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
 
   async function handleDelete(id: string) {
     const result = await Swal.fire({
-      title: "Eliminar cobranca?",
-      text: "Tem a certeza que quer eliminar esta cobranca?",
+      title: "Eliminar cobrança?",
+      text: "Tem a certeza que quer eliminar esta cobrança?",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#c41e3a",
@@ -1370,18 +1384,13 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
       if (res.ok) {
         router.refresh()
       } else {
-        Swal.fire({
-          icon: "error",
-          title: "Erro",
-          text: "Erro ao eliminar cobranca",
-          confirmButtonColor: "#b8860b"
-        })
+        await erroDoServidor(res, "Erro ao eliminar cobrança")
       }
     } catch {
       Swal.fire({
         icon: "error",
         title: "Erro",
-        text: "Erro ao eliminar cobranca",
+        text: "Erro ao eliminar cobrança",
         confirmButtonColor: "#b8860b"
       })
     }
@@ -1499,11 +1508,11 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
               </span>
               {(cobranca.pago || cobranca.estado === "PAGO") ? (
                 <span className="text-xs text-green-600 font-medium">
-                  ✓ Ganha: {formatCurrency(Number(cobranca.comissao ?? 0))}€
+                  ✓ Ganha: {formatCurrency(Number(cobranca.comissao ?? 0))} €
                 </span>
               ) : cobranca.estado === "PARCIAL" && Number(cobranca.valorPago || 0) > 0 ? (
                 <span className="text-xs text-green-600 font-medium">
-                  ✓ Ganha: {formatCurrency((Number(cobranca.comissao ?? 0)) * (Number(cobranca.valorPago) / Number(cobranca.valor)))}€
+                  ✓ Ganha: {formatCurrency((Number(cobranca.comissao ?? 0)) * (Number(cobranca.valorPago) / Number(cobranca.valor)))} €
                 </span>
               ) : null}
             </div>
@@ -1559,7 +1568,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
                   <span className="flex items-center gap-1">
                     {cobranca.pago || cobranca.estado === "PAGO" ? "Pago" : cobranca.estado === "PARCIAL" ? "Pagamento" : isCobrancaAtrasada(cobranca) ? "Atrasado" : "Pendente"}
                     {cobranca.estado === "PARCIAL" && cobranca.valorPago != null && Number(cobranca.valorPago) > 0 && (
-                      <span className="text-xs">({formatCurrency(Number(cobranca.valorPago))}€)</span>
+                      <span className="text-xs">({formatCurrency(Number(cobranca.valorPago))} €)</span>
                     )}
                   </span>
                   {cobranca.estado === "PARCIAL" && isCobrancaAtrasada(cobranca) && (
@@ -1650,7 +1659,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
                   <span className="font-medium text-foreground">Parcela {parcela.numero}</span>
                   {isParcelaParcial && (
                     <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-semibold">
-                      PARCIAL ({formatCurrency(valorPagoParcela)}€)
+                      PARCIAL ({formatCurrency(valorPagoParcela)} €)
                     </span>
                   )}
                   {isAtrasada && !isParcelaParcial && (
@@ -1677,7 +1686,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
                         cobranca.comissao && Number(cobranca.valor) > 0
                           ? Number(cobranca.comissao) * (Number(parcela.valor) / Number(cobranca.valor))
                           : 0
-                      )}€
+                      )} €
                     </span>
                   </div>
                 )}
@@ -1708,6 +1717,144 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
           )
         })}
       </Fragment>
+    )
+  }
+
+  // Phone layout (< md): one card per cobrança instead of the 9-column table
+  const estadoBadge = {
+    PAGO: { label: "Pago", cls: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300" },
+    PARCIAL: { label: "Parcial", cls: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300" },
+    ATRASADO: { label: "Atrasado", cls: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300" },
+    PENDENTE: { label: "Pendente", cls: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300" }
+  }
+  const fecharMenu = (e: React.MouseEvent) => { const d = (e.currentTarget as HTMLElement).closest("details"); if (d) d.open = false }
+  // Close any open card menu when tapping elsewhere
+  useEffect(() => {
+    const fechar = (e: MouseEvent) => document.querySelectorAll<HTMLDetailsElement>("details[data-menu][open]").forEach(d => {
+      if (!d.contains(e.target as Node)) d.open = false
+    })
+    document.addEventListener("click", fechar)
+    return () => document.removeEventListener("click", fechar)
+  }, [])
+
+  const renderCobrancaCard = (cobranca: Cobranca) => {
+    const estado = getCobrancaEstado(cobranca)
+    const pago = cobranca.pago || cobranca.estado === "PAGO"
+    const valor = Number(cobranca.valor)
+    const jaPago = valorPagoCobranca(cobranca)
+    const proxima = cobranca.parcelas.filter(p => !p.pago).sort((a, b) => a.numero - b.numero)[0]
+    const proximaPago = proxima?.valorPago ? Number(proxima.valorPago) : 0
+    const isExpanded = expandedRows.has(cobranca.id)
+    const badge = estadoBadge[estado]
+    const btn = "min-h-11 px-4 rounded-xl text-sm font-bold transition inline-flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+
+    return (
+      <div key={cobranca.id} className={`p-4 ${estado === "ATRASADO" ? "bg-red-500/5" : pago ? "bg-green-500/5" : ""}`}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <Link href={`/clientes/${cobranca.cliente.id}`} className="font-semibold text-foreground hover:text-primary leading-snug break-words">
+              {cobranca.cliente.nome}
+            </Link>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {cobranca.fatura ? `Fatura ${cobranca.fatura}` : "Sem fatura"}
+              {cobranca.cliente.codigo && ` · ${cobranca.cliente.codigo}`}
+              {cobranca.tipoDocumento === "CONSUMO_INTERNO" && " · C.I."}
+            </p>
+          </div>
+          <div className="text-right shrink-0">
+            <p className="font-bold text-foreground tabular-nums">{formatCurrency(valor)} €</p>
+            <span className={`inline-block mt-1 px-2 py-0.5 rounded-md text-xs font-semibold ${badge.cls}`}>{badge.label}</span>
+          </div>
+        </div>
+
+        <div className="mt-2 text-sm text-muted-foreground space-y-0.5 tabular-nums">
+          {jaPago > 0 && !pago && <p>Pago {formatCurrency(jaPago)} € de {formatCurrency(valor)} €</p>}
+          {proxima ? (
+            <p className={isParcelaAtrasada(proxima) ? "text-red-700 dark:text-red-400 font-medium" : ""}>
+              Parcela {proxima.numero}/{cobranca.parcelas.length}: {formatCurrency(Number(proxima.valor))} €, vence {formatDate(proxima.dataVencimento)}
+            </p>
+          ) : !pago && cobranca.dataVencimento ? (
+            <p className={isCobrancaAtrasada(cobranca) ? "text-red-700 dark:text-red-400 font-medium" : ""}>
+              Vence {formatDate(cobranca.dataVencimento)}
+            </p>
+          ) : pago && cobranca.dataPago ? (
+            <p>Pago em {formatDate(cobranca.dataPago)}</p>
+          ) : null}
+          <p>Comissão {formatCurrency(Number(cobranca.comissao ?? 0))} €</p>
+        </div>
+
+        <div className="mt-3 flex items-center gap-2">
+          {cobranca.parcelas.length === 0 ? (
+            <button
+              onClick={() => handleTogglePaid(cobranca.id, pago, valor, cobranca.valorPago ? Number(cobranca.valorPago) : 0)}
+              className={`${btn} flex-1 ${pago ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-primary text-white hover:bg-primary-hover"}`}
+            >
+              {pago ? "Pago ✓" : estado === "PARCIAL" ? "Registar pagamento" : "Marcar pago"}
+            </button>
+          ) : proxima ? (
+            <button
+              onClick={() => handleToggleParcelaPaid(proxima.id, false, cobranca.id, proximaPago)}
+              className={`${btn} flex-1 bg-primary text-white hover:bg-primary-hover`}
+            >
+              {proximaPago > 0 ? "Registar pagamento" : "Marcar paga"}
+            </button>
+          ) : (
+            <span className={`${btn} flex-1 bg-green-100 text-green-800`}>Pago ✓</span>
+          )}
+          {cobranca.parcelas.length > 0 && (
+            <button
+              onClick={() => toggleRowExpanded(cobranca.id)}
+              aria-expanded={isExpanded}
+              aria-label={`Parcelas pagas: ${getParcelasStatus(cobranca)}`}
+              className={`${btn} border border-border text-foreground hover:bg-secondary`}
+            >
+              {getParcelasStatus(cobranca)}
+              <svg className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </button>
+          )}
+          <details data-menu className="relative">
+            <summary aria-label="Mais ações" className={`${btn} px-3 list-none [&::-webkit-details-marker]:hidden cursor-pointer border border-border text-foreground hover:bg-secondary`}>
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.75" /><circle cx="12" cy="12" r="1.75" /><circle cx="12" cy="19" r="1.75" /></svg>
+            </summary>
+            <div className="absolute right-0 bottom-full mb-2 z-20 w-44 bg-card border border-border rounded-xl shadow-lg py-1">
+              <button onClick={(e) => { fecharMenu(e); startEdit(cobranca) }} className="w-full min-h-11 px-4 text-left text-sm font-medium text-foreground hover:bg-secondary">Editar</button>
+              <button onClick={(e) => { fecharMenu(e); handleDelete(cobranca.id) }} className="w-full min-h-11 px-4 text-left text-sm font-medium text-red-700 dark:text-red-400 hover:bg-secondary">Eliminar</button>
+            </div>
+          </details>
+        </div>
+
+        {isExpanded && cobranca.parcelas.length > 0 && (
+          <ul className="mt-3 rounded-xl border border-border divide-y divide-border bg-card">
+            {cobranca.parcelas.map(parcela => {
+              const atrasada = isParcelaAtrasada(parcela)
+              const vp = parcela.valorPago ? Number(parcela.valorPago) : 0
+              const parcial = !parcela.pago && vp > 0 && vp < Number(parcela.valor)
+              return (
+                <li key={parcela.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                  <div className="min-w-0 text-sm tabular-nums">
+                    <p className="font-medium text-foreground">Parcela {parcela.numero} · {formatCurrency(Number(parcela.valor))} €</p>
+                    <p className={atrasada ? "text-red-700 dark:text-red-400" : "text-muted-foreground"}>
+                      {parcela.pago && parcela.dataPago ? `Paga em ${formatDate(parcela.dataPago)}` : `Vence ${formatDate(parcela.dataVencimento)}`}
+                      {parcial && ` · pago ${formatCurrency(vp)} €`}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleToggleParcelaPaid(parcela.id, parcela.pago, cobranca.id, vp)}
+                    className={`${btn} px-3 shrink-0 ${
+                      parcela.pago ? "bg-green-100 text-green-800 hover:bg-green-200"
+                        : parcial ? "bg-purple-100 text-purple-800 hover:bg-purple-200"
+                          : atrasada ? "bg-red-100 text-red-800 hover:bg-red-200"
+                            : "bg-orange-100 text-orange-800 hover:bg-orange-200"
+                    }`}
+                  >
+                    {parcela.pago ? "Paga ✓" : parcial ? "Pagamento" : "Marcar paga"}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
     )
   }
 
@@ -1764,9 +1911,9 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
           </div>
           <p className="text-xl md:text-3xl font-bold text-green-600">{formatCurrency(totalPago)} €</p>
           <div className="text-xs text-muted-foreground mt-1 hidden md:flex md:gap-2">
-            <span>Este mês: {formatCurrency(pagoEsteMes)}€</span>
+            <span>Este mês: {formatCurrency(pagoEsteMes)} €</span>
             <span>•</span>
-            <span>Mês passado: {formatCurrency(pagoMesPassado)}€</span>
+            <span>Mês passado: {formatCurrency(pagoMesPassado)} €</span>
           </div>
         </div>
         <div className="bg-white dark:bg-card rounded-2xl shadow-sm p-4 md:p-5 border-l-4 border-primary border border-border">
@@ -1979,7 +2126,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
           <select
             value={selectedCliente}
             onChange={(e) => setSelectedCliente(e.target.value)}
-            className="px-3 py-1.5 border border-border rounded-lg bg-card text-sm focus:ring-2 focus:ring-primary outline-none"
+            className="max-w-full sm:max-w-xs min-w-0 px-3 py-1.5 border border-border rounded-lg bg-card text-sm focus:ring-2 focus:ring-primary outline-none"
           >
             <option value="">Todos os clientes</option>
             {clientesComCobrancas.map((c) => (
@@ -2037,7 +2184,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            Por Mes
+            Por Mês
           </button>
           <button
             onClick={() => setGroupByMonth(false)}
@@ -2086,7 +2233,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
           <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          <span className="hidden sm:inline">Adicionar Cobranca</span>
+          <span className="hidden sm:inline">Adicionar Cobrança</span>
           <span className="sm:hidden">Nova</span>
         </button>
       </div>
@@ -2098,7 +2245,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
             <svg className="w-5 h-5 md:w-6 md:h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            Nova Cobranca
+            Nova Cobrança
           </h3>
           <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2119,7 +2266,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-bold text-foreground mb-2">Numero da Fatura</label>
+                <label className="block text-sm font-bold text-foreground mb-2">Número da Fatura</label>
                 <input
                   name="fatura"
                   type="text"
@@ -2145,7 +2292,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-bold text-foreground mb-2">Data de Emissao</label>
+                <label className="block text-sm font-bold text-foreground mb-2">Data de Emissão</label>
                 <input
                   name="dataEmissao"
                   type="date"
@@ -2182,7 +2329,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" />
                     </svg>
-                    Pagamento Unico
+                    Pagamento Único
                   </div>
                 </button>
                 <button
@@ -2242,7 +2389,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
                 <div className="bg-secondary/50 rounded-xl p-4 space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-bold text-foreground mb-2">Numero de Parcelas *</label>
+                      <label className="block text-sm font-bold text-foreground mb-2">Número de Parcelas *</label>
                       <select
                         value={numeroParcelas}
                         onChange={(e) => setNumeroParcelas(parseInt(e.target.value))}
@@ -2331,7 +2478,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
                 <svg className="w-5 h-5 md:w-6 md:h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
-                Editar Cobranca
+                Editar Cobrança
               </h3>
               <button
                 onClick={closeModal}
@@ -2361,7 +2508,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-foreground mb-2">Numero da Fatura</label>
+                  <label className="block text-sm font-bold text-foreground mb-2">Número da Fatura</label>
                   <input
                     name="fatura"
                     type="text"
@@ -2387,7 +2534,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-foreground mb-2">Data de Emissao</label>
+                  <label className="block text-sm font-bold text-foreground mb-2">Data de Emissão</label>
                   <input
                     name="dataEmissao"
                     type="date"
@@ -2424,7 +2571,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" />
                       </svg>
-                      Pagamento Unico
+                      Pagamento Único
                     </div>
                   </button>
                   <button
@@ -2488,13 +2635,13 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
                           <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                           </svg>
-                          Esta cobranca tem {editingCobranca.parcelas.length} parcelas existentes. Alterar o numero de parcelas ira regenerar todas as parcelas (parcelas pagas serao perdidas).
+                          Esta cobrança tem {editingCobranca.parcelas.length} parcelas existentes. Alterar o numero de parcelas ira regenerar todas as parcelas (parcelas pagas serao perdidas).
                         </p>
                       </div>
                     )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-bold text-foreground mb-2">Numero de Parcelas *</label>
+                        <label className="block text-sm font-bold text-foreground mb-2">Número de Parcelas *</label>
                         <select
                           value={numeroParcelas}
                           onChange={(e) => setNumeroParcelas(parseInt(e.target.value))}
@@ -2559,7 +2706,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      Guardar Alteracoes
+                      Guardar Alterações
                     </>
                   )}
                 </button>
@@ -2590,9 +2737,10 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
                 {/* Month Header */}
                 <button
                   onClick={() => toggleMonthExpanded(group.monthKey)}
-                  className="w-full px-4 py-4 flex items-center justify-between bg-secondary hover:bg-muted transition"
+                  aria-expanded={isMonthExpanded}
+                  className="w-full px-4 py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-2 bg-secondary hover:bg-muted transition text-left"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     <svg
                       className={`w-5 h-5 text-muted-foreground transition-transform ${isMonthExpanded ? "rotate-90" : ""}`}
                       fill="none"
@@ -2607,22 +2755,25 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
                       </svg>
                       <span className="text-lg font-bold text-foreground">{group.monthLabel}</span>
                     </div>
-                    <span className="text-sm text-muted-foreground">({group.cobrancas.length} cobranca{group.cobrancas.length !== 1 ? "s" : ""})</span>
+                    <span className="text-sm text-muted-foreground">({group.cobrancas.length} cobrança{group.cobrancas.length !== 1 ? "s" : ""})</span>
                   </div>
-                  <div className="flex items-center gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="text-orange-600 font-semibold">Pendente: {formatCurrency(group.totalPendente)}€</span>
-                      <span className="text-muted-foreground">|</span>
-                      <span className="text-green-600 font-semibold">Pago: {formatCurrency(group.totalPago)}€</span>
-                      <span className="text-muted-foreground">|</span>
-                      <span className="text-primary font-semibold">Comissão Ganha: {formatCurrency(group.comissaoGanha)}€</span>
-                    </div>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm tabular-nums pl-8 md:pl-0">
+                    <span className="text-orange-700 dark:text-orange-400 font-semibold">Pendente: {formatCurrency(group.totalPendente)} €</span>
+                    <span className="text-muted-foreground hidden md:inline" aria-hidden="true">|</span>
+                    <span className="text-green-700 dark:text-green-400 font-semibold">Pago: {formatCurrency(group.totalPago)} €</span>
+                    <span className="text-muted-foreground hidden md:inline" aria-hidden="true">|</span>
+                    <span className="text-primary font-semibold">Comissão Ganha: {formatCurrency(group.comissaoGanha)} €</span>
                   </div>
                 </button>
 
                 {/* Month Content */}
                 {isMonthExpanded && (
-                  <div className="overflow-x-auto">
+                  <div className="md:hidden divide-y divide-border">
+                    {group.cobrancas.map((cobranca) => renderCobrancaCard(cobranca))}
+                  </div>
+                )}
+                {isMonthExpanded && (
+                  <div className="hidden md:block overflow-x-auto">
                     <table className="w-full">
                       <thead className="bg-secondary/50 border-b border-border">
                         <tr>
@@ -2646,10 +2797,10 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
                             Valor c/IVA <SortIcon field="valor" />
                           </th>
                           <th className="px-4 py-3 text-right text-sm font-bold text-foreground">Sem IVA</th>
-                          <th className="px-4 py-3 text-right text-sm font-bold text-primary">Comissao</th>
+                          <th className="px-4 py-3 text-right text-sm font-bold text-primary">Comissão</th>
                           <th className="px-4 py-3 text-center text-sm font-bold text-foreground">Parcelas</th>
                           <th className="px-4 py-3 text-center text-sm font-bold text-foreground">Estado</th>
-                          <th className="px-4 py-3 text-center text-sm font-bold text-foreground">Acoes</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold text-foreground">Ações</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
@@ -2668,7 +2819,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               <p className="text-muted-foreground text-lg font-medium">
-                {searchQuery || selectedCliente || selectedMonth ? "Nenhuma cobranca encontrada com esses filtros" : "Nenhuma cobranca encontrada"}
+                {searchQuery || selectedCliente || selectedMonth ? "Nenhuma cobrança encontrada com esses filtros" : "Nenhuma cobrança encontrada"}
               </p>
               {(searchQuery || selectedCliente || selectedMonth) && (
                 <button
@@ -2684,7 +2835,10 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
       ) : (
         /* Flat List View */
         <div className="bg-card rounded-xl shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="md:hidden divide-y divide-border">
+            {filtered.map((cobranca) => renderCobrancaCard(cobranca))}
+          </div>
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead className="bg-secondary border-b-2 border-border">
                 <tr>
@@ -2708,10 +2862,10 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
                     Valor c/IVA <SortIcon field="valor" />
                   </th>
                   <th className="px-4 py-4 text-right text-sm font-bold text-foreground">Sem IVA</th>
-                  <th className="px-4 py-4 text-right text-sm font-bold text-primary">Comissao</th>
+                  <th className="px-4 py-4 text-right text-sm font-bold text-primary">Comissão</th>
                   <th className="px-4 py-4 text-center text-sm font-bold text-foreground">Parcelas</th>
                   <th className="px-4 py-4 text-center text-sm font-bold text-foreground">Estado</th>
-                  <th className="px-4 py-4 text-center text-sm font-bold text-foreground">Acoes</th>
+                  <th className="px-4 py-4 text-center text-sm font-bold text-foreground">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -2726,7 +2880,7 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               <p className="text-muted-foreground text-lg font-medium">
-                {searchQuery || selectedCliente || selectedMonth ? "Nenhuma cobranca encontrada com esses filtros" : "Nenhuma cobranca encontrada"}
+                {searchQuery || selectedCliente || selectedMonth ? "Nenhuma cobrança encontrada com esses filtros" : "Nenhuma cobrança encontrada"}
               </p>
               {(searchQuery || selectedCliente || selectedMonth) && (
                 <button

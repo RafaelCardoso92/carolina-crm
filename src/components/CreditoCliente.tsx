@@ -101,7 +101,7 @@ export default function CreditoCliente({ clienteId }: { clienteId: string }) {
 
     const result = await Swal.fire({
       title: "Remover Credito",
-      html: `Tem a certeza que deseja remover <strong>${formatCurrency(valorNum)} EUR</strong> de credito?`,
+      html: `Tem a certeza que deseja remover <strong>${formatCurrency(valorNum)} €</strong> de credito?`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#dc2626",
@@ -121,7 +121,7 @@ export default function CreditoCliente({ clienteId }: { clienteId: string }) {
       })
 
       if (res.ok) {
-        Swal.fire({ icon: "success", title: "Credito removido", text: `${formatCurrency(valorNum)} EUR removido com sucesso`, confirmButtonColor: "#b8860b" })
+        Swal.fire({ icon: "success", title: "Credito removido", text: `${formatCurrency(valorNum)} € removido com sucesso`, confirmButtonColor: "#b8860b" })
         setValor("")
         setDescricao("")
         setShowForm(false)
@@ -156,9 +156,9 @@ export default function CreditoCliente({ clienteId }: { clienteId: string }) {
     <div className="bg-card rounded-xl shadow-sm p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h3 className="text-lg font-semibold text-foreground">Historico de Credito</h3>
+          <h3 className="text-lg font-semibold text-foreground">Histórico de Crédito</h3>
           <p className={`text-2xl font-bold mt-1 ${saldo > 0 ? "text-purple-600 dark:text-purple-400" : "text-muted-foreground/40"}`}>
-            {formatCurrency(saldo)} EUR
+            {formatCurrency(saldo)} €
           </p>
         </div>
         {saldo > 0 && (
@@ -175,7 +175,7 @@ export default function CreditoCliente({ clienteId }: { clienteId: string }) {
         <div className="bg-secondary/50 rounded-lg p-4 mb-6 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-muted-foreground mb-1">Valor (EUR)</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Valor (€)</label>
               <input
                 type="text"
                 inputMode="decimal"

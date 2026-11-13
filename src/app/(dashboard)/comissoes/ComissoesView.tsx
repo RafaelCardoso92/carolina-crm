@@ -4,6 +4,12 @@ import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Swal from "sweetalert2"
+import { formatCurrency as fmtCurrency } from "@/lib/utils"
+
+async function erroDoServidor(res: Response, fallback: string) {
+  const data = await res.json().catch(() => ({}))
+  Swal.fire({ icon: "error", title: "Erro", text: data.error || fallback, confirmButtonColor: "#b8860b" })
+}
 
 type EstadoReconciliacao = "PENDENTE" | "EM_REVISAO" | "APROVADA" | "COM_PROBLEMAS"
 type TipoDiscrepanciaComissao =
@@ -174,8 +180,7 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
     }
   }
 
-  const formatCurrency = (value: number | null | undefined) =>
-    new Intl.NumberFormat("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value || 0))
+  const formatCurrency = (value: number | null | undefined) => fmtCurrency(Number(value || 0))
 
   const formatDate = (date: string | Date | null | undefined) => {
     if (!date) return "-"
@@ -259,9 +264,8 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
 
     try {
       const res = await fetch(`/api/reconciliacao-comissoes/${id}`, { method: "DELETE" })
-      if (res.ok) {
-        refetchReconciliacoes()
-      }
+      if (res.ok) refetchReconciliacoes()
+      else await erroDoServidor(res, "Erro ao eliminar reconciliação")
     } catch (err) {
       console.error("Error deleting:", err)
     }
@@ -275,9 +279,8 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
         body: JSON.stringify({ resolvido, notaResolucao: nota })
       })
 
-      if (res.ok) {
-        refetchReconciliacoes()
-      }
+      if (res.ok) refetchReconciliacoes()
+      else await erroDoServidor(res, "Erro ao atualizar item")
     } catch (err) {
       console.error("Error updating item:", err)
     }
@@ -334,13 +337,13 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
         setEditingItem(null)
         refetchReconciliacoes()
       } else {
-        throw new Error("Erro ao guardar")
+        throw new Error((await res.json().catch(() => ({}))).error || "Não foi possível guardar as alterações")
       }
     } catch (err) {
       Swal.fire({
         icon: "error",
         title: "Erro",
-        text: "Não foi possível guardar as alterações",
+        text: err instanceof Error ? err.message : "Não foi possível guardar as alterações",
         confirmButtonColor: "#b8860b"
       })
     } finally {
@@ -417,82 +420,44 @@ export default function ComissoesView({ reconciliacoes: initialReconciliacoes, m
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards - Prominent display of Faturas vs C.I. */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Total Faturas Card */}
-        <div
-          className={`bg-card rounded-xl p-6 border-2 transition-all cursor-pointer ${
-            filterTipoDoc === "FATURA"
-              ? "border-blue-500 shadow-lg shadow-blue-500/20"
-              : "border-border hover:border-blue-300"
-          }`}
-          onClick={() => setFilterTipoDoc(filterTipoDoc === "FATURA" ? "all" : "FATURA")}
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-blue-500/10 rounded-xl flex items-center justify-center">
-              <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground font-medium">Comissões Faturas</p>
-              <p className="text-2xl font-bold text-blue-600">{formatCurrency(globalTotals.totalFaturas)} €</p>
-              <p className="text-xs text-muted-foreground">{globalTotals.countFaturas} pagamentos</p>
-            </div>
-          </div>
-          {filterTipoDoc === "FATURA" && (
-            <div className="mt-3 pt-3 border-t border-blue-200 text-xs text-blue-600 font-medium">
-              A mostrar apenas faturas
-            </div>
-          )}
-        </div>
-
-        {/* Total C.I. Card */}
-        <div
-          className={`bg-card rounded-xl p-6 border-2 transition-all cursor-pointer ${
-            filterTipoDoc === "CI"
-              ? "border-orange-500 shadow-lg shadow-orange-500/20"
-              : "border-border hover:border-orange-300"
-          }`}
-          onClick={() => setFilterTipoDoc(filterTipoDoc === "CI" ? "all" : "CI")}
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-orange-500/10 rounded-xl flex items-center justify-center">
-              <svg className="w-7 h-7 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground font-medium">Comissões C.I.</p>
-              <p className="text-2xl font-bold text-orange-600">{formatCurrency(globalTotals.totalCI)} €</p>
-              <p className="text-xs text-muted-foreground">{globalTotals.countCI} pagamentos</p>
-            </div>
-          </div>
-          {filterTipoDoc === "CI" && (
-            <div className="mt-3 pt-3 border-t border-orange-200 text-xs text-orange-600 font-medium">
-              A mostrar apenas C.I.
-            </div>
-          )}
-        </div>
+      {/* Summary Cards (same look as the dashboard StatCard); Faturas / C.I. toggle the filter */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+        {([
+          ["FATURA", "Comissões Faturas", globalTotals.totalFaturas, globalTotals.countFaturas, "border-l-blue-600"],
+          ["CI", "Comissões C.I.", globalTotals.totalCI, globalTotals.countCI, "border-l-orange-500"]
+        ] as const).map(([tipo, label, total, count, bar]) => {
+          const ativo = filterTipoDoc === tipo
+          return (
+            <button
+              key={tipo}
+              type="button"
+              aria-pressed={ativo}
+              onClick={() => setFilterTipoDoc(ativo ? "all" : tipo)}
+              className={`text-left bg-card rounded-xl border border-border border-l-4 ${bar} p-3 sm:p-4 min-w-0 transition hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${ativo ? "ring-2 ring-primary" : ""}`}
+            >
+              <span className="block text-xs font-medium uppercase tracking-wide text-muted-foreground leading-snug">{label}</span>
+              <span className="block mt-1 text-xl sm:text-2xl font-bold tabular-nums text-foreground leading-tight break-words">{formatCurrency(total)} €</span>
+              <span className="block mt-0.5 text-xs text-muted-foreground">{count} pagamentos{ativo ? " · filtro ativo" : ""}</span>
+            </button>
+          )
+        })}
 
         {/* Upload Card */}
-        <div
-          className="bg-card rounded-xl p-6 border-2 border-dashed border-border hover:border-primary transition-all cursor-pointer"
+        <button
+          type="button"
           onClick={() => setShowUpload(true)}
+          className="col-span-2 md:col-span-1 text-left bg-card rounded-xl p-3 sm:p-4 border-2 border-dashed border-border hover:border-primary transition flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center">
-              <svg className="w-7 h-7 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground font-medium">Upload</p>
-              <p className="text-lg font-bold text-foreground">Novo Mapa</p>
-              <p className="text-xs text-muted-foreground">Carregar PDF de comissões</p>
-            </div>
-          </div>
-        </div>
+          <span className="w-11 h-11 shrink-0 bg-primary/10 rounded-xl flex items-center justify-center">
+            <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+          </span>
+          <span>
+            <span className="block font-bold text-foreground">Novo Mapa</span>
+            <span className="block text-xs text-muted-foreground">Carregar PDF de comissões</span>
+          </span>
+        </button>
       </div>
 
       {/* Filter Info Bar */}

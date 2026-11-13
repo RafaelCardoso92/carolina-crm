@@ -3,6 +3,13 @@
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
+import Swal from "sweetalert2"
+import StatCard from "@/components/ui/StatCard"
+
+async function erroDoServidor(res: Response, fallback: string) {
+  const data = await res.json().catch(() => ({}))
+  Swal.fire({ icon: "error", title: "Erro", text: data.error || fallback, confirmButtonColor: "#005290" })
+}
 
 interface Visita {
   id: string
@@ -193,6 +200,8 @@ export default function VisitasView() {
         setFormData({ dataAgendada: "", horaAgendada: "09:00", objetivo: "", notas: "", clienteId: "", prospectoId: "" })
         fetchVisitas()
         fetchStats()
+      } else {
+        await erroDoServidor(res, "Erro ao agendar visita")
       }
     } catch (error) {
       console.error("Error:", error)
@@ -201,11 +210,12 @@ export default function VisitasView() {
 
   async function updateEstado(id: string, estado: string, resultado?: string) {
     try {
-      await fetch(`/api/visitas/${id}`, {
+      const res = await fetch(`/api/visitas/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ estado, resultado })
       })
+      if (!res.ok) await erroDoServidor(res, "Erro ao atualizar visita")
       fetchVisitas()
       fetchStats()
     } catch (error) {
@@ -228,7 +238,7 @@ export default function VisitasView() {
     const proximosPassos = formData.get("proximosPassos") as string
 
     try {
-      await fetch(`/api/visitas/${editingVisita.id}`, {
+      const res = await fetch(`/api/visitas/${editingVisita.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -237,6 +247,7 @@ export default function VisitasView() {
           proximosPassos
         })
       })
+      if (!res.ok) return erroDoServidor(res, "Erro ao guardar visita")
       setShowEditModal(false)
       setEditingVisita(null)
       fetchVisitas()
@@ -271,29 +282,17 @@ export default function VisitasView() {
       {/* Stats Summary */}
       {stats?.resumo && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <div className="bg-card rounded-xl p-4 border border-border">
-            <p className="text-xs text-muted-foreground mb-1">Hoje</p>
-            <p className="text-2xl font-bold text-foreground">{stats.resumo.hoje}</p>
-          </div>
-          <div className="bg-card rounded-xl p-4 border border-border">
-            <p className="text-xs text-muted-foreground mb-1">Esta Semana</p>
-            <p className="text-2xl font-bold text-foreground">{stats.resumo.semana}</p>
-          </div>
-          <div className="bg-card rounded-xl p-4 border border-border">
-            <p className="text-xs text-muted-foreground mb-1">Realizadas</p>
-            <p className="text-2xl font-bold text-emerald-600">{stats.resumo.realizadas}</p>
-          </div>
-          <div className="bg-card rounded-xl p-4 border border-border">
-            <p className="text-xs text-muted-foreground mb-1">Taxa Realizacao</p>
-            <p className="text-2xl font-bold text-primary">{stats.resumo.taxaRealizacao}%</p>
-          </div>
+          <StatCard label="Hoje" value={stats.resumo.hoje} />
+          <StatCard label="Esta Semana" value={stats.resumo.semana} />
+          <StatCard label="Realizadas" value={stats.resumo.realizadas} tone="good" />
+          <StatCard label="Taxa de Realização" value={`${stats.resumo.taxaRealizacao}%`} />
         </div>
       )}
 
       {/* Monthly Chart */}
       {stats?.mensal && (
         <div className="bg-card rounded-xl p-4 border border-border mb-6">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Visitas por Mes ({new Date().getFullYear()})</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-3">Visitas por Mês ({new Date().getFullYear()})</h3>
           <div className="flex items-end gap-1 h-24">
             {stats.mensal.map((m, i) => {
               const maxTotal = Math.max(...stats.mensal.map(x => x.total), 1)
@@ -503,12 +502,12 @@ export default function VisitasView() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-1">Proximos Passos</label>
+                <label className="block text-sm font-medium text-muted-foreground mb-1">Próximos Passos</label>
                 <textarea
                   name="proximosPassos"
                   className="w-full border border-border rounded-lg px-3 py-2 bg-background text-foreground"
                   rows={2}
-                  placeholder="Acoes a tomar..."
+                  placeholder="Ações a tomar..."
                 />
               </div>
 

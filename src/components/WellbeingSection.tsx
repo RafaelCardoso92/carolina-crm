@@ -6,28 +6,28 @@ import DailyQuote from "./DailyQuote"
 
 const quickTips = [
   { icon: "🧘", text: "Faz uma pausa de 5 minutos. Levanta-te e estica o corpo." },
-  { icon: "💧", text: "Bebe um copo de agua. A hidratacao ajuda a concentracao." },
+  { icon: "💧", text: "Bebe um copo de água. A hidratação ajuda a concentração." },
   { icon: "🌬️", text: "Respira fundo 3 vezes. Inspira pelo nariz, expira pela boca." },
-  { icon: "🚶", text: "Da uma pequena caminhada. Movimentar-te ajuda a clarear a mente." },
-  { icon: "☀️", text: "Abre uma janela ou vai la fora. Luz natural melhora o humor." },
-  { icon: "🎵", text: "Ouve uma musica que gostes. A musica pode aliviar o stress." },
-  { icon: "📵", text: "Desliga notificacoes por 30 minutos. Foca-te numa tarefa de cada vez." },
-  { icon: "🙏", text: "Pensa em 3 coisas pelas quais estas grato hoje." },
-  { icon: "💪", text: "Celebra as pequenas vitorias. Cada passo conta." },
+  { icon: "🚶", text: "Dá uma pequena caminhada. Movimentar-te ajuda a clarear a mente." },
+  { icon: "☀️", text: "Abre uma janela ou vai lá fora. Luz natural melhora o humor." },
+  { icon: "🎵", text: "Ouve uma música que gostes. A música pode aliviar o stress." },
+  { icon: "📵", text: "Desliga notificações por 30 minutos. Foca-te numa tarefa de cada vez." },
+  { icon: "🙏", text: "Pensa em 3 coisas pelas quais estás grato hoje." },
+  { icon: "💪", text: "Celebra as pequenas vitórias. Cada passo conta." },
   { icon: "🌿", text: "Olha para algo verde. A natureza acalma a mente." },
 ]
 
 const affirmations = [
   "Sou capaz de superar qualquer desafio.",
-  "O meu trabalho tem valor e faz a diferenca.",
-  "Mereco ter sucesso e felicidade.",
-  "Cada dia e uma nova oportunidade.",
-  "Estou a dar o meu melhor e isso e suficiente.",
-  "Os obstaculos sao oportunidades disfarçadas.",
-  "Tenho a forca necessaria para continuar.",
-  "O meu potencial e ilimitado.",
-  "Sou resiliente e adaptavel.",
-  "O progresso importa mais que a perfeicao.",
+  "O meu trabalho tem valor e faz a diferença.",
+  "Mereço ter sucesso e felicidade.",
+  "Cada dia é uma nova oportunidade.",
+  "Estou a dar o meu melhor e isso é suficiente.",
+  "Os obstáculos são oportunidades disfarçadas.",
+  "Tenho a força necessária para continuar.",
+  "O meu potencial é ilimitado.",
+  "Sou resiliente e adaptável.",
+  "O progresso importa mais que a perfeição.",
 ]
 
 export default function WellbeingSection() {
@@ -138,7 +138,7 @@ export default function WellbeingSection() {
                 showBreathing ? "bg-primary text-white" : "bg-secondary text-foreground hover:bg-primary/10"
               }`}
             >
-              🌬️ Respiracao
+              🌬️ Respiração
             </button>
             <button
               onClick={() => { setShowTips(!showTips); setShowBreathing(false); }}
@@ -183,7 +183,7 @@ export default function WellbeingSection() {
                 <button
                   onClick={nextAffirmation}
                   className="shrink-0 p-1 rounded hover:bg-purple-100 dark:hover:bg-purple-900/50 transition"
-                  title="Outra afirmacao"
+                  title="Outra afirmação"
                 >
                   <svg className="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -200,13 +200,13 @@ export default function WellbeingSection() {
             {!isBreathing ? (
               <div>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Exercicio de respiracao 4-4-4-2 para acalmar a mente
+                  Exercício de respiração 4-4-4-2 para acalmar a mente
                 </p>
                 <button
                   onClick={startBreathing}
                   className="bg-primary text-white px-6 py-3 rounded-xl font-medium hover:bg-primary-hover transition"
                 >
-                  Comecar Exercicio
+                  Começar Exercício
                 </button>
               </div>
             ) : (
@@ -230,7 +230,7 @@ export default function WellbeingSection() {
                 </div>
                 
                 <p className="text-sm text-muted-foreground mb-3">
-                  Respiracoes completas: {breathCount}
+                  Respirações completas: {breathCount}
                 </p>
                 
                 <button
@@ -247,7 +247,7 @@ export default function WellbeingSection() {
         {/* Tips Panel */}
         {showTips && (
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground mb-2">Dicas rapidas para o teu bem-estar:</p>
+            <p className="text-sm text-muted-foreground mb-2">Dicas rápidas para o teu bem-estar:</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {quickTips.slice(0, 6).map((tip, i) => (
                 <div key={i} className="flex items-start gap-2 bg-secondary/50 rounded-lg p-2">
@@ -262,7 +262,7 @@ export default function WellbeingSection() {
         {/* Help resources - subtle link */}
         <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
           <p className="text-xs text-muted-foreground">
-            Cuida da tua saude mental. Pequenas pausas fazem grande diferenca.
+            Cuida da tua saúde mental. Pequenas pausas fazem grande diferença.
           </p>
           <a
             href="tel:808200204"

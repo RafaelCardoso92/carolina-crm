@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Baborette CRM",
-  description: "Sistema de gestao de clientes e vendas BABOR",
+  description: "Sistema de gestão de clientes e vendas BABOR",
   manifest: "/api/pwa/manifest",
   icons: {
     icon: "/favicon.ico",
@@ -40,6 +40,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: "cover", // lets env(safe-area-inset-*) report the iPhone home-bar inset for the bottom nav
 };
 
 export default function RootLayout({
