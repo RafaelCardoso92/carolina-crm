@@ -15,9 +15,9 @@ import { buildEnhancedContext, buildGlobalCRMContext } from "@/lib/baborella/con
 import { getOrCreateSession, addMessageToSession, SessionMessage } from "@/lib/baborella/session";
 import { checkTokens, getTokenBalance, BABORELLA_MODEL } from "@/lib/ai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Created on first use: the key only exists at runtime (not during next build)
+let _openai: OpenAI | null = null
+const getOpenAI = () => (_openai ??= new OpenAI({ apiKey: process.env.OPENAI_API_KEY }))
 
 interface ChatMessage {
   role: "user" | "assistant" | "system" | "tool";
@@ -153,7 +153,7 @@ export async function POST(req: NextRequest) {
     const openAITools = contextualTools.map(toolToOpenAIFunction);
     let totalTokensUsed = 0;
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: BABORELLA_MODEL,
       messages: messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
       tools: openAITools.length > 0 ? openAITools : undefined,
@@ -269,7 +269,7 @@ export async function POST(req: NextRequest) {
           })),
         ];
 
-        const followUp = await openai.chat.completions.create({
+        const followUp = await getOpenAI().chat.completions.create({
           model: BABORELLA_MODEL,
           messages: followUpMessages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
           temperature: 0.7,

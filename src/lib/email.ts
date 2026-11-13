@@ -1,12 +1,14 @@
 import { Resend } from "resend"
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Created on first use: the key only exists at runtime (not during next build)
+let _resend: Resend | null = null
+const getResend = () => (_resend ??= new Resend(process.env.RESEND_API_KEY))
 
 const FROM_EMAIL = process.env.FROM_EMAIL || "noreply@baboretes.com"
 
 export async function sendPasswordResetEmail(email: string, resetUrl: string) {
   try {
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await getResend().emails.send({
       from: `Baborette <${FROM_EMAIL}>`,
       to: email,
       subject: "Repor Password - Baborette",
