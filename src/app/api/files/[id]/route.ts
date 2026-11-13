@@ -35,7 +35,7 @@ export async function GET(
       return NextResponse.json({ error: "Ficheiro nao encontrado" }, { status: 404 })
     }
 
-    const filePath = path.join(UPLOAD_DIR, file.storedName)
+    const filePath = path.join(UPLOAD_DIR, path.basename(file.storedName))
 
     if (!existsSync(filePath)) {
       // File doesn't exist on disk, remove from database
@@ -48,9 +48,12 @@ export async function GET(
     const response = new NextResponse(fileBuffer)
     response.headers.set("Content-Type", file.mimeType)
     
-    // Use inline for preview, attachment for download
-    const disposition = preview ? "inline" : "attachment"
-    response.headers.set("Content-Disposition", `${disposition}; filename="${file.filename}"`)
+    // Inline only for types that can't run script (raster images, PDF); everything else downloads
+    const safeInline = (file.mimeType.startsWith("image/") && file.mimeType !== "image/svg+xml") || file.mimeType === "application/pdf"
+    const disposition = preview && safeInline ? "inline" : "attachment"
+    const asciiName = file.filename.replace(/[^\x20-\x7e]|["\\]/g, "_")
+    response.headers.set("Content-Disposition", `${disposition}; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(file.filename)}`)
+    response.headers.set("X-Content-Type-Options", "nosniff")
     response.headers.set("Content-Length", file.size.toString())
 
     return response
@@ -85,7 +88,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Ficheiro nao encontrado" }, { status: 404 })
     }
 
-    const filePath = path.join(UPLOAD_DIR, file.storedName)
+    const filePath = path.join(UPLOAD_DIR, path.basename(file.storedName))
 
     // Delete from disk if exists
     if (existsSync(filePath)) {

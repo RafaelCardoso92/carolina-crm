@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { Decimal } from "@prisma/client/runtime/library"
 import { getEffectiveUserId, canViewAllData } from "@/lib/permissions"
+import { ajustarValorCobranca, restaurarCobrancaDaIncidencia, MSG_PARCELAS_PAGAS } from "@/lib/cobranca-estado"
 
 async function verifyIncidenciaOwnership(incidenciaId: string, session: { user: { id: string; role: string; impersonating?: { id: string } | null } }) {
   const incidencia = await prisma.incidencia.findUnique({
@@ -66,11 +67,16 @@ export async function DELETE(
         })
       }
 
+      await restaurarCobrancaDaIncidencia(tx, incidencia)
+
       await tx.incidencia.delete({ where: { id } })
     })
 
     return NextResponse.json({ success: true })
   } catch (error) {
+    if (error instanceof Error && error.message === "PARCELAS_PAGAS") {
+      return NextResponse.json({ error: MSG_PARCELAS_PAGAS }, { status: 409 })
+    }
     console.error("Error deleting incidencia:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
@@ -100,17 +106,29 @@ export async function PUT(
     const body = await request.json()
     const { valor, motivo, notas } = body
 
-    const incidencia = await prisma.incidencia.update({
-      where: { id },
-      data: {
-        ...(valor !== undefined && { valor }),
-        ...(motivo && { motivo }),
-        ...(notas !== undefined && { notas })
+    const incidencia = await prisma.$transaction(async (tx) => {
+      // If this credit note reduced its cobrança, move the cobrança by the change in the credit note value
+      if (valor !== undefined && existing.cobrancaId && Number(valor) !== Number(existing.valor)) {
+        const cobranca = await tx.cobranca.findUnique({ where: { id: existing.cobrancaId }, select: { valor: true } })
+        if (cobranca) {
+          await ajustarValorCobranca(tx, existing.cobrancaId, Number(cobranca.valor) - (Number(valor) - Number(existing.valor)))
+        }
       }
+      return tx.incidencia.update({
+        where: { id },
+        data: {
+          ...(valor !== undefined && { valor }),
+          ...(motivo && { motivo }),
+          ...(notas !== undefined && { notas })
+        }
+      })
     })
 
     return NextResponse.json(incidencia)
   } catch (error) {
+    if (error instanceof Error && error.message === "PARCELAS_PAGAS") {
+      return NextResponse.json({ error: MSG_PARCELAS_PAGAS }, { status: 409 })
+    }
     console.error("Error updating incidencia:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }

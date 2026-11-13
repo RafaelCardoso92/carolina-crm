@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Swal from "sweetalert2"
 import { formatCurrency } from "@/lib/utils"
+import { valorPagoCobranca, valorPendenteCobranca, venceuAntesDeHoje, emAtraso, pagoNoMes, comissaoGanha } from "@/lib/cobranca-valores"
 
 type Parcela = {
   id: string
@@ -52,11 +53,6 @@ type Cliente = {
 type Props = {
   cobrancas: Cobranca[]
   clientes: Cliente[]
-  totalPendente: number
-  totalPago: number
-  pagoEsteMes: number
-  pagoMesPassado: number
-  valorEmAtraso: number
   ano: number | null
 }
 
@@ -70,12 +66,8 @@ function isCobrancaAtrasada(cobranca: Cobranca): boolean {
   // Has parcelas - check parcelas instead
   if (cobranca.parcelas.length > 0) return false
   // No due date - can't determine
-  if (!cobranca.dataVencimento) return false
-  const vencimento = cobranca.dataVencimento instanceof Date
-    ? cobranca.dataVencimento
-    : new Date(cobranca.dataVencimento)
-  // Partial or pending - check if past due date
-  return new Date() > vencimento
+  // Partial or pending - check if past due date (due today is not late yet)
+  return venceuAntesDeHoje(cobranca.dataVencimento)
 }
 
 function getCobrancaEstado(cobranca: Cobranca): "PENDENTE" | "PAGO" | "PARCIAL" | "ATRASADO" {
@@ -87,10 +79,7 @@ function getCobrancaEstado(cobranca: Cobranca): "PENDENTE" | "PAGO" | "PARCIAL" 
 }
 function isParcelaAtrasada(parcela: Parcela): boolean {
   if (parcela.pago) return false
-  const vencimento = parcela.dataVencimento instanceof Date
-    ? parcela.dataVencimento
-    : new Date(parcela.dataVencimento)
-  return new Date() > vencimento
+  return venceuAntesDeHoje(parcela.dataVencimento)
 }
 
 function formatDate(dateVal: Date | string): string {
@@ -114,7 +103,7 @@ function getMonthLabel(monthKey: string): string {
   return `${monthNames[parseInt(month) - 1]} ${year}`
 }
 
-export default function CobrancasView({ cobrancas, clientes, totalPendente, totalPago, pagoEsteMes, pagoMesPassado, valorEmAtraso, ano }: Props) {
+export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
   const router = useRouter()
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -175,14 +164,9 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
     }
   }, [availableMonths])
 
-  // Filter and sort cobrancas
-  const filtered = useMemo(() => {
+  // Month/client/search/document-type filters (the summary cards follow these)
+  const baseFiltered = useMemo(() => {
     let result = cobrancas
-
-    // Status filter
-    if (filter === "pending") result = result.filter(c => !c.pago)
-    else if (filter === "paid") result = result.filter(c => c.pago)
-    else if (filter === "overdue") result = result.filter(c => c.parcelas.some(p => isParcelaAtrasada(p)))
 
     // Month filter
     if (selectedMonth) {
@@ -212,6 +196,18 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       result = result.filter(c => c.tipoDocumento === "CONSUMO_INTERNO")
     }
 
+    return result
+  }, [cobrancas, selectedCliente, selectedMonth, searchQuery, filterTipoDoc])
+
+  // Status filter and sort on top of the base filters
+  const filtered = useMemo(() => {
+    let result = baseFiltered
+
+    // Status filter
+    if (filter === "pending") result = result.filter(c => !c.pago)
+    else if (filter === "paid") result = result.filter(c => c.pago)
+    else if (filter === "overdue") result = result.filter(c => emAtraso(c).count > 0)
+
     // Sort
     result = [...result].sort((a, b) => {
       let comparison = 0
@@ -235,7 +231,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
     })
 
     return result
-  }, [cobrancas, filter, selectedCliente, selectedMonth, searchQuery, sortField, sortOrder, filterTipoDoc])
+  }, [baseFiltered, filter, sortField, sortOrder])
 
   // Group cobrancas by month
   const groupedByMonth = useMemo(() => {
@@ -252,80 +248,32 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       monthLabel: getMonthLabel(key),
       cobrancas: groups[key],
       total: groups[key].reduce((sum, c) => sum + Number(c.valor), 0),
-      totalPendente: groups[key].reduce((sum, c) => {
-        // Fully paid - nothing pending
-        if (c.pago || c.estado === "PAGO") {
-          return sum
-        }
-        // Cobranca with parcelas - sum unpaid parcelas
-        if (c.parcelas && c.parcelas.length > 0) {
-          const unpaidParcelas = c.parcelas.filter(p => !p.pago).reduce((pSum, p) => pSum + Number(p.valor), 0)
-          return sum + unpaidParcelas
-        }
-        // Partial payment - remaining amount
-        if (c.estado === "PARCIAL" && c.valorPago) {
-          return sum + (Number(c.valor) - Number(c.valorPago))
-        }
-        // Fully pending
-        return sum + Number(c.valor)
-      }, 0),
-      totalPago: groups[key].reduce((sum, c) => {
-        // Fully paid cobranca
-        if (c.pago || c.estado === "PAGO") {
-          return sum + Number(c.valor)
-        }
-        // Cobranca with parcelas - sum paid parcelas
-        if (c.parcelas && c.parcelas.length > 0) {
-          const paidParcelas = c.parcelas.filter(p => p.pago).reduce((pSum, p) => pSum + Number(p.valor), 0)
-          return sum + paidParcelas
-        }
-        // Partial payment on cobranca without parcelas
-        if (c.estado === "PARCIAL" && c.valorPago) {
-          return sum + Number(c.valorPago)
-        }
-        return sum
-      }, 0),
+      totalPendente: groups[key].reduce((sum, c) => sum + valorPendenteCobranca(c), 0),
+      totalPago: groups[key].reduce((sum, c) => sum + valorPagoCobranca(c), 0),
       totalComissao: groups[key].reduce((sum, c) => sum + (Number(c.comissao ?? 0)), 0),
-      comissaoGanha: groups[key].reduce((sum, c) => {
-        const comissaoTotal = Number(c.comissao ?? 0)
-        if (c.estado === "PAGO" || c.pago) {
-          return sum + comissaoTotal
-        } else if (c.estado === "PARCIAL" && c.valorPago) {
-          const percentPago = Number(c.valorPago) / Number(c.valor)
-          return sum + (comissaoTotal * percentPago)
-        }
-        return sum
-      }, 0)
+      comissaoGanha: groups[key].reduce((sum, c) => sum + comissaoGanha(c, valorPagoCobranca(c)), 0)
     }))
   }, [filtered])
 
-  // Count overdue parcelas
-  const totalAtrasadas = cobrancas.reduce((acc, c) => {
-    return acc + c.parcelas.filter(p => isParcelaAtrasada(p)).length
-  }, 0)
-
-  // Calculate earned commissions for current month (only from paid or partially paid cobrancas)
-  const comissoesGanhasMesAtual = useMemo(() => {
-    const currentMonthKey = getMonthKey(new Date())
-    return cobrancas.reduce((total, c) => {
-      // Only include if paid this month (check dataPago)
-      if (!c.dataPago) return total
-      const paymentMonthKey = getMonthKey(c.dataPago)
-      if (paymentMonthKey !== currentMonthKey) return total
-
-      const comissaoTotal = Number(c.comissao ?? 0)
-
-      if (c.estado === "PAGO" || c.pago) {
-        // Fully paid - full commission
-        return total + comissaoTotal
-      } else if (c.estado === "PARCIAL" && c.valorPago) {
-        // Partially paid - proportional commission
-        const percentPago = Number(c.valorPago) / Number(c.valor)
-        return total + (comissaoTotal * percentPago)
-      }
-      return total
-    }, 0)
-  }, [cobrancas])
+  // Summary cards: what was actually paid (paid parcelas + partial payments), following the active filters
+  const resumo = useMemo(() => {
+    const now = new Date()
+    const mesPassado = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const r = { totalPendente: 0, totalPago: 0, pagoEsteMes: 0, pagoMesPassado: 0, valorEmAtraso: 0, totalAtrasadas: 0, comissoesGanhasMesAtual: 0 }
+    for (const c of baseFiltered) {
+      r.totalPendente += valorPendenteCobranca(c)
+      r.totalPago += valorPagoCobranca(c)
+      const esteMes = pagoNoMes(c, now.getFullYear(), now.getMonth())
+      r.pagoEsteMes += esteMes
+      r.pagoMesPassado += pagoNoMes(c, mesPassado.getFullYear(), mesPassado.getMonth())
+      r.comissoesGanhasMesAtual += comissaoGanha(c, esteMes)
+      const atraso = emAtraso(c, now)
+      r.valorEmAtraso += atraso.valor
+      r.totalAtrasadas += atraso.count
+    }
+    return r
+  }, [baseFiltered])
+  const { totalPendente, totalPago, pagoEsteMes, pagoMesPassado, valorEmAtraso, totalAtrasadas, comissoesGanhasMesAtual } = resumo
 
   // Calculate commission breakdown by document type
   const comissoesPorTipo = useMemo(() => {
@@ -342,15 +290,9 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
       target.count++
       target.total += comissaoTotal
 
-      if (c.estado === "PAGO" || c.pago) {
-        target.ganha += comissaoTotal
-      } else if (c.estado === "PARCIAL" && c.valorPago) {
-        const percentPago = Number(c.valorPago) / Number(c.valor)
-        target.ganha += comissaoTotal * percentPago
-        target.pendente += comissaoTotal * (1 - percentPago)
-      } else {
-        target.pendente += comissaoTotal
-      }
+      const ganha = comissaoGanha(c, valorPagoCobranca(c))
+      target.ganha += ganha
+      target.pendente += comissaoTotal - ganha
     })
 
     return result
@@ -1789,7 +1731,7 @@ export default function CobrancasView({ cobrancas, clientes, totalPendente, tota
               className="px-2 md:px-3 py-1.5 md:py-2 border-0 rounded-lg text-primary font-bold focus:ring-2 focus:ring-primary outline-none bg-card text-sm md:text-base"
             >
               <option value="">Todos</option>
-              {[2023, 2024, 2025, 2026].map((y) => (
+              {Array.from({ length: new Date().getFullYear() - 2021 }, (_, i) => 2023 + i).map((y) => (
                 <option key={y} value={y}>{y}</option>
               ))}
             </select>

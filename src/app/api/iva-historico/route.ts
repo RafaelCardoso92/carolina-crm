@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { isAdminOrHigher } from "@/lib/permissions"
 
 // GET: List all IVA rate history
 export async function GET() {
@@ -39,6 +40,9 @@ export async function POST(request: NextRequest) {
   const session = await auth()
   if (!session?.user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+  }
+  if (!isAdminOrHigher(session.user.role)) {
+    return NextResponse.json({ success: false, error: "Apenas administradores podem alterar as taxas de IVA." }, { status: 403 })
   }
 
   try {
@@ -119,6 +123,9 @@ export async function DELETE(request: NextRequest) {
   const session = await auth()
   if (!session?.user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+  }
+  if (!isAdminOrHigher(session.user.role)) {
+    return NextResponse.json({ success: false, error: "Apenas administradores podem alterar as taxas de IVA." }, { status: 403 })
   }
 
   try {

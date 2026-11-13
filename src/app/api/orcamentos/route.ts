@@ -53,6 +53,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Prospecto ou Cliente e obrigatorio" }, { status: 400 })
     }
 
+    // Cliente/prospecto must belong to the caller's scope (the PDF prints their details)
+    const scope = userScopedWhere(session)
+    if (
+      (clienteId && !(await prisma.cliente.findFirst({ where: { id: clienteId, ...scope }, select: { id: true } }))) ||
+      (prospectoId && !(await prisma.prospecto.findFirst({ where: { id: prospectoId, ...scope }, select: { id: true } })))
+    ) {
+      return NextResponse.json({ error: "Cliente ou prospecto nao encontrado" }, { status: 404 })
+    }
+
     // Generate quote number
     const year = new Date().getFullYear()
     const count = await prisma.orcamento.count({

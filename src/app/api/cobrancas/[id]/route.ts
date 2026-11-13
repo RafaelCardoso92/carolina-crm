@@ -4,6 +4,8 @@ import { requirePermission, getEffectiveUserId } from "@/lib/api-auth"
 import { PERMISSIONS, canViewAllData } from "@/lib/permissions"
 import { getComissaoVendedorForDate } from "@/lib/comissao"
 import { getIVAForDate } from "@/lib/iva"
+import { recalcularEstadoCobranca } from "@/lib/cobranca-estado"
+import { estadoPorValores } from "@/lib/cobranca-valores"
 
 // Helper to check cobranca ownership through cliente
 async function checkCobrancaOwnership(
@@ -176,7 +178,10 @@ export async function PUT(
             notas: data.notas || null,
             numeroParcelas: data.numeroParcelas,
             dataInicioVencimento: new Date(data.dataInicioVencimento),
-            pago: false // Reset pago status when parcelas are regenerated
+            pago: false, // Reset pago status when parcelas are regenerated
+            dataPago: null,
+            valorPago: null,
+            estado: "PENDENTE"
           },
           include: {
             cliente: true,
@@ -281,20 +286,31 @@ export async function PATCH(
       return NextResponse.json({ error: "Sem permissao" }, { status: 403 })
     }
 
-    const cobranca = await prisma.cobranca.update({
-      where: { id },
-      data: {
-        pago: data.pago !== undefined ? data.pago : undefined,
-        dataPago: data.dataPago !== undefined ? (data.dataPago ? new Date(data.dataPago) : null) : undefined,
-        valorPago: data.valorPago !== undefined ? data.valorPago : undefined,
-        estado: data.estado !== undefined ? data.estado : undefined
-      },
-      include: {
-        cliente: true,
-        parcelas: {
-          orderBy: { numero: "asc" }
+    const cobranca = await prisma.$transaction(async (tx) => {
+      const atualizada = await tx.cobranca.update({
+        where: { id },
+        data: {
+          pago: data.pago !== undefined ? data.pago : undefined,
+          dataPago: data.dataPago !== undefined ? (data.dataPago ? new Date(data.dataPago) : null) : undefined,
+          valorPago: data.valorPago !== undefined ? data.valorPago : undefined
         }
+      })
+      // Parcelas are the source of truth; without them the estado follows pago/valorPago (client estado ignored)
+      if (!(await recalcularEstadoCobranca(tx, id))) {
+        await tx.cobranca.update({
+          where: { id },
+          data: { estado: estadoPorValores(Number(atualizada.valor), Number(atualizada.valorPago ?? 0), atualizada.pago) }
+        })
       }
+      return tx.cobranca.findUnique({
+        where: { id },
+        include: {
+          cliente: true,
+          parcelas: {
+            orderBy: { numero: "asc" }
+          }
+        }
+      })
     })
 
     return NextResponse.json(cobranca)

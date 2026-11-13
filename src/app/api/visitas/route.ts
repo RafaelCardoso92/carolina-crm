@@ -154,6 +154,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Cliente/prospecto must belong to the caller's scope
+    const scope = userScopedWhere(session)
+    if (
+      (clienteId && !(await prisma.cliente.findFirst({ where: { id: clienteId, ...scope }, select: { id: true } }))) ||
+      (prospectoId && !(await prisma.prospecto.findFirst({ where: { id: prospectoId, ...scope }, select: { id: true } })))
+    ) {
+      return NextResponse.json({ error: "Cliente ou prospecto nao encontrado" }, { status: 404 })
+    }
+
     const userId = getEffectiveUserId(session)
 
     const visita = await prisma.visita.create({

@@ -386,7 +386,7 @@ function DefinicoesContent() {
                 onChange={(e) => setSelectedAno(parseInt(e.target.value))}
                 className="px-4 py-2.5 border-2 border-border rounded-xl text-foreground font-semibold focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-background"
               >
-                {[2023, 2024, 2025, 2026].map((y) => (
+                {Array.from({ length: new Date().getFullYear() - 2021 }, (_, i) => 2023 + i).map((y) => (
                   <option key={y} value={y}>{y}</option>
                 ))}
               </select>
@@ -1486,7 +1486,7 @@ function CampanhasTable({
                 onChange={(e) => setFormData({ ...formData, ano: parseInt(e.target.value) })}
                 className="w-full px-3 py-2 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none"
               >
-                {[2024, 2025, 2026].map(y => (
+                {Array.from({ length: new Date().getFullYear() - 2021 }, (_, i) => 2023 + i).map(y => (
                   <option key={y} value={y}>{y}</option>
                 ))}
               </select>
@@ -1917,7 +1917,7 @@ function ObjetivosVariosTable({
                 onChange={(e) => setFormData({ ...formData, ano: parseInt(e.target.value) })}
                 className="w-full px-3 py-2 border-2 border-border rounded-xl bg-background text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none"
               >
-                {[2024, 2025, 2026].map(y => (
+                {Array.from({ length: new Date().getFullYear() - 2021 }, (_, i) => 2023 + i).map(y => (
                   <option key={y} value={y}>{y}</option>
                 ))}
               </select>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { requirePermission } from "@/lib/api-auth"
+import { requirePermission, userScopedWhere } from "@/lib/api-auth"
 import { PERMISSIONS } from "@/lib/permissions"
 import PDFDocument from "pdfkit"
 
@@ -21,11 +21,11 @@ function formatDate(date: Date): string {
 
 export async function GET(request: NextRequest, { params }: Params) {
   try {
-    await requirePermission(PERMISSIONS.ORCAMENTOS_READ)
+    const session = await requirePermission(PERMISSIONS.ORCAMENTOS_READ)
     const { id } = await params
 
-    const orcamento = await prisma.orcamento.findUnique({
-      where: { id },
+    const orcamento = await prisma.orcamento.findFirst({
+      where: { id, ...userScopedWhere(session) },
       include: {
         prospecto: true,
         cliente: true,

@@ -22,6 +22,8 @@ const DEFAULT_CONFIG: RateLimitConfig = {
 export const rateLimitConfigs = {
   default: DEFAULT_CONFIG,
   auth: { maxRequests: 5, windowMs: 60 * 1000 }, // 5 login attempts per minute
+  login: { maxRequests: 10, windowMs: 15 * 60 * 1000 }, // 10 per 15 min per IP+email
+  forgotPassword: { maxRequests: 5, windowMs: 60 * 60 * 1000 }, // 5 per hour per IP
   ai: { maxRequests: 10, windowMs: 60 * 1000 }, // 10 AI requests per minute
   export: { maxRequests: 5, windowMs: 5 * 60 * 1000 }, // 5 exports per 5 minutes
   bulk: { maxRequests: 10, windowMs: 60 * 1000 }, // 10 bulk operations per minute
@@ -113,19 +115,27 @@ class RateLimiter {
 export const rateLimiter = new RateLimiter()
 
 /**
- * Rate limit middleware helper for API routes
+ * Real client IP behind Cloudflare -> Traefik. X-Forwarded-For is overwritten
+ * by Traefik (constant), so never key on it. Returns null when unknown.
+ */
+export function getClientIp(headers: Headers): string | null {
+  return headers.get('cf-connecting-ip')?.trim() || headers.get('x-real-ip')?.trim() || null
+}
+
+/**
+ * Rate limit helper for API routes.
+ * No identifiable IP -> not limited (an "unknown" shared bucket would lock everyone out).
  */
 export function checkRateLimit(
   request: Request,
   userId?: string,
   configType: keyof typeof rateLimitConfigs = 'default'
-): { allowed: boolean; headers: Record<string, string> } {
-  // Get IP from headers
-  const forwarded = request.headers.get('x-forwarded-for')
-  const ip = forwarded ? forwarded.split(',')[0].trim() : 'unknown'
-
+): { allowed: boolean; resetAt: number; headers: Record<string, string> } {
+  const ip = getClientIp(request.headers)
   const config = rateLimitConfigs[configType]
-  const key = RateLimiter.getKey(ip, userId)
+  if (!ip) return { allowed: true, resetAt: 0, headers: {} }
+
+  const key = RateLimiter.getKey(ip, userId, configType)
   const result = rateLimiter.check(key, config)
 
   const headers: Record<string, string> = {
@@ -134,7 +144,7 @@ export function checkRateLimit(
     'X-RateLimit-Reset': String(Math.ceil(result.resetAt / 1000)),
   }
 
-  return { allowed: result.allowed, headers }
+  return { allowed: result.allowed, resetAt: result.resetAt, headers }
 }
 
 /**
@@ -145,8 +155,7 @@ export function rateLimitedResponse(resetAt: number): Response {
 
   return new Response(
     JSON.stringify({
-      error: 'Too many requests',
-      message: 'Rate limit exceeded. Please try again later.',
+      error: 'Demasiadas tentativas. Tente novamente mais tarde.',
       retryAfter
     }),
     {

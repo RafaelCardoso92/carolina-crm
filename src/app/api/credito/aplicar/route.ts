@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { Decimal } from "@prisma/client/runtime/library"
 import { userScopedWhere } from "@/lib/api-auth"
+import { recalcularEstadoCobranca } from "@/lib/cobranca-estado"
 
 // POST - Apply credit to a cobranca or parcela
 export async function POST(request: NextRequest) {
@@ -106,40 +107,11 @@ export async function POST(request: NextRequest) {
           }
         })
 
-        // Check and update cobranca status
-        const todasParcelas = await tx.parcela.findMany({
-          where: { cobrancaId: parcela.cobrancaId }
-        })
-
-        const todasPagas = todasParcelas.every(p =>
-          p.id === parcelaId ? parcelaPaga : p.pago
-        )
-        const algumaPaga = todasParcelas.some(p =>
-          p.id === parcelaId ? parcelaPaga : p.pago
-        )
-
-        let novoEstado = "PENDENTE"
-        if (todasPagas) {
-          novoEstado = "PAGO"
-        } else if (algumaPaga) {
-          novoEstado = "PARCIAL"
-        }
-
-        // Calculate total paid for cobranca
-        const totalPagoCobranca = todasParcelas.reduce((acc, p) => {
-          const pago = p.id === parcelaId ? novoValorPago : (p.valorPago || new Decimal(0))
-          return acc.plus(pago)
-        }, new Decimal(0))
-
+        // Re-derive cobranca valorPago/pago/estado from its parcelas
+        await recalcularEstadoCobranca(tx, parcela.cobrancaId)
         await tx.cobranca.update({
           where: { id: parcela.cobrancaId },
-          data: {
-            estado: novoEstado as "PENDENTE" | "PAGO" | "PARCIAL" | "ATRASADO",
-            valorPago: totalPagoCobranca,
-            pago: todasPagas,
-            dataPago: todasPagas ? new Date() : null,
-            creditoAplicado: (parcela.cobranca.creditoAplicado || new Decimal(0)).plus(valorEfetivo)
-          }
+          data: { creditoAplicado: (parcela.cobranca.creditoAplicado || new Decimal(0)).plus(valorEfetivo) }
         })
       })
 
@@ -215,39 +187,11 @@ export async function POST(request: NextRequest) {
             }
           })
 
-          // Check all parcelas status
-          const todasParcelas = await tx.parcela.findMany({
-            where: { cobrancaId }
-          })
-
-          const todasPagas = todasParcelas.every(p =>
-            p.id === proximaParcela.id ? parcelaPaga : p.pago
-          )
-          const algumaPaga = todasParcelas.some(p =>
-            p.id === proximaParcela.id ? parcelaPaga : p.pago
-          )
-
-          let novoEstado = "PENDENTE"
-          if (todasPagas) {
-            novoEstado = "PAGO"
-          } else if (algumaPaga) {
-            novoEstado = "PARCIAL"
-          }
-
-          const totalPagoCobranca = todasParcelas.reduce((acc, p) => {
-            const pago = p.id === proximaParcela.id ? novoValorPago : (p.valorPago || new Decimal(0))
-            return acc.plus(pago)
-          }, new Decimal(0))
-
+          // Re-derive cobranca valorPago/pago/estado from its parcelas
+          await recalcularEstadoCobranca(tx, cobrancaId)
           await tx.cobranca.update({
             where: { id: cobrancaId },
-            data: {
-              estado: novoEstado as "PENDENTE" | "PAGO" | "PARCIAL" | "ATRASADO",
-              valorPago: totalPagoCobranca,
-              pago: todasPagas,
-              dataPago: todasPagas ? new Date() : null,
-              creditoAplicado: (cobranca.creditoAplicado || new Decimal(0)).plus(valorEfetivo)
-            }
+            data: { creditoAplicado: (cobranca.creditoAplicado || new Decimal(0)).plus(valorEfetivo) }
           })
         })
 

@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
+import { userScopedWhere } from "@/lib/permissions"
+import type { Session } from "next-auth"
+
+const NOT_FOUND = { error: "Visita nao encontrada" }
+
+// Cliente/prospecto being linked must belong to the same scope as the visit
+async function linksInScope(session: Session, clienteId?: string | null, prospectoId?: string | null) {
+  const scope = userScopedWhere(session)
+  if (clienteId && !(await prisma.cliente.findFirst({ where: { id: clienteId, ...scope }, select: { id: true } }))) return false
+  if (prospectoId && !(await prisma.prospecto.findFirst({ where: { id: prospectoId, ...scope }, select: { id: true } }))) return false
+  return true
+}
 
 // GET - Get a single visit
 export async function GET(
@@ -15,8 +27,8 @@ export async function GET(
 
     const { id } = await params
 
-    const visita = await prisma.visita.findUnique({
-      where: { id },
+    const visita = await prisma.visita.findFirst({
+      where: { id, ...userScopedWhere(session) },
       include: {
         cliente: {
           select: { id: true, nome: true, codigo: true, cidade: true, telefone: true, morada: true }
@@ -31,7 +43,7 @@ export async function GET(
     })
 
     if (!visita) {
-      return NextResponse.json({ error: "Visita nao encontrada" }, { status: 404 })
+      return NextResponse.json(NOT_FOUND, { status: 404 })
     }
 
     return NextResponse.json(visita)
@@ -56,6 +68,10 @@ export async function PUT(
     }
 
     const { id } = await params
+    const owned = await prisma.visita.findFirst({ where: { id, ...userScopedWhere(session) }, select: { id: true } })
+    if (!owned) {
+      return NextResponse.json(NOT_FOUND, { status: 404 })
+    }
     const body = await request.json()
 
     const {
@@ -70,6 +86,10 @@ export async function PUT(
       clienteId,
       prospectoId
     } = body
+
+    if (!(await linksInScope(session, clienteId, prospectoId))) {
+      return NextResponse.json({ error: "Cliente ou prospecto nao encontrado" }, { status: 404 })
+    }
 
     const updateData: Record<string, unknown> = {}
 
@@ -125,9 +145,12 @@ export async function DELETE(
 
     const { id } = await params
 
-    await prisma.visita.delete({
-      where: { id }
+    const { count } = await prisma.visita.deleteMany({
+      where: { id, ...userScopedWhere(session) }
     })
+    if (count === 0) {
+      return NextResponse.json(NOT_FOUND, { status: 404 })
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

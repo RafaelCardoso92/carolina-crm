@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { isAdminOrHigher, getEffectiveUserId } from "@/lib/permissions"
 import { getComissaoForDate } from "@/lib/comissao"
 
 // GET: List all sellers with their current commission rates
@@ -12,7 +13,12 @@ export async function GET() {
 
   try {
     const sellers = await prisma.user.findMany({
-      where: { role: "SELLER", status: "ACTIVE" },
+      where: {
+        role: "SELLER",
+        status: "ACTIVE",
+        // Sellers only see their own rate
+        ...(isAdminOrHigher(session.user.role) ? {} : { id: getEffectiveUserId(session) })
+      },
       select: {
         id: true,
         name: true,
@@ -59,6 +65,9 @@ export async function POST(request: NextRequest) {
   const session = await auth()
   if (!session?.user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+  }
+  if (!isAdminOrHigher(session.user.role)) {
+    return NextResponse.json({ success: false, error: "Apenas administradores podem alterar as taxas de comissão dos vendedores." }, { status: 403 })
   }
 
   try {
@@ -139,6 +148,9 @@ export async function DELETE(request: NextRequest) {
   const session = await auth()
   if (!session?.user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+  }
+  if (!isAdminOrHigher(session.user.role)) {
+    return NextResponse.json({ success: false, error: "Apenas administradores podem alterar as taxas de comissão dos vendedores." }, { status: 403 })
   }
 
   try {

@@ -946,7 +946,7 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
               onChange={(e) => router.push(`/vendas?mes=${mes}&ano=${e.target.value}`)}
               className="px-2 md:px-3 py-1.5 md:py-2 border-0 rounded-lg text-primary font-bold focus:ring-2 focus:ring-primary outline-none bg-card text-sm md:text-base"
             >
-              {[2023, 2024, 2025, 2026].map((y) => (
+              {Array.from({ length: new Date().getFullYear() - 2021 }, (_, i) => 2023 + i).map((y) => (
                 <option key={y} value={y}>{y}</option>
               ))}
             </select>
@@ -1683,7 +1683,7 @@ export default function VendasView({ vendas: initialVendas, clientes, produtos, 
                   onChange={(e) => setFormAno(parseInt(e.target.value))}
                   className="px-3 py-2 border-2 border-border rounded-lg font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-card text-foreground"
                 >
-                  {[2023, 2024, 2025, 2026].map((y) => (
+                  {Array.from({ length: new Date().getFullYear() - 2021 }, (_, i) => 2023 + i).map((y) => (
                     <option key={y} value={y}>{y}</option>
                   ))}
                 </select>

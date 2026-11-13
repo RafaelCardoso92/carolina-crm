@@ -5,6 +5,7 @@ import { requirePermission, getEffectiveUserId } from "@/lib/api-auth"
 import { PERMISSIONS, canViewAllData } from "@/lib/permissions"
 import { calcularValorComIVA } from "@/lib/iva"
 import { getComissaoVendedorForDate } from "@/lib/comissao"
+import { vencimentoPagamentoUnico } from "@/lib/cobranca-valores"
 
 export async function GET(request: Request) {
   try {
@@ -233,6 +234,7 @@ export async function POST(request: Request) {
             dataEmissao,
             dataInicioVencimento: dataEmissao, // Use emission date as first due date
             numeroParcelas,
+            ...vencimentoPagamentoUnico(numeroParcelas, dataEmissao),
             pago: false,
             tipoDocumento: data.tipoDocumento || "FATURA"
           }

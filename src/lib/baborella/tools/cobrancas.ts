@@ -1,5 +1,6 @@
 import { ActionCategory } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { recalcularEstadoCobranca } from "@/lib/cobranca-estado";
 import { BaborellaTool, ToolContext, ToolResult } from "../types";
 
 export const cobrancasPendentes: BaborellaTool = {
@@ -119,14 +120,28 @@ export const registarPagamento: BaborellaTool = {
         };
       }
 
-      const cobranca = await prisma.cobranca.update({
-        where: { id: cobrancaId },
-        data: {
-          pago: true,
-          dataPago: new Date(),
-          notas: notas ? (existing.notas ? existing.notas + "\n" + notas : notas) : existing.notas,
-        },
-        include: { cliente: { select: { nome: true } } },
+      // Parcelas are the source of truth: pay every open one, then re-derive the cobrança (same as /api/parcelas)
+      const agora = new Date();
+      const cobranca = await prisma.$transaction(async (tx) => {
+        const abertas = await tx.parcela.findMany({
+          where: { cobrancaId, pago: false },
+          select: { id: true, valor: true },
+        });
+        for (const p of abertas) {
+          await tx.parcela.update({
+            where: { id: p.id },
+            data: { pago: true, dataPago: agora, valorPago: p.valor },
+          });
+        }
+        const temParcelas = await recalcularEstadoCobranca(tx, cobrancaId);
+        return tx.cobranca.update({
+          where: { id: cobrancaId },
+          data: {
+            ...(temParcelas ? {} : { pago: true, dataPago: agora, valorPago: existing.valor, estado: "PAGO" as const }),
+            notas: notas ? (existing.notas ? existing.notas + "\n" + notas : notas) : existing.notas,
+          },
+          include: { cliente: { select: { nome: true } } },
+        });
       });
 
       return {

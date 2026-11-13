@@ -297,8 +297,8 @@ export async function POST(request: NextRequest) {
 
     // Process each aggregated invoice
     for (const [, invoiceData] of invoiceAggregates) {
-      const cliente = await prisma.cliente.findUnique({
-        where: { codigo: invoiceData.entidade }
+      const cliente = await prisma.cliente.findFirst({
+        where: { codigo: invoiceData.entidade, userId }
       })
 
       let corresponde = false

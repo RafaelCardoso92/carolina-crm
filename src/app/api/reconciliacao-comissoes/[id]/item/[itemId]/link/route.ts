@@ -27,8 +27,8 @@ export async function GET(
     }
 
     // Get the item for display info
-    const item = await prisma.itemReconciliacaoComissao.findUnique({
-      where: { id: itemId }
+    const item = await prisma.itemReconciliacaoComissao.findFirst({
+      where: { id: itemId, reconciliacaoId: id }
     })
 
     if (!item) {
@@ -43,6 +43,7 @@ export async function GET(
     // Check both direct payment (pago + dataPago) AND via parcelas
     const cobrancas = await prisma.cobranca.findMany({
       where: {
+        cliente: { userId },
         OR: [
           // Direct payment on the cobranca
           {
@@ -195,8 +196,8 @@ export async function POST(
     }
 
     // Get the item
-    const item = await prisma.itemReconciliacaoComissao.findUnique({
-      where: { id: itemId }
+    const item = await prisma.itemReconciliacaoComissao.findFirst({
+      where: { id: itemId, reconciliacaoId: id }
     })
 
     if (!item) {
@@ -204,8 +205,8 @@ export async function POST(
     }
 
     // Get the cobranca
-    const cobranca = await prisma.cobranca.findUnique({
-      where: { id: cobrancaId },
+    const cobranca = await prisma.cobranca.findFirst({
+      where: { id: cobrancaId, cliente: { userId } },
       include: { cliente: true }
     })
 

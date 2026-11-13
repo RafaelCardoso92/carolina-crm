@@ -2,9 +2,18 @@ import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 import crypto from "crypto"
 import { sendPasswordResetEmail } from "@/lib/email"
+import { checkRateLimit } from "@/lib/rate-limit"
 
 export async function POST(request: Request) {
   try {
+    // 5 requests / hour per IP (skipped when the IP is unknown)
+    if (!checkRateLimit(request, undefined, "forgotPassword").allowed) {
+      return NextResponse.json(
+        { error: "Demasiados pedidos. Tente novamente mais tarde." },
+        { status: 429 }
+      )
+    }
+
     const { email } = await request.json()
 
     if (!email) {
@@ -40,12 +49,6 @@ export async function POST(request: Request) {
     // Build reset URL
     const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
     const resetUrl = `${baseUrl}/repor-password?token=${resetToken}`
-
-    // Log the reset URL for development
-    console.log("=================================")
-    console.log("PASSWORD RESET LINK:")
-    console.log(resetUrl)
-    console.log("=================================")
 
     // Send email if Resend is configured
     if (process.env.RESEND_API_KEY) {

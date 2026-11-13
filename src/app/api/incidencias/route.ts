@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { Decimal } from "@prisma/client/runtime/library"
 import { getEffectiveUserId, canViewAllData } from "@/lib/permissions"
+import { ajustarValorCobranca, restaurarCobrancaDaIncidencia, MSG_PARCELAS_PAGAS } from "@/lib/cobranca-estado"
 
 // GET - List incidencias for a venda
 export async function GET(request: NextRequest) {
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest) {
     let cobranca = null
     if (cobrancaId) {
       cobranca = await prisma.cobranca.findUnique({ where: { id: cobrancaId } })
-      if (!cobranca) {
+      if (!cobranca || cobranca.clienteId !== venda.clienteId) {
         return NextResponse.json({ error: "Cobranca not found" }, { status: 404 })
       }
     }
@@ -108,7 +109,8 @@ export async function POST(request: NextRequest) {
         data: {
           vendaId,
           clienteId,
-          cobrancaId: cobrancaId || null,
+          // cobrancaId marks that this credit note reduced the cobrança (restored when the incidência is deleted)
+          cobrancaId: ajustarCobranca && cobranca ? cobranca.id : null,
           valor: valorDecimal,
           motivo,
           notas: notas || null,
@@ -142,13 +144,7 @@ export async function POST(request: NextRequest) {
 
       // Adjust cobranca value if requested
       if (ajustarCobranca && cobranca) {
-        const novoValor = cobranca.valor.minus(valorDecimal)
-        await tx.cobranca.update({
-          where: { id: cobrancaId },
-          data: {
-            valor: novoValor.greaterThan(0) ? novoValor : new Decimal(0)
-          }
-        })
+        await ajustarValorCobranca(tx, cobranca.id, cobranca.valor.minus(valorDecimal).toNumber())
       }
 
       return incidencia
@@ -169,6 +165,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(incidenciaComRelacoes)
   } catch (error) {
+    if (error instanceof Error && error.message === "PARCELAS_PAGAS") {
+      return NextResponse.json({ error: MSG_PARCELAS_PAGAS }, { status: 409 })
+    }
     console.error("Error creating incidencia:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
@@ -231,12 +230,17 @@ export async function DELETE(request: NextRequest) {
         })
       }
 
+      await restaurarCobrancaDaIncidencia(tx, incidencia)
+
       // Delete the incidencia
       await tx.incidencia.delete({ where: { id } })
     })
 
     return NextResponse.json({ success: true })
   } catch (error) {
+    if (error instanceof Error && error.message === "PARCELAS_PAGAS") {
+      return NextResponse.json({ error: MSG_PARCELAS_PAGAS }, { status: 409 })
+    }
     console.error("Error deleting incidencia:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }

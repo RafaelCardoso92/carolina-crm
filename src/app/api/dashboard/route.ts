@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { cache, cacheKeys, cacheTags } from "@/lib/cache"
 import { logger, createTimer } from "@/lib/logger"
 import { requirePermission } from "@/lib/api-auth"
 import { PERMISSIONS, userScopedWhere } from "@/lib/permissions"
+import { valorPendenteCobranca, emAtraso, comissaoGanha, pagoNoMes } from "@/lib/cobranca-valores"
 
 export async function GET(request: Request) {
   const timer = createTimer()
@@ -20,14 +20,14 @@ export async function GET(request: Request) {
     const trimestre = Math.ceil(mes / 3)
 
     const userFilter = userScopedWhere(session, seller)
-    const cacheKey = cacheKeys.dashboard(seller || userId) + `:${ano}:${mes}`
-    const cached = cache.get(cacheKey)
-    if (cached) {
-      logger.debug("Dashboard cache hit", { userId, duration: timer.elapsed() })
-      return NextResponse.json(cached)
-    }
+    // No response cache: it was keyed on the real user (not the impersonated one) and went stale after every payment
 
     const now = new Date()
+    const hoje = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const daquiA7Dias = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+    const proximasWhere = { pago: false, dataVencimento: { gte: hoje, lte: daquiA7Dias }, cobranca: { cliente: userFilter } }
+    const inicioMes = new Date(ano, mes - 1, 1)
+    const fimMes = new Date(ano, mes, 1)
 
     const [
       totalClientes,
@@ -38,20 +38,22 @@ export async function GET(request: Request) {
       devolucoesMes,
       devolucoesTrimestre,
       devolucoesAno,
-      cobrancasPendentes,
+      cobrancasPorPagar,
       objetivoMensal,
       objetivoTrimestral,
       objetivoAnual,
       premiosMensais,
       premiosTrimestrais,
-      parcelasAtrasadas,
-      parcelasAtrasadasValor,
       proximasParcelas,
+      proximasParcelasAgg,
       cobrancasPendentesCount,
       cobrancasPagasCount,
       cobrancasPagasValor,
-      comissaoMensal,
-      objetivosVarios
+      parcelasPagasMes,
+      cobrancasSemParcelasPagasMes,
+      objetivosVarios,
+      vendasPorObjetivo,
+      variosMetas
     ] = await Promise.all([
       prisma.cliente.count({ where: userFilter }),
       prisma.cliente.count({ where: { ativo: true, ...userFilter } }),
@@ -85,57 +87,54 @@ export async function GET(request: Request) {
         where: { venda: { ano, cliente: userFilter } },
         _sum: { totalDevolvido: true, totalSubstituido: true }
       }),
-      prisma.cobranca.aggregate({
+      // Unpaid cobranças with their parcelas: "A Receber" and overdue are computed from what was actually paid
+      prisma.cobranca.findMany({
         where: { pago: false, cliente: userFilter },
-        _sum: { valor: true }
+        select: {
+          valor: true, pago: true, valorPago: true, dataVencimento: true,
+          parcelas: { select: { valor: true, pago: true, valorPago: true, dataVencimento: true } }
+        }
       }),
       prisma.objetivoMensal.findUnique({ where: { mes_ano: { mes, ano } } }),
       prisma.objetivoTrimestral.findUnique({ where: { trimestre_ano: { trimestre, ano } } }),
       prisma.objetivoAnual.findUnique({ where: { ano } }),
       prisma.premioMensal.findMany({ orderBy: { minimo: "asc" } }),
       prisma.premioTrimestral.findMany({ orderBy: { minimo: "asc" } }),
-      prisma.parcela.count({
-        where: { pago: false, dataVencimento: { lt: now }, cobranca: { cliente: userFilter } }
-      }),
-      prisma.parcela.aggregate({
-        where: { pago: false, dataVencimento: { lt: now }, cobranca: { cliente: userFilter } },
-        _sum: { valor: true }
-      }),
       prisma.parcela.findMany({
-        where: {
-          pago: false,
-          dataVencimento: { gte: now, lte: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) },
-          cobranca: { cliente: userFilter }
-        },
+        where: proximasWhere,
         include: { cobranca: { include: { cliente: true } } },
         orderBy: { dataVencimento: "asc" },
         take: 5
       }),
+      prisma.parcela.aggregate({ where: proximasWhere, _count: true, _sum: { valor: true } }),
       prisma.cobranca.count({ where: { pago: false, cliente: userFilter } }),
       prisma.cobranca.count({ where: { pago: true, cliente: userFilter } }),
       prisma.cobranca.aggregate({
         where: { pago: true, cliente: userFilter },
         _sum: { valor: true }
       }),
-      prisma.cobranca.aggregate({
-        where: {
-          pago: true,
-          dataPago: { gte: new Date(ano, mes - 1, 1), lt: new Date(ano, mes, 1) },
-          cliente: userFilter
-        },
-        _sum: { comissao: true }
+      // Commission earned in the month = share of each cobrança's commission paid in the month
+      prisma.parcela.findMany({
+        where: { pago: true, dataPago: { gte: inicioMes, lt: fimMes }, cobranca: { cliente: userFilter } },
+        select: { valor: true, pago: true, valorPago: true, cobranca: { select: { valor: true, comissao: true } } }
       }),
+      prisma.cobranca.findMany({
+        where: { dataPago: { gte: inicioMes, lt: fimMes }, parcelas: { none: {} }, cliente: userFilter },
+        select: { valor: true, pago: true, valorPago: true, dataPago: true, comissao: true }
+      }),
+      // Objetivos Vários by activity in the period (same rule as the vendas page VariosCard)
       prisma.objetivoVario.findMany({
-        where: { mes, ano, ativo: true, ...userFilter },
-        include: {
-          produtos: { include: { produto: true } },
-          vendas: {
-            // Removed month filter - count all linked sales
-            select: { id: true, objetivoVarioValor: true, total: true, cliente: { select: { nome: true } } }
-          }
-        },
+        where: { ativo: true, ...userFilter },
+        include: { produtos: true },
         orderBy: { titulo: "asc" }
-      })
+      }),
+      prisma.venda.groupBy({
+        by: ["objetivoVarioId"],
+        where: { mes, ano, objetivoVarioId: { not: null }, cliente: userFilter },
+        _sum: { objetivoVarioValor: true },
+        _count: true
+      }),
+      prisma.objetivoVarioMeta.findMany({ where: { mes, ano }, select: { objetivoVarioId: true, objetivo: true } })
     ])
 
     const vendasMesBruto = Number(vendasMes._sum.total) || 0
@@ -153,7 +152,14 @@ export async function GET(request: Request) {
     const vendasTrimestreTotal = vendasTrimestreBruto - devolvidoTrimestre + substituidoTrimestre
     const vendasAnoTotal = vendasAnoBruto - devolvidoAno + substituidoAno
 
-    const pendentesTotal = Number(cobrancasPendentes._sum.valor) || 0
+    const pendentesTotal = Math.round(cobrancasPorPagar.reduce((s, c) => s + valorPendenteCobranca(c), 0) * 100) / 100
+    const atrasos = cobrancasPorPagar.map(c => emAtraso(c, now))
+    const parcelasAtrasadas = atrasos.reduce((s, a) => s + a.count, 0)
+    const valorAtrasado = Math.round(atrasos.reduce((s, a) => s + a.valor, 0) * 100) / 100
+    const comissaoMensal = Math.round((
+      parcelasPagasMes.reduce((s, p) => s + comissaoGanha(p.cobranca, Number(p.valor)), 0) +
+      cobrancasSemParcelasPagasMes.reduce((s, c) => s + comissaoGanha(c, pagoNoMes(c, ano, mes - 1)), 0)
+    ) * 100) / 100
     const objMensal = Number(objetivoMensal?.objetivo) || 0
     const objTrimestral = Number(objetivoTrimestral?.objetivo) || 0
     const objAnual = Number(objetivoAnual?.objetivo) || 0
@@ -196,15 +202,21 @@ export async function GET(request: Request) {
       orderBy: { ano: "desc" }
     })
 
-    const objetivosVariosData = objetivosVarios.map(o => {
-      const totalObjetivo = o.produtos.reduce((sum, p) => sum + Number(p.precoSemIva) * p.quantidade, 0)
-      const totalVendido = o.vendas.reduce((sum, v) => sum + Number(v.objetivoVarioValor || 0), 0)
-      const progresso = totalObjetivo > 0 ? (totalVendido / totalObjetivo) * 100 : 0
-      return {
-        id: o.id, titulo: o.titulo, descricao: o.descricao, totalObjetivo, totalVendido, progresso,
-        vendasCount: o.vendas.length, produtosCount: o.produtos.length, atingido: progresso >= 100
-      }
-    })
+    // Shown when a venda of this period links to it or a meta exists for this period (not by creation month)
+    const metaPorObjetivo = new Map(variosMetas.map(m => [m.objetivoVarioId, Number(m.objetivo)]))
+    const vendasPorObjetivoId = new Map(vendasPorObjetivo.map(v => [v.objetivoVarioId, v]))
+    const objetivosVariosData = objetivosVarios
+      .filter(o => vendasPorObjetivoId.has(o.id) || metaPorObjetivo.has(o.id))
+      .map(o => {
+        const agg = vendasPorObjetivoId.get(o.id)
+        const totalObjetivo = metaPorObjetivo.get(o.id) ?? o.produtos.reduce((sum, p) => sum + Number(p.precoSemIva) * p.quantidade, 0)
+        const totalVendido = Number(agg?._sum.objetivoVarioValor ?? 0)
+        const progresso = totalObjetivo > 0 ? (totalVendido / totalObjetivo) * 100 : 0
+        return {
+          id: o.id, titulo: o.titulo, descricao: o.descricao, totalObjetivo, totalVendido, progresso,
+          vendasCount: agg?._count ?? 0, produtosCount: o.produtos.length, atingido: progresso >= 100
+        }
+      })
 
     const responseData = {
       totalClientes, clientesAtivos,
@@ -220,7 +232,9 @@ export async function GET(request: Request) {
       currentMonth: mes, currentYear: ano, currentTrimestre: trimestre,
       premioMensalAtual, proximoPremioMensal, premioTrimestralAtual, proximoPremioTrimestral,
       anosDisponiveis: anosDisponiveis.map(a => a.ano),
-      parcelasAtrasadas, valorAtrasado: Number(parcelasAtrasadasValor._sum.valor) || 0,
+      parcelasAtrasadas, valorAtrasado,
+      proximasParcelasCount: proximasParcelasAgg._count,
+      proximasParcelasValor: Number(proximasParcelasAgg._sum.valor) || 0,
       proximasParcelas: proximasParcelas.map(p => ({
         id: p.id, numero: p.numero, valor: Number(p.valor), dataVencimento: p.dataVencimento,
         clienteNome: p.cobranca.cliente.nome, cobrancaId: p.cobrancaId, fatura: p.cobranca.fatura
@@ -228,12 +242,11 @@ export async function GET(request: Request) {
       cobrancasStats: {
         pendentesCount: cobrancasPendentesCount, pendentesValor: pendentesTotal,
         pagasCount: cobrancasPagasCount, pagasValor: Number(cobrancasPagasValor._sum.valor) || 0,
-        comissaoMensal: Number(comissaoMensal._sum.comissao) || 0
+        comissaoMensal
       },
       objetivosVarios: objetivosVariosData
     }
 
-    cache.set(cacheKey, responseData, { ttl: 60, tags: [cacheTags.dashboard] })
     logger.info("Dashboard loaded", { userId, duration: timer.elapsed() })
 
     return NextResponse.json(responseData)

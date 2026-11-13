@@ -26,6 +26,14 @@ export async function PATCH(
       return NextResponse.json({ success: false, error: "Reconciliação não encontrada" }, { status: 404 })
     }
 
+    // Item must belong to this reconciliation
+    const currentItem = await prisma.itemReconciliacaoComissao.findFirst({
+      where: { id: itemId, reconciliacaoId: id }
+    })
+    if (!currentItem) {
+      return NextResponse.json({ success: false, error: "Item não encontrado" }, { status: 404 })
+    }
+
     const data: UpdateItemComissaoRequest = await request.json()
 
     const updateData: Record<string, unknown> = {}
@@ -66,11 +74,7 @@ export async function PATCH(
       updateData.editadoManualmente = true
 
       // Recalculate differences
-      const currentItem = await prisma.itemReconciliacaoComissao.findUnique({
-        where: { id: itemId }
-      })
-
-      if (currentItem) {
+      {
         const newValorPdf = data.valorLiquidoPdf ?? Number(currentItem.valorLiquidoPdf)
         const newComissaoPdf = data.valorComissaoPdf ?? Number(currentItem.valorComissaoPdf)
         const newValorSistema = data.valorSistema ?? (currentItem.valorSistema ? Number(currentItem.valorSistema) : null)

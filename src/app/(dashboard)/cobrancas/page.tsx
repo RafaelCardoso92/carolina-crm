@@ -64,45 +64,8 @@ async function getCobrancasData(ano: number | null, userFilter: { userId?: strin
     }))
   }))
 
-  const pendentes = cobrancas.filter(c => !c.pago)
-  const pagas = cobrancas.filter(c => c.pago)
-  const totalPendente = pendentes.reduce((sum, c) => sum + Number(c.valor), 0)
-  
-  const totalPago = pagas.reduce((sum, c) => sum + Number(c.valor), 0)
-  
-  const now = new Date()
-  const currentMonth = now.getMonth()
-  const currentYear = now.getFullYear()
-  const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1
-  const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear
-  
-  const pagoEsteMes = pagas.filter(c => {
-    if (!c.dataPago) return false
-    const d = new Date(c.dataPago)
-    return d.getMonth() === currentMonth && d.getFullYear() === currentYear
-  }).reduce((sum, c) => sum + Number(c.valor), 0)
-  
-  const pagoMesPassado = pagas.filter(c => {
-    if (!c.dataPago) return false
-    const d = new Date(c.dataPago)
-    return d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear
-  }).reduce((sum, c) => sum + Number(c.valor), 0)
-  
-  const valorEmAtraso = cobrancas.reduce((sum, c) => {
-    return sum + c.parcelas
-      .filter(p => !p.pago && new Date() > new Date(p.dataVencimento))
-      .reduce((pSum, p) => pSum + Number(p.valor), 0)
-  }, 0)
-
-  return { 
-    cobrancas: serializedCobrancas, 
-    clientes, 
-    totalPendente, 
-    totalPago,
-    pagoEsteMes,
-    pagoMesPassado,
-    valorEmAtraso
-  }
+  // Summary cards are computed in CobrancasView from the filtered list (src/lib/cobranca-valores.ts)
+  return { cobrancas: serializedCobrancas, clientes }
 }
 
 export default async function CobrancasPage({
@@ -146,11 +109,6 @@ export default async function CobrancasPage({
       <CobrancasView
         cobrancas={data.cobrancas as any}
         clientes={data.clientes}
-        totalPendente={data.totalPendente}
-        totalPago={data.totalPago}
-        pagoEsteMes={data.pagoEsteMes}
-        pagoMesPassado={data.pagoMesPassado}
-        valorEmAtraso={data.valorEmAtraso}
         ano={ano}
       />
     </div>

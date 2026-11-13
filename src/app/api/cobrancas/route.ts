@@ -5,6 +5,7 @@ import { requirePermission, getEffectiveUserId } from "@/lib/api-auth"
 import { PERMISSIONS, canViewAllData } from "@/lib/permissions"
 import { getComissaoVendedorForDate } from "@/lib/comissao"
 import { getIVAForDate } from "@/lib/iva"
+import { vencimentoPagamentoUnico } from "@/lib/cobranca-valores"
 
 export async function GET(request: Request) {
   try {
@@ -86,6 +87,8 @@ export async function POST(request: Request) {
       calculatedDataVencimento.setDate(calculatedDataVencimento.getDate() + data.prazoVencimentoDias)
     } else if (data.dataVencimento) {
       calculatedDataVencimento = new Date(data.dataVencimento)
+    } else if (numeroParcelas === 1 && data.dataEmissao) {
+      calculatedDataVencimento = vencimentoPagamentoUnico(1, new Date(data.dataEmissao)).dataVencimento ?? null
     }
 
     // Calculate commission and IVA using the rates effective on the emission date

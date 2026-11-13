@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { requireAuth } from "@/lib/api-auth"
+import { requireAuth, userScopedWhere } from "@/lib/api-auth"
 
 // Generate notifications for overdue payments, tasks, and stale leads
 export async function POST() {
   try {
-    await requireAuth()
+    const session = await requireAuth()
+    // Only generate for the caller's own data (admins viewing all: everything)
+    const scope = userScopedWhere(session)
     const now = new Date()
     const notifications: any[] = []
 
@@ -13,7 +15,8 @@ export async function POST() {
     const overduePayments = await prisma.parcela.findMany({
       where: {
         pago: false,
-        dataVencimento: { lt: now }
+        dataVencimento: { lt: now },
+        ...(scope.userId ? { cobranca: { cliente: { userId: scope.userId } } } : {})
       },
       include: {
         cobranca: {
@@ -50,6 +53,7 @@ export async function POST() {
 
     const tasksDueToday = await prisma.tarefa.findMany({
       where: {
+        ...scope,
         estado: { in: ["PENDENTE", "EM_PROGRESSO"] },
         dataVencimento: {
           gte: todayStart,
@@ -86,6 +90,7 @@ export async function POST() {
     // 3. Check for overdue tasks
     const overdueTasks = await prisma.tarefa.findMany({
       where: {
+        ...scope,
         estado: { in: ["PENDENTE", "EM_PROGRESSO"] },
         dataVencimento: { lt: todayStart }
       },
@@ -121,6 +126,7 @@ export async function POST() {
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     const staleLeads = await prisma.prospecto.findMany({
       where: {
+        ...scope,
         ativo: true,
         estado: { notIn: ["GANHO", "PERDIDO"] },
         OR: [
@@ -157,6 +163,7 @@ export async function POST() {
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
     const staleClients = await prisma.cliente.findMany({
       where: {
+        ...scope,
         ativo: true,
         OR: [
           { ultimoContacto: { lt: thirtyDaysAgo } },

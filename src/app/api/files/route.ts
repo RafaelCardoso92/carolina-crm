@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
           }, { status: 409 })
         }
 
-        const existingPath = path.join(UPLOAD_DIR, existingFile.storedName)
+        const existingPath = path.join(UPLOAD_DIR, path.basename(existingFile.storedName))
         try {
           if (existsSync(existingPath)) {
             await unlink(existingPath)
@@ -99,7 +99,9 @@ export async function POST(request: NextRequest) {
       const buffer = Buffer.from(bytes)
 
       const uuid = crypto.randomUUID()
-      const storedName = `${uuid}-${file.name}`
+      // Never trust file.name for the disk path: basename only, safe charset
+      const safeName = path.basename(file.name).replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 200)
+      const storedName = `${uuid}-${safeName}`
       const filePath = path.join(UPLOAD_DIR, storedName)
 
       await writeFile(filePath, buffer)

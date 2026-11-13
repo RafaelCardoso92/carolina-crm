@@ -3,6 +3,9 @@ import { NextResponse } from "next/server"
 import { requirePermission, getEffectiveUserId } from "@/lib/api-auth"
 import { PERMISSIONS, canViewAllData } from "@/lib/permissions"
 import { calcularValorComIVA } from "@/lib/iva"
+import { getComissaoVendedorForDate } from "@/lib/comissao"
+import { vencimentoPagamentoUnico } from "@/lib/cobranca-valores"
+import { ajustarValorCobranca, MSG_PARCELAS_PAGAS } from "@/lib/cobranca-estado"
 
 type ItemInput = {
   produtoId: string
@@ -165,9 +168,13 @@ export async function PUT(
     }
 
     // Check if venda already has a cobranca
-    const existingCobranca = await prisma.cobranca.findUnique({
-      where: { vendaId: id }
-    })
+    const [existingCobranca, vendaAtual, clienteVenda] = await Promise.all([
+      prisma.cobranca.findUnique({ where: { vendaId: id } }),
+      prisma.venda.findUnique({ where: { id }, select: { total: true, objetivoVarioValor: true, tipoDocumento: true } }),
+      prisma.cliente.findUnique({ where: { id: data.clienteId }, select: { userId: true } })
+    ])
+    const mesValido = Number.isInteger(data.mes) && data.mes >= 1 && data.mes <= 12
+    const anoValido = Number.isInteger(data.ano) && data.ano >= 2000 && data.ano <= 2100
 
     // Update venda with items in a transaction
     // Support both old format (campanhaIds: string[]) and new format (campanhas: {id, quantidade}[])
@@ -195,6 +202,8 @@ export async function PUT(
           valor1: data.valor1 || null,
           valor2: data.valor2 || null,
           total,
+          ...(mesValido ? { mes: data.mes } : {}),
+          ...(anoValido ? { ano: data.ano } : {}),
           notas: data.notas || null,
           tipoDocumento: data.tipoDocumento || undefined
         }
@@ -237,6 +246,8 @@ export async function PUT(
         const objetivoVarioValor = data.objetivoVarioValor ? parseFloat(data.objetivoVarioValor) : 0
         const cobrancaValorSemIva = Math.round((total + objetivoVarioValor) * 100) / 100
         const cobrancaValorComIva = await calcularValorComIVA(cobrancaValorSemIva, dataEmissao)
+        const comissaoRate = clienteVenda?.userId ? await getComissaoVendedorForDate(clienteVenda.userId, dataEmissao) : 0
+        const comissao = Math.round(cobrancaValorSemIva * (comissaoRate / 100) * 100) / 100
 
         // Create the cobrança
         const cobranca = await tx.cobranca.create({
@@ -246,26 +257,32 @@ export async function PUT(
             fatura: data.cobranca.fatura || null,
             valor: cobrancaValorComIva,
             valorSemIva: cobrancaValorSemIva,
+            comissao,
             dataEmissao,
             dataInicioVencimento: dataEmissao,
             numeroParcelas,
-            pago: false
+            ...vencimentoPagamentoUnico(numeroParcelas, dataEmissao),
+            pago: false,
+            tipoDocumento: data.tipoDocumento || vendaAtual?.tipoDocumento || "FATURA"
           }
         })
 
-        // Create parcelas if more than 1
+        // Create parcelas if more than 1 — round to cents, last parcela absorbs the remainder
         if (numeroParcelas > 1) {
-          const valorParcela = cobrancaValorComIva / numeroParcelas
+          const valorParcela = Math.round((cobrancaValorComIva / numeroParcelas) * 100) / 100
           const parcelas = []
 
           for (let i = 0; i < numeroParcelas; i++) {
             const dataVencimento = new Date(dataEmissao)
             dataVencimento.setMonth(dataVencimento.getMonth() + i)
+            const isLast = i === numeroParcelas - 1
 
             parcelas.push({
               cobrancaId: cobranca.id,
               numero: i + 1,
-              valor: valorParcela,
+              valor: isLast
+                ? Math.round((cobrancaValorComIva - valorParcela * (numeroParcelas - 1)) * 100) / 100
+                : valorParcela,
               dataVencimento,
               pago: false
             })
@@ -275,38 +292,30 @@ export async function PUT(
         }
       }
 
-      // Update existing cobrança if requested
+      // Update existing cobrança if requested. Amounts only move when the sale value really changed, and by the
+      // difference only (keeps credit-note adjustments); paid parcelas are never touched.
       if (data.atualizarCobranca && existingCobranca) {
-        // Calculate new cobranca value based on new sale total.
-        // Use the original emission date for IVA-rate lookup so historical rates apply.
-        const ivaDate = existingCobranca.dataEmissao || new Date()
-        const objetivoVarioValor = data.objetivoVarioValor ? parseFloat(data.objetivoVarioValor) : 0
-        const cobrancaValorSemIva = Math.round((total + objetivoVarioValor) * 100) / 100
-        const cobrancaValorComIva = await calcularValorComIVA(cobrancaValorSemIva, ivaDate)
-
         await tx.cobranca.update({
           where: { id: existingCobranca.id },
           data: {
             fatura: data.atualizarCobranca.fatura !== undefined ? data.atualizarCobranca.fatura : existingCobranca.fatura,
-            valor: cobrancaValorComIva,
-            valorSemIva: cobrancaValorSemIva,
-            clienteId: data.clienteId // Update client if changed
+            clienteId: data.clienteId, // Update client if changed
+            tipoDocumento: data.tipoDocumento || undefined
           }
         })
 
-        // Update parcelas values if they exist
-        const parcelas = await tx.parcela.findMany({
-          where: { cobrancaId: existingCobranca.id }
-        })
+        const ivaDate = existingCobranca.dataEmissao || existingCobranca.createdAt
+        const objetivoVarioValor = data.objetivoVarioValor ? parseFloat(data.objetivoVarioValor) : 0
+        const novoSemIva = Math.round((total + objetivoVarioValor) * 100) / 100
+        const antigoSemIva = Math.round((Number(vendaAtual?.total ?? 0) + Number(vendaAtual?.objetivoVarioValor ?? 0)) * 100) / 100
+        const clienteMudou = data.clienteId !== existingCobranca.clienteId
 
-        if (parcelas.length > 0) {
-          const valorParcela = cobrancaValorComIva / parcelas.length
-          for (const parcela of parcelas) {
-            await tx.parcela.update({
-              where: { id: parcela.id },
-              data: { valor: valorParcela }
-            })
-          }
+        if (novoSemIva !== antigoSemIva || clienteMudou) {
+          const diferencaComIva = (await calcularValorComIVA(novoSemIva, ivaDate)) - (await calcularValorComIVA(antigoSemIva, ivaDate))
+          const valorSemIva = existingCobranca.valorSemIva !== null
+            ? Number(existingCobranca.valorSemIva) + novoSemIva - antigoSemIva
+            : novoSemIva
+          await ajustarValorCobranca(tx, existingCobranca.id, Number(existingCobranca.valor) + diferencaComIva, valorSemIva)
         }
       }
 
@@ -359,6 +368,9 @@ export async function PUT(
     return NextResponse.json(venda)
   } catch (error) {
     if (error instanceof Response) return error
+    if (error instanceof Error && error.message === "PARCELAS_PAGAS") {
+      return NextResponse.json({ error: MSG_PARCELAS_PAGAS }, { status: 409 })
+    }
     console.error("Error updating venda:", error)
     return NextResponse.json({ error: "Erro ao atualizar venda" }, { status: 500 })
   }
@@ -382,6 +394,16 @@ export async function DELETE(
 
     if (!owned) {
       return NextResponse.json({ error: "Sem permissao" }, { status: 403 })
+    }
+
+    const cobranca = await prisma.cobranca.findUnique({
+      where: { vendaId: id },
+      select: { pago: true, valorPago: true, creditoAplicado: true, parcelas: { select: { pago: true, valorPago: true } } }
+    })
+    const temPagamentos = !!cobranca && (cobranca.pago || Number(cobranca.valorPago ?? 0) > 0 ||
+      Number(cobranca.creditoAplicado ?? 0) > 0 || cobranca.parcelas.some(p => p.pago || Number(p.valorPago ?? 0) > 0))
+    if (temPagamentos) {
+      return NextResponse.json({ error: "Esta venda tem uma cobrança com pagamentos registados e não pode ser eliminada. Remova primeiro os pagamentos da cobrança." }, { status: 409 })
     }
 
     await prisma.venda.delete({

@@ -162,6 +162,16 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 })
     }
 
+    // A client with sales or invoices is archived, never deleted (the cascade would wipe that history)
+    const [vendas, cobrancas] = await Promise.all([
+      prisma.venda.count({ where: { clienteId: id } }),
+      prisma.cobranca.count({ where: { clienteId: id } })
+    ])
+    if (vendas > 0 || cobrancas > 0) {
+      await prisma.cliente.update({ where: { id }, data: { ativo: false } })
+      return NextResponse.json({ success: true, archived: true })
+    }
+
     await prisma.cliente.delete({
       where: { id }
     })

@@ -4,6 +4,12 @@ import bcrypt from "bcryptjs"
 import { prisma } from "./prisma"
 import { authConfig } from "./auth.config"
 import { UserRole, UserStatus } from "@prisma/client"
+import type { Session } from "next-auth"
+import { canImpersonateUser } from "./permissions"
+import { checkRateLimit } from "./rate-limit"
+
+// How often the jwt callback re-reads the user's status/role from the DB
+const USER_RECHECK_MS = 5 * 60 * 1000
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
@@ -14,8 +20,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" }
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         if (!credentials?.email || !credentials?.password) {
+          return null
+        }
+
+        // 10 attempts / 15 min per IP+email (skipped when the IP is unknown)
+        const email = String(credentials.email).toLowerCase().trim()
+        if (!checkRateLimit(request, email, "login").allowed) {
           return null
         }
 
@@ -67,17 +79,41 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id
         token.role = user.role as UserRole
         token.status = user.status as UserStatus
+        token.checkedAt = Date.now()
       }
 
-      // Handle impersonation session updates
+      // Re-check status/role from DB at most every USER_RECHECK_MS; inactive/deleted -> invalidate
+      if (!user && token.id && Date.now() - ((token.checkedAt as number | undefined) ?? 0) > USER_RECHECK_MS) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { role: true, status: true }
+        })
+        if (!dbUser || dbUser.status !== "ACTIVE") return null
+        token.role = dbUser.role
+        token.status = dbUser.status
+        token.checkedAt = Date.now()
+      }
+
+      // Handle impersonation session updates. The client only says WHO; the server re-validates.
       if (trigger === "update" && session) {
-        if (session.impersonating) {
-          token.impersonating = session.impersonating
-          token.originalUserId = token.originalUserId || token.id
-        } else if (session.impersonating === null) {
+        if (session.impersonating === null) {
           // Stop impersonating
           delete token.impersonating
           delete token.originalUserId
+        } else if (session.impersonating) {
+          const targetId = typeof session.impersonating.id === "string" ? session.impersonating.id : ""
+          const actor = { user: { id: token.id as string, role: token.role } } as Session
+          const target = targetId
+            ? await prisma.user.findUnique({
+                where: { id: targetId },
+                select: { id: true, name: true, email: true }
+              })
+            : null
+          if (target && await canImpersonateUser(actor, target.id, prisma)) {
+            token.impersonating = target
+            token.originalUserId = token.id
+          }
+          // else: rejected, token left unchanged
         }
       }
 
