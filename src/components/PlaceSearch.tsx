@@ -4,13 +4,15 @@ import { useEffect, useRef, useState } from "react"
 import { useJsApiLoader } from "@react-google-maps/api"
 import { GOOGLE_MAPS_CONFIG } from "@/lib/google-maps"
 
-export type PlaceEscolhido = { morada: string; cidade: string; codigoPostal: string; lat: number; lng: number }
+export type PlaceEscolhido = { morada: string; cidade: string; codigoPostal: string; lat: number; lng: number; endereco: string }
 
 type Sugestao = { id: string; texto: string; prediction: google.maps.places.PlacePrediction }
 
 // Places API (New): the legacy google.maps.places.Autocomplete is not available to keys created after
 // March 2025 ("This page can't load Google Maps correctly"), so suggestions are fetched and listed by hand.
-export default function PlaceSearch({ onSelect, className }: { onSelect: (p: PlaceEscolhido) => void; className?: string }) {
+export default function PlaceSearch({ onSelect, className, placeholder = "Pesquise por nome do estabelecimento ou morada..." }: {
+  onSelect: (p: PlaceEscolhido) => void; className?: string; placeholder?: string
+}) {
   const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_CONFIG)
   const [texto, setTexto] = useState("")
   const [sugestoes, setSugestoes] = useState<Sugestao[]>([])
@@ -46,7 +48,7 @@ export default function PlaceSearch({ onSelect, className }: { onSelect: (p: Pla
     setAberto(false)
     try {
       const place = s.prediction.toPlace()
-      await place.fetchFields({ fields: ["addressComponents", "location", "formattedAddress"] })
+      await place.fetchFields({ fields: ["addressComponents", "location", "formattedAddress", "displayName"] })
       sessao.current = null // a session ends with the details request
       if (!place.location) return
       const comp = (tipo: string) => place.addressComponents?.find(c => c.types.includes(tipo))?.longText ?? ""
@@ -58,6 +60,7 @@ export default function PlaceSearch({ onSelect, className }: { onSelect: (p: Pla
         codigoPostal: comp("postal_code"),
         lat: place.location.lat(),
         lng: place.location.lng(),
+        endereco: place.formattedAddress || place.displayName || "",
       })
       setTexto("")
       setSugestoes([])
@@ -77,7 +80,7 @@ export default function PlaceSearch({ onSelect, className }: { onSelect: (p: Pla
         }}
         onFocus={() => sugestoes.length && setAberto(true)}
         onBlur={() => setTimeout(() => setAberto(false), 150)}
-        placeholder="Pesquise por nome do estabelecimento ou morada..."
+        placeholder={placeholder}
         autoComplete="off"
         className={className}
       />

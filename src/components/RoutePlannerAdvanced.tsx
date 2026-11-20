@@ -1,7 +1,14 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { GoogleMap, useJsApiLoader, Marker, DirectionsRenderer, InfoWindow, Autocomplete } from "@react-google-maps/api"
+import { GoogleMap, useJsApiLoader, Marker, Polyline, InfoWindow } from "@react-google-maps/api"
+import PlaceSearch, { type PlaceEscolhido } from "@/components/PlaceSearch"
+
+// Routes API (New): legacy DirectionsService is not available to this key's project. @types/google.maps
+// 3.58 has no typings for it yet, so only what is read here is typed.
+type RotaPasso = { instructions?: string | null; distanceMeters?: number | null }
+type Rota = { distanceMeters?: number; durationMillis?: number; path?: google.maps.LatLngLiteral[]; legs?: { steps?: RotaPasso[] }[] }
+type RoutesLib = { Route: { computeRoutes(req: object): Promise<{ routes?: Rota[] }> } }
 import { GOOGLE_MAPS_CONFIG } from "@/lib/google-maps"
 import Swal from "sweetalert2"
 
@@ -378,7 +385,7 @@ export default function RoutePlannerAdvanced() {
   })
 
   // Route state
-  const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null)
+  const [routePath, setRoutePath] = useState<google.maps.LatLngLiteral[] | null>(null)
   const [optimizedRoute, setOptimizedRoute] = useState<RouteLocation[]>([])
   const [totalDistance, setTotalDistance] = useState<string>("")
   const [totalDuration, setTotalDuration] = useState<string>("")
@@ -428,8 +435,6 @@ export default function RoutePlannerAdvanced() {
   const [selectedMarker, setSelectedMarker] = useState<RouteLocation | null>(null)
 
   // Address search state
-  const [searchAutocomplete, setSearchAutocomplete] = useState<google.maps.places.Autocomplete | null>(null)
-  const [startingPointAutocomplete, setStartingPointAutocomplete] = useState<google.maps.places.Autocomplete | null>(null)
   const [searchMarker, setSearchMarker] = useState<{ lat: number; lng: number; address: string } | null>(null)
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null)
 
@@ -456,16 +461,15 @@ export default function RoutePlannerAdvanced() {
     return Math.round((distanceKm / 100) * consumo * preco * 100) / 100
   }, [])
 
-  const estimateTollCost = useCallback((result: google.maps.DirectionsResult) => {
-    const route = result.routes[0]
+  const estimateTollCost = useCallback((route: Rota | undefined) => {
     if (!route) return { cost: null, count: null }
 
     let tollDistance = 0
     let tollCount = 0
     const tollRoads = new Set<string>()
 
-    route.legs.forEach(leg => {
-      leg.steps.forEach(step => {
+    route.legs?.forEach(leg => {
+      leg.steps?.forEach(step => {
         const instructions = step.instructions?.toLowerCase() || ""
         const tollMatches = instructions.match(/\b(a-?\d+|ic\d+|ip\d+|vci|crep|cril|crel)\b/gi)
         if (tollMatches) {
@@ -476,7 +480,7 @@ export default function RoutePlannerAdvanced() {
                 tollRoads.add(normalized)
                 tollCount++
               }
-              tollDistance += step.distance?.value || 0
+              tollDistance += step.distanceMeters || 0
             }
           })
         }
@@ -623,19 +627,8 @@ export default function RoutePlannerAdvanced() {
     }
   }
 
-  // Handle starting point autocomplete selection
-  const onStartingPointPlaceSelect = () => {
-    if (startingPointAutocomplete) {
-      const place = startingPointAutocomplete.getPlace()
-      if (place.geometry?.location) {
-        setStartingPoint({
-          type: "address",
-          latitude: place.geometry.location.lat(),
-          longitude: place.geometry.location.lng(),
-          address: place.formatted_address || place.name || ""
-        })
-      }
-    }
+  const onStartingPointPlaceSelect = (p: PlaceEscolhido) => {
+    setStartingPoint({ type: "address", latitude: p.lat, longitude: p.lng, address: p.endereco })
   }
 
   const runBatchGeocode = async () => {
@@ -866,7 +859,6 @@ export default function RoutePlannerAdvanced() {
       return
     }
 
-    const directionsService = new google.maps.DirectionsService()
     const origin = { lat: startingPoint.latitude, lng: startingPoint.longitude }
 
     // Use our local optimization algorithm first for better results
@@ -887,15 +879,14 @@ export default function RoutePlannerAdvanced() {
 
     // Include parking stops in the route if any
     const stopsToInclude = existingParkingStops || []
-    const allWaypoints: google.maps.DirectionsWaypoint[] = []
+    const allWaypoints: { location: google.maps.LatLngLiteral }[] = []
 
     // Build waypoints with parking stops inserted at correct positions
     for (let i = 0; i < optimizedSelected.length; i++) {
       // Add the location waypoint (except last one which is destination)
       if (i < optimizedSelected.length - 1) {
         allWaypoints.push({
-          location: { lat: optimizedSelected[i].latitude!, lng: optimizedSelected[i].longitude! },
-          stopover: true
+          location: { lat: optimizedSelected[i].latitude!, lng: optimizedSelected[i].longitude! }
         })
       }
 
@@ -903,8 +894,7 @@ export default function RoutePlannerAdvanced() {
       const stopsAfterThis = stopsToInclude.filter(s => s.afterStopIndex === i)
       stopsAfterThis.forEach(stop => {
         allWaypoints.push({
-          location: { lat: stop.lat, lng: stop.lng },
-          stopover: true
+          location: { lat: stop.lat, lng: stop.lng }
         })
       })
     }
@@ -912,23 +902,21 @@ export default function RoutePlannerAdvanced() {
     const destination = { lat: optimizedSelected[optimizedSelected.length - 1].latitude!, lng: optimizedSelected[optimizedSelected.length - 1].longitude! }
 
     try {
-      const result = await directionsService.route({
+      const { Route } = (await google.maps.importLibrary("routes")) as unknown as RoutesLib
+      const { routes } = await Route.computeRoutes({
         origin,
         destination,
-        waypoints: allWaypoints,
-        optimizeWaypoints: false, // We already optimized locally
-        travelMode: google.maps.TravelMode.DRIVING
+        intermediates: allWaypoints, // already ordered locally
+        travelMode: "DRIVING",
+        fields: ["path", "legs", "distanceMeters", "durationMillis"],
       })
+      const route = routes?.[0]
+      if (!route) throw new Error("sem rota")
 
-      setDirections(result)
+      setRoutePath((route.path ?? []).map(p => ({ lat: Number(p.lat), lng: Number(p.lng) })))
 
-      const route = result.routes[0]
-      let distance = 0
-      let duration = 0
-      route.legs.forEach(leg => {
-        distance += leg.distance?.value || 0
-        duration += leg.duration?.value || 0
-      })
+      const distance = route.distanceMeters || 0
+      const duration = (route.durationMillis || 0) / 1000
 
       const distanceStr = `${(distance / 1000).toFixed(1)} km`
       const durationStr = `${Math.round(duration / 60)} min`
@@ -936,7 +924,7 @@ export default function RoutePlannerAdvanced() {
       setTotalDistance(distanceStr)
       setTotalDuration(durationStr)
 
-      const tollEstimate = estimateTollCost(result)
+      const tollEstimate = estimateTollCost(route)
       const fuelCost = calculateFuelCost(distanceStr, costs.consumoMedio, costs.precoLitro)
 
       setCosts(prev => ({
@@ -1100,109 +1088,62 @@ export default function RoutePlannerAdvanced() {
       return
     }
 
-    const service = new google.maps.places.PlacesService(mapInstance)
     const radius = type === "gas_station" ? 10000 : 5000
+    const center = { lat, lng }
+    try {
+      const { Place } = (await google.maps.importLibrary("places")) as google.maps.PlacesLibrary
+      const fields = ["id", "displayName", "formattedAddress", "location", "rating", "regularOpeningHours", "utcOffsetMinutes"]
+      // GPL: text search with keyword; parking: nearby search by type
+      const { places: results } = type === "gas_station"
+        ? await Place.searchByText({ textQuery: "GPL posto combustivel", fields, locationBias: { center, radius }, maxResultCount: 20 })
+        : await Place.searchNearby({ fields, includedTypes: ["parking"], locationRestriction: { center, radius }, maxResultCount: 20 })
 
-    // For GPL, use text search with keyword; for parking use nearby search
-    if (type === "gas_station") {
-      // Search specifically for GPL/AutoGás stations
-      const textRequest: google.maps.places.TextSearchRequest = {
-        location: new google.maps.LatLng(lat, lng),
-        radius: radius,
-        query: "GPL posto combustivel"
-      }
-      
-      service.textSearch(textRequest, (results, status) => {
-        processResults(results, status, lat, lng, type)
-      })
-    } else {
-      const request: google.maps.places.PlaceSearchRequest = {
-        location: new google.maps.LatLng(lat, lng),
-        radius: radius,
-        type: "parking"
-      }
-
-      service.nearbySearch(request, (results, status) => {
-        processResults(results, status, lat, lng, type)
-      })
-    }
-  }
-
-  const processResults = (
-    results: google.maps.places.PlaceResult[] | null,
-    status: google.maps.places.PlacesServiceStatus,
-    lat: number,
-    lng: number,
-    type: "parking" | "gas_station"
-  ) => {
-      setLoadingNearby(false)
-
-    setLoadingNearby(false)
-
-    if (status === google.maps.places.PlacesServiceStatus.OK && results) {
       // Filter GPL stations - only show ones with GPL in name AND from approved companies
       const allowedCompanies = ["bp", "galp", "shell", "prio", "moeve"]
       const filteredResults = type === "gas_station"
         ? results.filter(p => {
-            const name = (p.name || "").toLowerCase()
+            const name = (p.displayName || "").toLowerCase()
             const hasGPL = name.includes("gpl") || name.includes("autogás") || name.includes("autogas") || name.includes("glp")
-            const isAllowedCompany = allowedCompanies.some(company => name.includes(company))
-            return hasGPL && isAllowedCompany
+            return hasGPL && allowedCompanies.some(company => name.includes(company))
           })
         : results
 
-      const places = filteredResults.map(place => {
-          // Calculate distance
-          const R = 6371e3
-          const phi1 = lat * Math.PI / 180
-          const phi2 = (place.geometry?.location?.lat() || 0) * Math.PI / 180
-          const deltaPhi = ((place.geometry?.location?.lat() || 0) - lat) * Math.PI / 180
-          const deltaLambda = ((place.geometry?.location?.lng() || 0) - lng) * Math.PI / 180
-
-          const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
-                    Math.cos(phi1) * Math.cos(phi2) *
-                    Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2)
-          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-          const distance = Math.round(R * c)
-
-          return {
-            id: place.place_id || "",
-            name: place.name || "",
-            address: place.vicinity || null,
-            latitude: place.geometry?.location?.lat() || 0,
-            longitude: place.geometry?.location?.lng() || 0,
-            distance,
-            type,
-            rating: place.rating,
-            openNow: place.opening_hours?.isOpen?.()
-          }
-        })
-
-        // Sort by distance
-        places.sort((a, b) => a.distance - b.distance)
+      const places = await Promise.all(filteredResults.map(async place => {
+        const pLat = place.location?.lat() || 0
+        const pLng = place.location?.lng() || 0
+        // Haversine distance in metres
+        const R = 6371e3
+        const phi1 = lat * Math.PI / 180
+        const phi2 = pLat * Math.PI / 180
+        const deltaPhi = (pLat - lat) * Math.PI / 180
+        const deltaLambda = (pLng - lng) * Math.PI / 180
+        const a = Math.sin(deltaPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) ** 2
+        const distance = Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)))
+        return {
+          id: place.id,
+          name: place.displayName || "",
+          address: place.formattedAddress || null,
+          latitude: pLat,
+          longitude: pLng,
+          distance,
+          type,
+          rating: place.rating ?? undefined,
+          openNow: await place.isOpen().catch(() => undefined)
+        }
+      }))
+      places.sort((a, b) => a.distance - b.distance)
       setNearbyPlaces(places)
-    } else if (status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+    } catch (error) {
+      console.error("Places search failed:", error)
       setNearbyPlaces([])
-    } else {
-      console.error("Places search failed:", status)
-      setNearbyPlaces([])
+    } finally {
+      setLoadingNearby(false)
     }
   }
 
-  const onPlaceSelected = () => {
-    if (searchAutocomplete) {
-      const place = searchAutocomplete.getPlace()
-      if (place.geometry?.location) {
-        const lat = place.geometry.location.lat()
-        const lng = place.geometry.location.lng()
-        setSearchMarker({
-          lat,
-          lng,
-          address: place.formatted_address || ""
-        })
-        if (mapInstance) { mapInstance.panTo({ lat, lng }); mapInstance.setZoom(15) }
-      }
-    }
+  const onPlaceSelected = (p: PlaceEscolhido) => {
+    setSearchMarker({ lat: p.lat, lng: p.lng, address: p.endereco })
+    if (mapInstance) { mapInstance.panTo({ lat: p.lat, lng: p.lng }); mapInstance.setZoom(15) }
   }
 
   const getGoogleMapsUrl = () => {
@@ -1248,7 +1189,7 @@ export default function RoutePlannerAdvanced() {
   }
 
   const clearRoute = () => {
-    setDirections(null)
+    setRoutePath(null)
     setOptimizedRoute([])
     setTotalDistance("")
     setTotalDuration("")
@@ -1481,20 +1422,11 @@ export default function RoutePlannerAdvanced() {
                   Usar Localização Atual
                 </button>
 
-                <Autocomplete
-                  onLoad={(autocomplete) => setStartingPointAutocomplete(autocomplete)}
-                  onPlaceChanged={onStartingPointPlaceSelect}
-                  options={{
-                    componentRestrictions: { country: "pt" },
-                    types: ["address"]
-                  }}
-                >
-                  <input
-                    type="text"
-                    placeholder="Pesquisar morada..."
-                    className="w-full px-3 py-2.5 bg-secondary border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </Autocomplete>
+                <PlaceSearch
+                  onSelect={onStartingPointPlaceSelect}
+                  placeholder="Pesquisar morada..."
+                  className="w-full px-3 py-2.5 bg-secondary border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
               </div>
             )}
           </div>
@@ -2047,20 +1979,11 @@ export default function RoutePlannerAdvanced() {
           {/* Address Search Bar */}
           {isLoaded && (
             <div className="relative">
-              <Autocomplete
-                onLoad={(autocomplete) => setSearchAutocomplete(autocomplete)}
-                onPlaceChanged={onPlaceSelected}
-                options={{
-                  componentRestrictions: { country: "pt" },
-                  fields: ["formatted_address", "geometry", "name"],
-                }}
-              >
-                <input
-                  type="text"
-                  placeholder="Pesquisar endereço no mapa..."
-                  className="w-full pl-10 pr-10 py-3 border border-border rounded-xl bg-card text-foreground focus:ring-2 focus:ring-primary focus:border-primary"
-                />
-              </Autocomplete>
+              <PlaceSearch
+                onSelect={onPlaceSelected}
+                placeholder="Pesquisar endereço no mapa..."
+                className="w-full pl-10 pr-10 py-3 border border-border rounded-xl bg-card text-foreground focus:ring-2 focus:ring-primary focus:border-primary"
+              />
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
@@ -2140,17 +2063,10 @@ export default function RoutePlannerAdvanced() {
                   />
                 ))}
 
-                {directions ? (
-                  <DirectionsRenderer
-                    directions={directions}
-                    options={{
-                      suppressMarkers: false,
-                      markerOptions: {
-                        clickable: true
-                      }
-                    }}
-                  />
-                ) : (
+                {routePath && (
+                  <Polyline path={routePath} options={{ strokeColor: "#2563eb", strokeOpacity: 0.85, strokeWeight: 5 }} />
+                )}
+                {(
                   validLocations
                     .filter(l => selectedLocations.includes(l.id))
                     .map(loc => (
