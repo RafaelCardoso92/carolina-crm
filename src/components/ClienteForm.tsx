@@ -1,9 +1,8 @@
 "use client"
 
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { useJsApiLoader } from "@react-google-maps/api"
-import { GOOGLE_MAPS_CONFIG } from "@/lib/google-maps"
+import PlaceSearch, { type PlaceEscolhido } from "@/components/PlaceSearch"
 
 type ClienteData = {
   id?: string
@@ -34,68 +33,15 @@ export default function ClienteForm({ cliente }: { cliente?: ClienteData }) {
   })
 
   // Places autocomplete
-  const searchInputRef = useRef<HTMLInputElement>(null)
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null)
-  const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_CONFIG)
 
   const isEditing = !!cliente?.id
 
-  // Initialize Google Places Autocomplete
-  useEffect(() => {
-    if (!isLoaded || !searchInputRef.current) return
-
-    const autocomplete = new google.maps.places.Autocomplete(searchInputRef.current, {
-      componentRestrictions: { country: "pt" },
-      fields: ["address_components", "geometry", "name", "formatted_address"],
-      types: ["establishment", "geocode"],
-    })
-
-    autocomplete.addListener("place_changed", () => {
-      const place = autocomplete.getPlace()
-      if (!place.geometry?.location) return
-
-      // Extract address components
-      let streetNumber = ""
-      let street = ""
-      let city = ""
-      let postalCode = ""
-
-      place.address_components?.forEach((component) => {
-        const types = component.types
-        if (types.includes("street_number")) {
-          streetNumber = component.long_name
-        } else if (types.includes("route")) {
-          street = component.long_name
-        } else if (types.includes("locality") || types.includes("administrative_area_level_2")) {
-          city = component.long_name
-        } else if (types.includes("postal_code")) {
-          postalCode = component.long_name
-        }
-      })
-
-      // Build full address
-      const fullStreet = streetNumber ? `${street}, ${streetNumber}` : street
-
-      setMorada(fullStreet || place.formatted_address || "")
-      setCidade(city)
-      setCodigoPostal(postalCode)
-      setCoordinates({
-        lat: place.geometry.location.lat(),
-        lng: place.geometry.location.lng(),
-      })
-
-      // Clear search input after selection
-      if (searchInputRef.current) {
-        searchInputRef.current.value = ""
-      }
-    })
-
-    autocompleteRef.current = autocomplete
-
-    return () => {
-      google.maps.event.clearInstanceListeners(autocomplete)
-    }
-  }, [isLoaded])
+  function aplicarLocal(p: PlaceEscolhido) {
+    setMorada(p.morada)
+    setCidade(p.cidade)
+    setCodigoPostal(p.codigoPostal)
+    setCoordinates({ lat: p.lat, lng: p.lng })
+  }
 
   // Manual geocode fallback
   const handleManualGeocode = useCallback(async () => {
@@ -259,12 +205,7 @@ export default function ClienteForm({ cliente }: { cliente?: ClienteData }) {
                 Pesquisar local (Google Maps)
               </span>
             </label>
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder="Pesquise por nome do estabelecimento ou morada..."
-              className="w-full px-4 py-3 border-2 border-blue-200 bg-blue-50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-foreground font-medium placeholder:text-blue-400"
-            />
+            <PlaceSearch onSelect={aplicarLocal} className="w-full px-4 py-3 border-2 border-blue-200 bg-blue-50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-foreground font-medium placeholder:text-blue-400" />
             <p className="text-xs text-muted-foreground mt-1.5">
               Comece a escrever para pesquisar. Selecione um resultado para preencher automaticamente a morada.
             </p>
