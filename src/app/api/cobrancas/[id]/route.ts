@@ -5,7 +5,7 @@ import { PERMISSIONS, canViewAllData } from "@/lib/permissions"
 import { getComissaoVendedorForDate } from "@/lib/comissao"
 import { getIVAForDate } from "@/lib/iva"
 import { recalcularEstadoCobranca } from "@/lib/cobranca-estado"
-import { estadoPorValores } from "@/lib/cobranca-valores"
+import { estadoPorValores, distribuirPagamento } from "@/lib/cobranca-valores"
 
 // Helper to check cobranca ownership through cliente
 async function checkCobrancaOwnership(
@@ -284,6 +284,35 @@ export async function PATCH(
 
     if (!owned) {
       return NextResponse.json({ error: "Sem permissao" }, { status: 403 })
+    }
+
+    // A payment against an invoice with parcelas: any amount, spread over the open parcelas oldest first
+    if (data.adicionarPagamento !== undefined) {
+      const valor = Number(data.adicionarPagamento)
+      const dataPago = data.dataPago ? new Date(data.dataPago) : new Date()
+      try {
+        await prisma.$transaction(async (tx) => {
+          const parcelas = await tx.parcela.findMany({
+            where: { cobrancaId: id },
+            select: { id: true, numero: true, valor: true, pago: true, valorPago: true }
+          })
+          const updates = distribuirPagamento(parcelas, valor)
+          if (!updates) throw new Error("VALOR_INVALIDO")
+          for (const u of updates) {
+            await tx.parcela.update({ where: { id: u.id }, data: { valorPago: u.valorPago, pago: u.pago, dataPago } })
+          }
+          await recalcularEstadoCobranca(tx, id)
+        })
+      } catch (e) {
+        if (e instanceof Error && e.message === "VALOR_INVALIDO") {
+          return NextResponse.json({ error: "O valor tem de ser maior que 0 e não pode passar o que falta pagar nesta fatura." }, { status: 400 })
+        }
+        throw e
+      }
+      return NextResponse.json(await prisma.cobranca.findUnique({
+        where: { id },
+        include: { cliente: true, parcelas: { orderBy: { numero: "asc" } } }
+      }))
     }
 
     const cobranca = await prisma.$transaction(async (tx) => {

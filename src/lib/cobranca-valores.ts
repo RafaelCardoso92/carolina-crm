@@ -82,3 +82,29 @@ export function vencimentoPagamentoUnico(numeroParcelas: number, dataEmissao: Da
   dataVencimento.setDate(dataVencimento.getDate() + PRAZO_VENCIMENTO_DIAS)
   return { prazoVencimentoDias: PRAZO_VENCIMENTO_DIAS, dataVencimento }
 }
+
+/**
+ * Spread a payment over the open parcelas, oldest first: each one is filled up to its valor (then pago)
+ * and whatever is left goes to the next. Returns the new valorPago/pago per touched parcela,
+ * or null when the amount is more than what is still owed on the invoice.
+ */
+export function distribuirPagamento(
+  parcelas: { id: string; numero: number; valor: Num; pago: boolean; valorPago?: Num }[],
+  valor: number
+): { id: string; valorPago: number; pago: boolean }[] | null {
+  let resto = cent(valor)
+  const abertas = [...parcelas].filter(p => !p.pago).sort((a, b) => a.numero - b.numero)
+  const emFalta = cent(abertas.reduce((s, p) => s + n(p.valor) - n(p.valorPago), 0))
+  if (resto <= 0 || resto > emFalta) return null
+  const out: { id: string; valorPago: number; pago: boolean }[] = []
+  for (const p of abertas) {
+    if (resto <= 0) break
+    const falta = cent(n(p.valor) - n(p.valorPago))
+    if (falta <= 0) continue
+    const parte = Math.min(falta, resto)
+    resto = cent(resto - parte)
+    const valorPago = cent(n(p.valorPago) + parte)
+    out.push({ id: p.id, valorPago, pago: valorPago >= n(p.valor) })
+  }
+  return out
+}

@@ -1258,6 +1258,8 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
     }
 
     const defaultValue = isPartialPayment ? emFalta : valorParcela
+    const emFaltaFatura = Math.round((cobranca?.parcelas ?? []).filter(p => !p.pago)
+      .reduce((s, p) => s + Number(p.valor) - Number(p.valorPago ?? 0), 0) * 100) / 100
 
     const result = await Swal.fire({
       title: "",
@@ -1317,6 +1319,8 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
             </div>
           </div>
 
+          <p style="font-size: 0.75rem; color: #6b7280; margin: -8px 0 16px 0;">Pode pagar qualquer valor até ${formatCurrency(emFaltaFatura)} € (o que falta nesta fatura). O que passar desta parcela fica na seguinte.</p>
+
           <div style="margin-bottom: 16px;">
             <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 8px;">
               Data de pagamento
@@ -1351,16 +1355,13 @@ export default function CobrancasView({ cobrancas, clientes, ano }: Props) {
 
     if (!result.isConfirmed || !result.value) return
 
-    const novoPagamento = result.value.valorPago
-    const dataPago = result.value.dataPago
-    const totalPago = isPartialPayment ? currentValorPago + novoPagamento : novoPagamento
-    const isParcial = totalPago < valorParcela
-
+    // Any amount counts against the whole invoice: the server fills the open parcelas oldest first
+    // and carries what's left to the next one.
     try {
-      const res = await fetch(`/api/parcelas/${parcelaId}`, {
+      const res = await fetch(`/api/cobrancas/${cobrancaId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pago: !isParcial, valorPago: totalPago, dataPago })
+        body: JSON.stringify({ adicionarPagamento: result.value.valorPago, dataPago: result.value.dataPago })
       })
       if (res.ok) router.refresh()
       else await erroDoServidor(res)
